@@ -30,6 +30,17 @@ type Task = {
   reward_points: number;
 };
 
+type Reward = {
+  id: string;
+  workspace_id: string;
+  title: string;
+  description: string | null;
+  requested_by_member_id: string | null;
+  target_member_id: string | null;
+  cost_points: number;
+  status: string;
+};
+
 type RewardTransaction = {
   id: string;
   member_id: string;
@@ -55,6 +66,12 @@ export default function Home() {
   const [verificationType, setVerificationType] = useState("none");
   const [rewardPoints, setRewardPoints] = useState(1);
   const [tasks, setTasks] = useState<Task[]>([]);
+
+  const [rewardTitle, setRewardTitle] = useState("");
+  const [rewardDescription, setRewardDescription] = useState("");
+  const [rewardTargetMemberId, setRewardTargetMemberId] = useState("");
+  const [rewardCostPoints, setRewardCostPoints] = useState(1);
+  const [rewards, setRewards] = useState<Reward[]>([]);
 
   const [rewardTransactions, setRewardTransactions] = useState<
     RewardTransaction[]
@@ -386,6 +403,135 @@ export default function Home() {
     );
 
     setMessage(`반려 완료: ${task.title}`);
+    setLoading(false);
+  }
+
+  async function createReward() {
+    if (!workspace) {
+      setMessage("워크스페이스 정보가 없습니다.");
+      return;
+    }
+
+    if (!rewardTitle.trim()) {
+      setMessage("보상 이름을 입력해주세요.");
+      return;
+    }
+
+    if (!rewardTargetMemberId) {
+      setMessage("보상을 받을 참여자를 선택해주세요.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const requester = members.find((member) => member.id === rewardTargetMemberId);
+    const manager = members.find((member) => member.role === "manager");
+
+    const { data, error } = await supabase
+      .from("rewards")
+      .insert({
+        workspace_id: workspace.id,
+        title: rewardTitle.trim(),
+        description: rewardDescription.trim() || null,
+        requested_by_member_id: requester?.id || null,
+        target_member_id: rewardTargetMemberId,
+        approved_by_member_id: manager?.id || null,
+        cost_points: rewardCostPoints,
+        status: "approved",
+      })
+      .select()
+      .single();
+
+    if (error) {
+      setMessage(`보상 생성 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setRewards((prev) => [data, ...prev]);
+    setRewardTitle("");
+    setRewardDescription("");
+    setRewardCostPoints(1);
+    setMessage(`보상 생성 완료: ${data.title}`);
+    setLoading(false);
+  }
+
+  async function redeemReward(reward: Reward) {
+    if (!workspace) {
+      setMessage("워크스페이스 정보가 없습니다.");
+      return;
+    }
+
+    if (!reward.target_member_id) {
+      setMessage("보상 대상자가 없습니다.");
+      return;
+    }
+
+    if (reward.status === "redeemed") {
+      setMessage("이미 교환한 보상입니다.");
+      return;
+    }
+
+    const balance = balanceByMemberId(reward.target_member_id);
+
+    if (balance < reward.cost_points) {
+      setMessage(
+        `스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`
+      );
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const manager = members.find((member) => member.role === "manager");
+
+    const { data: spendData, error: spendError } = await supabase
+      .from("reward_transactions")
+      .insert({
+        workspace_id: workspace.id,
+        member_id: reward.target_member_id,
+        amount: -reward.cost_points,
+        transaction_type: "spend",
+        source_type: "reward",
+        source_id: reward.id,
+        memo: `${reward.title} 보상 교환`,
+        created_by_member_id: manager?.id || null,
+      })
+      .select()
+      .single();
+
+    if (spendError) {
+      setMessage(`스티커 차감 실패: ${spendError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    const { data: updatedReward, error: rewardUpdateError } = await supabase
+      .from("rewards")
+      .update({
+        status: "redeemed",
+        redeemed_at: new Date().toISOString(),
+      })
+      .eq("id", reward.id)
+      .select()
+      .single();
+
+    if (rewardUpdateError) {
+      setMessage(`보상 상태 변경 실패: ${rewardUpdateError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setRewardTransactions((prev) => [...prev, spendData]);
+    setRewards((prev) =>
+      prev.map((item) => (item.id === reward.id ? updatedReward : item))
+    );
+
+    setMessage(
+      `보상 교환 완료: ${reward.title} · 스티커 ${reward.cost_points}개 사용`
+    );
     setLoading(false);
   }
 
@@ -744,6 +890,126 @@ export default function Home() {
                 </div>
               </section>
             )}
+
+            {members.length > 0 && (
+              <section style={sectionStyle}>
+                <h2 style={sectionTitleStyle}>4. 보상 만들기</h2>
+                <p style={subTextStyle}>
+                  모은 스티커로 교환할 수 있는 보상을 등록하세요
+                </p>
+
+                <input
+                  value={rewardTitle}
+                  onChange={(e) => setRewardTitle(e.target.value)}
+                  placeholder="예) 게임 30분, 떡볶이 먹기"
+                  style={inputStyle}
+                />
+
+                <textarea
+                  value={rewardDescription}
+                  onChange={(e) => setRewardDescription(e.target.value)}
+                  placeholder="설명 (선택)"
+                  rows={3}
+                  style={{ ...inputStyle, resize: "vertical" }}
+                />
+
+                <select
+                  value={rewardTargetMemberId}
+                  onChange={(e) => setRewardTargetMemberId(e.target.value)}
+                  style={inputStyle}
+                >
+                  <option value="">보상 대상 참여자 선택</option>
+                  {members.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.display_name}
+                    </option>
+                  ))}
+                </select>
+
+                <input
+                  type="number"
+                  min={0}
+                  value={rewardCostPoints}
+                  onChange={(e) => setRewardCostPoints(Number(e.target.value))}
+                  placeholder="필요 스티커 개수"
+                  style={inputStyle}
+                />
+
+                <button
+                  onClick={createReward}
+                  disabled={loading}
+                  style={primaryButtonStyle(loading)}
+                >
+                  {loading ? "생성 중..." : "보상 만들기"}
+                </button>
+              </section>
+            )}
+
+            {rewards.length > 0 && (
+              <section style={sectionStyle}>
+                <h2 style={sectionTitleStyle}>5. 보상 목록</h2>
+
+                <div style={listStyle}>
+                  {rewards.map((reward) => {
+                    const balance = reward.target_member_id
+                      ? balanceByMemberId(reward.target_member_id)
+                      : 0;
+
+                    const canRedeem =
+                      reward.status !== "redeemed" &&
+                      balance >= reward.cost_points;
+
+                    return (
+                      <div key={reward.id} style={rewardCardStyle}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: 16 }}>
+                            {reward.title}
+                          </div>
+                          {reward.description && (
+                            <div
+                              style={{
+                                marginTop: 4,
+                                color: "#64748b",
+                                fontSize: 13,
+                              }}
+                            >
+                              {reward.description}
+                            </div>
+                          )}
+
+                          <div
+                            style={{
+                              marginTop: 8,
+                              color: "#64748b",
+                              fontSize: 13,
+                            }}
+                          >
+                            대상: {memberNameById(reward.target_member_id)} · 필요
+                            스티커 {reward.cost_points}개 · 현재 {balance}개
+                          </div>
+                        </div>
+
+                        {reward.status === "redeemed" ? (
+                          <div style={redeemedBoxStyle}>교환 완료</div>
+                        ) : (
+                          <button
+                            onClick={() => redeemReward(reward)}
+                            disabled={loading || !canRedeem}
+                            style={
+                              canRedeem
+                                ? rewardButtonStyle
+                                : disabledRewardButtonStyle
+                            }
+                          >
+                            교환하기
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
           </>
         )}
 
@@ -869,6 +1135,16 @@ const taskCardStyle: React.CSSProperties = {
   gap: "12px",
 };
 
+const rewardCardStyle: React.CSSProperties = {
+  padding: "14px",
+  borderRadius: "16px",
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+  display: "flex",
+  flexDirection: "column",
+  gap: "12px",
+};
+
 function taskStatusBadgeStyle(status: string): React.CSSProperties {
   const isTodo = status === "todo";
   const isSubmitted = status === "submitted";
@@ -981,13 +1257,46 @@ const rejectedBoxStyle: React.CSSProperties = {
   fontWeight: 700,
 };
 
+const rewardButtonStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "13px",
+  borderRadius: "12px",
+  border: "none",
+  background: "#f97316",
+  color: "white",
+  fontWeight: "bold",
+  cursor: "pointer",
+};
+
+const disabledRewardButtonStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "13px",
+  borderRadius: "12px",
+  border: "none",
+  background: "#cbd5e1",
+  color: "#64748b",
+  fontWeight: "bold",
+  cursor: "not-allowed",
+};
+
+const redeemedBoxStyle: React.CSSProperties = {
+  padding: "12px",
+  borderRadius: "12px",
+  background: "#ecfdf5",
+  color: "#047857",
+  fontSize: "13px",
+  fontWeight: 800,
+  textAlign: "center",
+};
+
 function messageBoxStyle(message: string): React.CSSProperties {
   const ok =
     message.includes("완료") ||
     message.includes("생성") ||
     message.includes("추가") ||
     message.includes("제출") ||
-    message.includes("승인");
+    message.includes("승인") ||
+    message.includes("교환");
 
   return {
     marginTop: "16px",
