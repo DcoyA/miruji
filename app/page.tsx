@@ -850,11 +850,7 @@ export default function Home() {
               {currentProfile.display_name}
             </div>
           </div>
-          <button
-            onClick={signOut}
-            disabled={loading}
-            style={logoutButtonStyle}
-          >
+          <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>
             로그아웃
           </button>
         </div>
@@ -1466,6 +1462,30 @@ const inputStyle: CSSProperties = {
   border: "1px solid #dbeafe",
   marginBottom: "12px",
   outline: "none",
+};
+
+const accountHeaderStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "12px",
+  padding: "12px",
+  borderRadius: "16px",
+  background: "#ecfdf5",
+  marginBottom: "18px",
+  border: "1px solid #bbf7d0",
+};
+
+const logoutButtonStyle: CSSProperties = {
+  padding: "9px 12px",
+  borderRadius: "12px",
+  border: "1px solid #fecaca",
+  background: "#fef2f2",
+  color: "#b91c1c",
+  fontSize: "13px",
+  fontWeight: 800,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
 };
 
 const workspaceBoxStyle: CSSProperties = {
