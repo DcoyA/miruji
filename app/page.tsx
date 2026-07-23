@@ -129,68 +129,31 @@ export default function Home() {
 
     if (!data.user) {
       setCurrentProfile(null);
-      setInitialLoading(false);
       setAuthLoading(false);
+      setInitialLoading(false);
       return;
     }
 
-    const profile = await loadProfile(data.user.id);
+    await loadProfile(data.user.id);
+    await loadWorkspaces();
 
-    if (profile) {
-      await loadWorkspaces();
-    }
-
-    setInitialLoading(false);
     setAuthLoading(false);
   }
 
-  async function loadProfile(authUserId: string): Promise<Profile | null> {
-    const { data: userData } = await supabase.auth.getUser();
-    const email = userData.user?.email || "사용자";
-
+  async function loadProfile(authUserId: string) {
     const { data, error } = await supabase
       .from("profiles")
       .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
       .eq("auth_user_id", authUserId)
-      .maybeSingle();
+      .single();
 
     if (error) {
       setMessage(`프로필 불러오기 실패: ${error.message}`);
       setCurrentProfile(null);
-      return null;
+      return;
     }
 
-    if (data) {
-      const profile = {
-        ...(data as Profile),
-        display_name: data.display_name || email.split("@")[0] || "사용자",
-      };
-      setCurrentProfile(profile);
-      return profile;
-    }
-
-    const { data: createdProfile, error: createError } = await supabase
-      .from("profiles")
-      .insert({
-        auth_user_id: authUserId,
-        display_name: email.split("@")[0],
-        onboarding_completed: false,
-      })
-      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
-      .single();
-
-    if (createError) {
-      setMessage(`프로필 생성 실패: ${createError.message}`);
-      setCurrentProfile(null);
-      return null;
-    }
-
-    const profile = {
-      ...(createdProfile as Profile),
-      display_name: createdProfile.display_name || email.split("@")[0] || "사용자",
-    };
-    setCurrentProfile(profile);
-    return profile;
+    setCurrentProfile(data as Profile);
   }
 
   async function signUp() {
@@ -231,7 +194,7 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email: authEmail.trim(),
       password: authPassword.trim(),
     });
@@ -242,20 +205,6 @@ export default function Home() {
       return;
     }
 
-    if (!data.user) {
-      setMessage("로그인 사용자 정보를 가져오지 못했습니다.");
-      setLoading(false);
-      return;
-    }
-
-    const profile = await loadProfile(data.user.id);
-
-    if (!profile) {
-      setLoading(false);
-      return;
-    }
-
-    await loadWorkspaces();
     setMessage("로그인 성공");
     setLoading(false);
   }
@@ -264,12 +213,24 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: "global" });
 
     if (error) {
       setMessage(`로그아웃 실패: ${error.message}`);
       setLoading(false);
       return;
+    }
+
+    if (typeof window !== "undefined") {
+      Object.keys(window.localStorage).forEach((key) => {
+        if (
+          key.startsWith("sb-") ||
+          key.includes("supabase") ||
+          key.includes("auth-token")
+        ) {
+          window.localStorage.removeItem(key);
+        }
+      });
     }
 
     setCurrentProfile(null);
@@ -285,8 +246,7 @@ export default function Home() {
     setInitialLoading(false);
     setAuthLoading(false);
     setLoading(false);
-
-    window.location.replace("/");
+    setMessage("로그아웃 완료");
   }
 
   async function loadWorkspaces() {
@@ -897,20 +857,6 @@ export default function Home() {
   return (
     <main style={pageStyle}>
       <div style={containerStyle}>
-        <div style={accountHeaderStyle}>
-          <div>
-            <div style={{ fontSize: "12px", color: "#047857", fontWeight: 700 }}>
-              로그인 중
-            </div>
-            <div style={{ marginTop: 2, fontSize: "14px", color: "#064e3b", fontWeight: 800 }}>
-              {currentProfile?.display_name || "사용자"}
-            </div>
-          </div>
-          <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>
-            로그아웃
-          </button>
-        </div>
-
         {!workspace ? (
           <>
             <h1 style={titleStyle}>미루지말자</h1>
@@ -1518,30 +1464,6 @@ const inputStyle: CSSProperties = {
   border: "1px solid #dbeafe",
   marginBottom: "12px",
   outline: "none",
-};
-
-const accountHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "12px",
-  padding: "12px",
-  borderRadius: "16px",
-  background: "#ecfdf5",
-  marginBottom: "18px",
-  border: "1px solid #bbf7d0",
-};
-
-const logoutButtonStyle: CSSProperties = {
-  padding: "9px 12px",
-  borderRadius: "12px",
-  border: "1px solid #fecaca",
-  background: "#fef2f2",
-  color: "#b91c1c",
-  fontSize: "13px",
-  fontWeight: 800,
-  cursor: "pointer",
-  whiteSpace: "nowrap",
 };
 
 const workspaceBoxStyle: CSSProperties = {
