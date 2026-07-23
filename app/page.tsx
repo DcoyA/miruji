@@ -30,6 +30,15 @@ type Task = {
   reward_points: number;
 };
 
+type RewardTransaction = {
+  id: string;
+  member_id: string;
+  amount: number;
+  transaction_type: string;
+  source_type: string;
+  source_id: string | null;
+};
+
 export default function Home() {
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceDescription, setWorkspaceDescription] = useState("");
@@ -46,6 +55,10 @@ export default function Home() {
   const [verificationType, setVerificationType] = useState("none");
   const [rewardPoints, setRewardPoints] = useState(1);
   const [tasks, setTasks] = useState<Task[]>([]);
+
+  const [rewardTransactions, setRewardTransactions] = useState<
+    RewardTransaction[]
+  >([]);
 
   const [activeSubmitTaskId, setActiveSubmitTaskId] = useState<string | null>(
     null
@@ -237,9 +250,154 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function approveTask(task: Task) {
+    if (!workspace) {
+      setMessage("워크스페이스 정보가 없습니다.");
+      return;
+    }
+
+    if (!task.assigned_member_id) {
+      setMessage("미션 대상자가 없습니다.");
+      return;
+    }
+
+    if (task.status !== "submitted") {
+      setMessage("승인 대기 상태의 미션만 승인할 수 있습니다.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const manager = members.find((member) => member.role === "manager");
+
+    const { error: approvalError } = await supabase.from("approvals").insert({
+      workspace_id: workspace.id,
+      task_id: task.id,
+      requested_by_member_id: task.assigned_member_id,
+      approved_by_member_id: manager?.id || null,
+      status: "approved",
+      comment: "참 잘했어요!",
+      approved_at: new Date().toISOString(),
+    });
+
+    if (approvalError) {
+      setMessage(`승인 기록 생성 실패: ${approvalError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    const { data: rewardData, error: rewardError } = await supabase
+      .from("reward_transactions")
+      .insert({
+        workspace_id: workspace.id,
+        member_id: task.assigned_member_id,
+        amount: task.reward_points,
+        transaction_type: "earn",
+        source_type: "task",
+        source_id: task.id,
+        memo: `${task.title} 승인 보상`,
+        created_by_member_id: manager?.id || null,
+      })
+      .select()
+      .single();
+
+    if (rewardError) {
+      setMessage(`스티커 지급 실패: ${rewardError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    const { data: updatedTask, error: taskUpdateError } = await supabase
+      .from("tasks")
+      .update({
+        status: "approved",
+      })
+      .eq("id", task.id)
+      .select()
+      .single();
+
+    if (taskUpdateError) {
+      setMessage(`미션 승인 상태 변경 실패: ${taskUpdateError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setRewardTransactions((prev) => [...prev, rewardData]);
+    setTasks((prev) =>
+      prev.map((item) => (item.id === task.id ? updatedTask : item))
+    );
+
+    setMessage(
+      `승인 완료: ${task.title} · 스티커 ${task.reward_points}개 지급`
+    );
+    setLoading(false);
+  }
+
+  async function rejectTask(task: Task) {
+    if (!workspace) {
+      setMessage("워크스페이스 정보가 없습니다.");
+      return;
+    }
+
+    if (task.status !== "submitted") {
+      setMessage("승인 대기 상태의 미션만 반려할 수 있습니다.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const manager = members.find((member) => member.role === "manager");
+
+    const { error: approvalError } = await supabase.from("approvals").insert({
+      workspace_id: workspace.id,
+      task_id: task.id,
+      requested_by_member_id: task.assigned_member_id,
+      approved_by_member_id: manager?.id || null,
+      status: "rejected",
+      comment: "다시 한번 해볼까요?",
+      approved_at: new Date().toISOString(),
+    });
+
+    if (approvalError) {
+      setMessage(`반려 기록 생성 실패: ${approvalError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    const { data: updatedTask, error: taskUpdateError } = await supabase
+      .from("tasks")
+      .update({
+        status: "rejected",
+      })
+      .eq("id", task.id)
+      .select()
+      .single();
+
+    if (taskUpdateError) {
+      setMessage(`미션 반려 상태 변경 실패: ${taskUpdateError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setTasks((prev) =>
+      prev.map((item) => (item.id === task.id ? updatedTask : item))
+    );
+
+    setMessage(`반려 완료: ${task.title}`);
+    setLoading(false);
+  }
+
   function memberNameById(id: string | null) {
     if (!id) return "미지정";
     return members.find((member) => member.id === id)?.display_name || "미지정";
+  }
+
+  function balanceByMemberId(memberId: string) {
+    return rewardTransactions
+      .filter((item) => item.member_id === memberId)
+      .reduce((sum, item) => sum + item.amount, 0);
   }
 
   return (
@@ -321,9 +479,21 @@ export default function Home() {
                 <div style={listStyle}>
                   {members.map((member) => (
                     <div key={member.id} style={memberCardStyle}>
-                      <span style={{ fontWeight: 700 }}>
-                        {member.display_name}
-                      </span>
+                      <div>
+                        <span style={{ fontWeight: 700 }}>
+                          {member.display_name}
+                        </span>
+                        <div
+                          style={{
+                            marginTop: 4,
+                            color: "#64748b",
+                            fontSize: 13,
+                          }}
+                        >
+                          스티커 {balanceByMemberId(member.id)}개
+                        </div>
+                      </div>
+
                       <span style={badgeStyle(member.role)}>
                         {member.role === "manager" ? "보호자" : "참여자"}
                       </span>
@@ -525,8 +695,47 @@ export default function Home() {
                         )}
 
                         {task.status === "submitted" && (
-                          <div style={submittedBoxStyle}>
-                            인증 제출 완료 · 보호자 승인 대기
+                          <div style={submittedActionBoxStyle}>
+                            <div style={submittedTextStyle}>
+                              인증 제출 완료 · 보호자 승인 대기
+                            </div>
+
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr",
+                                gap: "8px",
+                                marginTop: "10px",
+                              }}
+                            >
+                              <button
+                                onClick={() => approveTask(task)}
+                                disabled={loading}
+                                style={approveButtonStyle(loading)}
+                              >
+                                승인
+                              </button>
+
+                              <button
+                                onClick={() => rejectTask(task)}
+                                disabled={loading}
+                                style={rejectButtonStyle(loading)}
+                              >
+                                반려
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {task.status === "approved" && (
+                          <div style={approvedBoxStyle}>
+                            승인 완료 · 스티커 {task.reward_points}개 지급됨
+                          </div>
+                        )}
+
+                        {task.status === "rejected" && (
+                          <div style={rejectedBoxStyle}>
+                            반려됨 · 다시 제출이 필요합니다
                           </div>
                         )}
                       </div>
@@ -713,12 +922,61 @@ const secondaryButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const submittedBoxStyle: React.CSSProperties = {
+const submittedActionBoxStyle: React.CSSProperties = {
   marginTop: "14px",
   padding: "12px",
   borderRadius: "12px",
   background: "#eff6ff",
+};
+
+const submittedTextStyle: React.CSSProperties = {
   color: "#1d4ed8",
+  fontSize: "13px",
+  fontWeight: 700,
+};
+
+function approveButtonStyle(loading: boolean): React.CSSProperties {
+  return {
+    width: "100%",
+    padding: "12px",
+    borderRadius: "12px",
+    border: "none",
+    background: loading ? "#94a3b8" : "#16a34a",
+    color: "white",
+    fontWeight: "bold",
+    cursor: loading ? "not-allowed" : "pointer",
+  };
+}
+
+function rejectButtonStyle(loading: boolean): React.CSSProperties {
+  return {
+    width: "100%",
+    padding: "12px",
+    borderRadius: "12px",
+    border: "1px solid #fecaca",
+    background: loading ? "#fca5a5" : "#fef2f2",
+    color: "#b91c1c",
+    fontWeight: "bold",
+    cursor: loading ? "not-allowed" : "pointer",
+  };
+}
+
+const approvedBoxStyle: React.CSSProperties = {
+  marginTop: "14px",
+  padding: "12px",
+  borderRadius: "12px",
+  background: "#ecfdf5",
+  color: "#047857",
+  fontSize: "13px",
+  fontWeight: 700,
+};
+
+const rejectedBoxStyle: React.CSSProperties = {
+  marginTop: "14px",
+  padding: "12px",
+  borderRadius: "12px",
+  background: "#fef2f2",
+  color: "#b91c1c",
   fontSize: "13px",
   fontWeight: 700,
 };
@@ -728,7 +986,8 @@ function messageBoxStyle(message: string): React.CSSProperties {
     message.includes("완료") ||
     message.includes("생성") ||
     message.includes("추가") ||
-    message.includes("제출");
+    message.includes("제출") ||
+    message.includes("승인");
 
   return {
     marginTop: "16px",
