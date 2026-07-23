@@ -847,7 +847,7 @@ export default function Home() {
               로그인 중
             </div>
             <div style={{ marginTop: 2, fontSize: "14px", color: "#064e3b", fontWeight: 800 }}>
-              {currentProfile.display_name}
+              {currentProfile?.display_name || "사용자"}
             </div>
           </div>
           <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>
