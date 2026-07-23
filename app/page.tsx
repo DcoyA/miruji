@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 
+type Profile = {
+  id: string;
+  auth_user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  onboarding_completed: boolean;
+};
+
 type Workspace = {
   id: string;
   name: string;
@@ -52,6 +60,12 @@ type RewardTransaction = {
 };
 
 export default function Home() {
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
+  
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceDescription, setWorkspaceDescription] = useState("");
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -90,9 +104,135 @@ export default function Home() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    loadWorkspaces();
+    initializeAuth();
+
+    const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        await loadProfile(session.user.id);
+        await loadWorkspaces();
+      } else {
+        setCurrentProfile(null);
+        setWorkspaces([]);
+        setWorkspace(null);
+      }
+    });
+
+    return () => {
+      data.subscription.unsubscribe();
+    };
   }, []);
 
+  async function initializeAuth() {
+    setAuthLoading(true);
+
+    const { data } = await supabase.auth.getUser();
+
+    if (!data.user) {
+      setCurrentProfile(null);
+      setAuthLoading(false);
+      setInitialLoading(false);
+      return;
+    }
+
+    await loadProfile(data.user.id);
+    await loadWorkspaces();
+
+    setAuthLoading(false);
+  }
+
+  async function loadProfile(authUserId: string) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
+      .eq("auth_user_id", authUserId)
+      .single();
+
+    if (error) {
+      setMessage(`프로필 불러오기 실패: ${error.message}`);
+      setCurrentProfile(null);
+      return;
+    }
+
+    setCurrentProfile(data as Profile);
+  }
+
+  async function signUp() {
+    if (!authEmail.trim() || !authPassword.trim()) {
+      setMessage("이메일과 비밀번호를 입력해주세요.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { error } = await supabase.auth.signUp({
+      email: authEmail.trim(),
+      password: authPassword.trim(),
+      options: {
+        data: {
+          display_name: authEmail.split("@")[0],
+        },
+      },
+    });
+
+    if (error) {
+      setMessage(`회원가입 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setMessage("회원가입 완료. 인증 메일을 확인한 뒤 로그인해주세요.");
+    setLoading(false);
+  }
+
+  async function signIn() {
+    if (!authEmail.trim() || !authPassword.trim()) {
+      setMessage("이메일과 비밀번호를 입력해주세요.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: authEmail.trim(),
+      password: authPassword.trim(),
+    });
+
+    if (error) {
+      setMessage(`로그인 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setMessage("로그인 성공");
+    setLoading(false);
+  }
+
+  async function signOut() {
+    setLoading(true);
+    setMessage("");
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      setMessage(`로그아웃 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setCurrentProfile(null);
+    setWorkspace(null);
+    setWorkspaces([]);
+    setMembers([]);
+    setTasks([]);
+    setRewards([]);
+    setRewardTransactions([]);
+
+    setMessage("로그아웃 완료");
+    setLoading(false);
+  }
+  
   async function loadWorkspaces() {
     setInitialLoading(true);
 
