@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -20,6 +21,7 @@ type Workspace = {
 
 type Member = {
   id: string;
+  profile_id?: string | null;
   display_name: string;
   role: "owner" | "manager" | "member";
   is_virtual: boolean;
@@ -59,6 +61,17 @@ type RewardTransaction = {
   source_id: string | null;
 };
 
+const taskSelect =
+  "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points";
+
+const rewardSelect =
+  "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status";
+
+const rewardTxSelect =
+  "id, member_id, amount, transaction_type, source_type, source_id";
+
+const memberSelect = "id, profile_id, display_name, role, is_virtual";
+
 export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
@@ -66,34 +79,32 @@ export default function Home() {
   const [authPassword, setAuthPassword] = useState("");
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
 
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceDescription, setWorkspaceDescription] = useState("");
-  const [workspace, setWorkspace] = useState<Workspace | null>(null);
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
 
+  const [members, setMembers] = useState<Member[]>([]);
   const [memberName, setMemberName] = useState("");
   const [memberRole, setMemberRole] = useState<"manager" | "member">("member");
-  const [members, setMembers] = useState<Member[]>([]);
 
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskAssignedMemberId, setTaskAssignedMemberId] = useState("");
   const [taskType, setTaskType] = useState("habit");
   const [verificationType, setVerificationType] = useState("none");
   const [rewardPoints, setRewardPoints] = useState(1);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [activeSubmitTaskId, setActiveSubmitTaskId] = useState<string | null>(null);
+  const [submissionText, setSubmissionText] = useState("");
 
+  const [rewards, setRewards] = useState<Reward[]>([]);
   const [rewardTitle, setRewardTitle] = useState("");
   const [rewardDescription, setRewardDescription] = useState("");
   const [rewardTargetMemberId, setRewardTargetMemberId] = useState("");
   const [rewardCostPoints, setRewardCostPoints] = useState(1);
-  const [rewards, setRewards] = useState<Reward[]>([]);
-
   const [rewardTransactions, setRewardTransactions] = useState<RewardTransaction[]>([]);
-
-  const [activeSubmitTaskId, setActiveSubmitTaskId] = useState<string | null>(null);
-  const [submissionText, setSubmissionText] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -106,7 +117,7 @@ export default function Home() {
       if (session?.user) {
         const profile = await loadProfile(session.user.id);
         if (profile) {
-          await loadWorkspaces();
+          await loadWorkspaces(profile.id);
         }
       } else {
         resetAppState();
@@ -116,9 +127,7 @@ export default function Home() {
       }
     });
 
-    return () => {
-      data.subscription.unsubscribe();
-    };
+    return () => data.subscription.unsubscribe();
   }, []);
 
   function resetAppState() {
@@ -135,7 +144,6 @@ export default function Home() {
 
   async function initializeAuth() {
     setAuthLoading(true);
-
     const { data } = await supabase.auth.getUser();
 
     if (!data.user) {
@@ -146,10 +154,7 @@ export default function Home() {
     }
 
     const profile = await loadProfile(data.user.id);
-
-    if (profile) {
-      await loadWorkspaces();
-    }
+    if (profile) await loadWorkspaces(profile.id);
 
     setInitialLoading(false);
     setAuthLoading(false);
@@ -216,11 +221,7 @@ export default function Home() {
     const { error } = await supabase.auth.signUp({
       email: authEmail.trim(),
       password: authPassword.trim(),
-      options: {
-        data: {
-          display_name: authEmail.split("@")[0],
-        },
-      },
+      options: { data: { display_name: authEmail.split("@")[0] } },
     });
 
     if (error) {
@@ -260,13 +261,12 @@ export default function Home() {
     }
 
     const profile = await loadProfile(data.user.id);
-
     if (!profile) {
       setLoading(false);
       return;
     }
 
-    await loadWorkspaces();
+    await loadWorkspaces(profile.id);
     setMessage("로그인 성공");
     setLoading(false);
   }
@@ -302,12 +302,20 @@ export default function Home() {
     setMessage("로그아웃 완료");
   }
 
-  async function loadWorkspaces() {
+  async function loadWorkspaces(profileId?: string) {
     setInitialLoading(true);
+    const targetProfileId = profileId || currentProfile?.id;
+
+    if (!targetProfileId) {
+      setInitialLoading(false);
+      setWorkspaces([]);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("workspaces")
       .select("id, name, description")
+      .eq("created_by", targetProfileId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -325,33 +333,10 @@ export default function Home() {
     setMessage("");
 
     const [membersResult, tasksResult, rewardsResult, rewardTransactionsResult] = await Promise.all([
-      supabase
-        .from("workspace_members")
-        .select("id, display_name, role, is_virtual")
-        .eq("workspace_id", selected.id)
-        .order("created_at", { ascending: true }),
-
-      supabase
-        .from("tasks")
-        .select(
-          "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
-        )
-        .eq("workspace_id", selected.id)
-        .order("created_at", { ascending: false }),
-
-      supabase
-        .from("rewards")
-        .select(
-          "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status"
-        )
-        .eq("workspace_id", selected.id)
-        .order("created_at", { ascending: false }),
-
-      supabase
-        .from("reward_transactions")
-        .select("id, member_id, amount, transaction_type, source_type, source_id")
-        .eq("workspace_id", selected.id)
-        .order("created_at", { ascending: true }),
+      supabase.from("workspace_members").select(memberSelect).eq("workspace_id", selected.id).order("created_at", { ascending: true }),
+      supabase.from("tasks").select(taskSelect).eq("workspace_id", selected.id).order("created_at", { ascending: false }),
+      supabase.from("rewards").select(rewardSelect).eq("workspace_id", selected.id).order("created_at", { ascending: false }),
+      supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", selected.id).order("created_at", { ascending: true }),
     ]);
 
     if (membersResult.error) {
@@ -359,19 +344,16 @@ export default function Home() {
       setLoading(false);
       return;
     }
-
     if (tasksResult.error) {
       setMessage(`미션 불러오기 실패: ${tasksResult.error.message}`);
       setLoading(false);
       return;
     }
-
     if (rewardsResult.error) {
       setMessage(`보상 불러오기 실패: ${rewardsResult.error.message}`);
       setLoading(false);
       return;
     }
-
     if (rewardTransactionsResult.error) {
       setMessage(`스티커 내역 불러오기 실패: ${rewardTransactionsResult.error.message}`);
       setLoading(false);
@@ -397,7 +379,7 @@ export default function Home() {
     setActiveSubmitTaskId(null);
     setSubmissionText("");
     setMessage("");
-    loadWorkspaces();
+    loadWorkspaces(currentProfile?.id);
   }
 
   async function createWorkspace() {
@@ -405,7 +387,6 @@ export default function Home() {
       setMessage("로그인이 필요합니다.");
       return;
     }
-
     if (!workspaceName.trim()) {
       setMessage("워크스페이스 이름을 입력해주세요.");
       return;
@@ -414,7 +395,7 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const { data, error } = await supabase
+    const { data: workspaceData, error: workspaceError } = await supabase
       .from("workspaces")
       .insert({
         name: workspaceName.trim(),
@@ -424,18 +405,44 @@ export default function Home() {
       .select("id, name, description")
       .single();
 
-    if (error) {
-      setMessage(`워크스페이스 생성 실패: ${error.message}`);
+    if (workspaceError) {
+      setMessage(`워크스페이스 생성 실패: ${workspaceError.message}`);
       setLoading(false);
       return;
     }
 
-    setWorkspaces((prev) => [data as Workspace, ...prev]);
+    const { data: ownerMember, error: ownerError } = await supabase
+      .from("workspace_members")
+      .insert({
+        workspace_id: workspaceData.id,
+        profile_id: currentProfile.id,
+        display_name: currentProfile.display_name || "사용자",
+        role: "owner",
+        status: "active",
+        is_virtual: false,
+        created_by: currentProfile.id,
+        joined_at: new Date().toISOString(),
+      })
+      .select(memberSelect)
+      .single();
+
+    if (ownerError) {
+      setMessage(`워크스페이스 생성은 완료됐지만 owner 등록 실패: ${ownerError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    const createdWorkspace = workspaceData as Workspace;
+    setWorkspaces((prev) => [createdWorkspace, ...prev]);
+    setWorkspace(createdWorkspace);
+    setMembers([ownerMember as Member]);
+    setTasks([]);
+    setRewards([]);
+    setRewardTransactions([]);
     setWorkspaceName("");
     setWorkspaceDescription("");
     setShowCreateWorkspace(false);
-    await selectWorkspace(data as Workspace);
-    setMessage(`워크스페이스 생성 완료: ${data.name}`);
+    setMessage(`워크스페이스 생성 완료: ${createdWorkspace.name} · owner 자동 등록`);
     setLoading(false);
   }
 
@@ -444,7 +451,6 @@ export default function Home() {
       setMessage("먼저 워크스페이스를 선택해주세요.");
       return;
     }
-
     if (!memberName.trim()) {
       setMessage("참여자 이름을 입력해주세요.");
       return;
@@ -461,8 +467,9 @@ export default function Home() {
         role: memberRole,
         status: "active",
         is_virtual: true,
+        created_by: currentProfile?.id || null,
       })
-      .select("id, display_name, role, is_virtual")
+      .select(memberSelect)
       .single();
 
     if (error) {
@@ -483,12 +490,10 @@ export default function Home() {
       setMessage("먼저 워크스페이스를 선택해주세요.");
       return;
     }
-
     if (!taskTitle.trim()) {
       setMessage("미션 제목을 입력해주세요.");
       return;
     }
-
     if (!taskAssignedMemberId) {
       setMessage("미션을 받을 참여자를 선택해주세요.");
       return;
@@ -511,10 +516,9 @@ export default function Home() {
         verification_required: verificationType !== "none",
         reward_points: rewardPoints,
         rollover_enabled: true,
+        created_by_member_id: currentMemberId(),
       })
-      .select(
-        "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
-      )
+      .select(taskSelect)
       .single();
 
     if (error) {
@@ -537,12 +541,10 @@ export default function Home() {
       setMessage("워크스페이스 정보가 없습니다.");
       return;
     }
-
     if (task.status !== "todo") {
       setMessage("이미 제출된 미션입니다.");
       return;
     }
-
     if (task.verification_type === "text" && !submissionText.trim()) {
       setMessage("텍스트 인증 내용을 입력해주세요.");
       return;
@@ -569,9 +571,7 @@ export default function Home() {
       .from("tasks")
       .update({ status: "submitted" })
       .eq("id", task.id)
-      .select(
-        "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
-      )
+      .select(taskSelect)
       .single();
 
     if (taskUpdateError) {
@@ -592,12 +592,10 @@ export default function Home() {
       setMessage("워크스페이스 정보가 없습니다.");
       return;
     }
-
     if (!task.assigned_member_id) {
       setMessage("미션 대상자가 없습니다.");
       return;
     }
-
     if (task.status !== "submitted") {
       setMessage("승인 대기 상태의 미션만 승인할 수 있습니다.");
       return;
@@ -606,13 +604,13 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const manager = members.find((member) => member.role === "manager");
+    const approver = managerMember() || ownerMember();
 
     const { error: approvalError } = await supabase.from("approvals").insert({
       workspace_id: workspace.id,
       task_id: task.id,
       requested_by_member_id: task.assigned_member_id,
-      approved_by_member_id: manager?.id || null,
+      approved_by_member_id: approver?.id || null,
       status: "approved",
       comment: "참 잘했어요!",
       approved_at: new Date().toISOString(),
@@ -634,9 +632,9 @@ export default function Home() {
         source_type: "task",
         source_id: task.id,
         memo: `${task.title} 승인 보상`,
-        created_by_member_id: manager?.id || null,
+        created_by_member_id: approver?.id || null,
       })
-      .select("id, member_id, amount, transaction_type, source_type, source_id")
+      .select(rewardTxSelect)
       .single();
 
     if (rewardError) {
@@ -649,9 +647,7 @@ export default function Home() {
       .from("tasks")
       .update({ status: "approved" })
       .eq("id", task.id)
-      .select(
-        "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
-      )
+      .select(taskSelect)
       .single();
 
     if (taskUpdateError) {
@@ -671,7 +667,6 @@ export default function Home() {
       setMessage("워크스페이스 정보가 없습니다.");
       return;
     }
-
     if (task.status !== "submitted") {
       setMessage("승인 대기 상태의 미션만 반려할 수 있습니다.");
       return;
@@ -680,13 +675,13 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const manager = members.find((member) => member.role === "manager");
+    const approver = managerMember() || ownerMember();
 
     const { error: approvalError } = await supabase.from("approvals").insert({
       workspace_id: workspace.id,
       task_id: task.id,
       requested_by_member_id: task.assigned_member_id,
-      approved_by_member_id: manager?.id || null,
+      approved_by_member_id: approver?.id || null,
       status: "rejected",
       comment: "다시 한번 해볼까요?",
       approved_at: new Date().toISOString(),
@@ -702,9 +697,7 @@ export default function Home() {
       .from("tasks")
       .update({ status: "rejected" })
       .eq("id", task.id)
-      .select(
-        "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
-      )
+      .select(taskSelect)
       .single();
 
     if (taskUpdateError) {
@@ -723,12 +716,10 @@ export default function Home() {
       setMessage("워크스페이스 정보가 없습니다.");
       return;
     }
-
     if (!rewardTitle.trim()) {
       setMessage("보상 이름을 입력해주세요.");
       return;
     }
-
     if (!rewardTargetMemberId) {
       setMessage("보상을 받을 참여자를 선택해주세요.");
       return;
@@ -738,7 +729,7 @@ export default function Home() {
     setMessage("");
 
     const requester = members.find((member) => member.id === rewardTargetMemberId);
-    const manager = members.find((member) => member.role === "manager");
+    const approver = managerMember() || ownerMember();
 
     const { data, error } = await supabase
       .from("rewards")
@@ -748,13 +739,11 @@ export default function Home() {
         description: rewardDescription.trim() || null,
         requested_by_member_id: requester?.id || null,
         target_member_id: rewardTargetMemberId,
-        approved_by_member_id: manager?.id || null,
+        approved_by_member_id: approver?.id || null,
         cost_points: rewardCostPoints,
         status: "approved",
       })
-      .select(
-        "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status"
-      )
+      .select(rewardSelect)
       .single();
 
     if (error) {
@@ -776,19 +765,16 @@ export default function Home() {
       setMessage("워크스페이스 정보가 없습니다.");
       return;
     }
-
     if (!reward.target_member_id) {
       setMessage("보상 대상자가 없습니다.");
       return;
     }
-
     if (reward.status === "redeemed") {
       setMessage("이미 교환한 보상입니다.");
       return;
     }
 
     const balance = balanceByMemberId(reward.target_member_id);
-
     if (balance < reward.cost_points) {
       setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`);
       return;
@@ -797,7 +783,7 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const manager = members.find((member) => member.role === "manager");
+    const approver = managerMember() || ownerMember();
 
     const { data: spendData, error: spendError } = await supabase
       .from("reward_transactions")
@@ -809,9 +795,9 @@ export default function Home() {
         source_type: "reward",
         source_id: reward.id,
         memo: `${reward.title} 보상 교환`,
-        created_by_member_id: manager?.id || null,
+        created_by_member_id: approver?.id || null,
       })
-      .select("id, member_id, amount, transaction_type, source_type, source_id")
+      .select(rewardTxSelect)
       .single();
 
     if (spendError) {
@@ -822,14 +808,9 @@ export default function Home() {
 
     const { data: updatedReward, error: rewardUpdateError } = await supabase
       .from("rewards")
-      .update({
-        status: "redeemed",
-        redeemed_at: new Date().toISOString(),
-      })
+      .update({ status: "redeemed", redeemed_at: new Date().toISOString() })
       .eq("id", reward.id)
-      .select(
-        "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status"
-      )
+      .select(rewardSelect)
       .single();
 
     if (rewardUpdateError) {
@@ -844,6 +825,18 @@ export default function Home() {
     setLoading(false);
   }
 
+  function ownerMember() {
+    return members.find((member) => member.role === "owner");
+  }
+
+  function managerMember() {
+    return members.find((member) => member.role === "manager");
+  }
+
+  function currentMemberId() {
+    return ownerMember()?.id || managerMember()?.id || null;
+  }
+
   function memberNameById(id: string | null) {
     if (!id) return "미지정";
     return members.find((member) => member.id === id)?.display_name || "미지정";
@@ -856,14 +849,7 @@ export default function Home() {
   }
 
   if (authLoading) {
-    return (
-      <main style={pageStyle}>
-        <div style={containerStyle}>
-          <h1 style={titleStyle}>미루지말자</h1>
-          <p style={subTextStyle}>로그인 상태를 확인하는 중입니다...</p>
-        </div>
-      </main>
-    );
+    return <Shell title="미루지말자" text="로그인 상태를 확인하는 중입니다..." />;
   }
 
   if (!currentProfile) {
@@ -873,26 +859,18 @@ export default function Home() {
           <h1 style={titleStyle}>미루지말자</h1>
           <p style={subTextStyle}>부모와 자녀가 함께 쓰는 미션형 클라우드 다이어리</p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "16px" }}>
-            <button onClick={() => setAuthMode("signin")} style={authMode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}>
-              로그인
-            </button>
-            <button onClick={() => setAuthMode("signup")} style={authMode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}>
-              회원가입
-            </button>
+          <div style={tabGridStyle}>
+            <button onClick={() => setAuthMode("signin")} style={authMode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}>로그인</button>
+            <button onClick={() => setAuthMode("signup")} style={authMode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}>회원가입</button>
           </div>
 
           <input value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="이메일" style={inputStyle} />
           <input value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="비밀번호" type="password" style={inputStyle} />
 
           {authMode === "signin" ? (
-            <button onClick={signIn} disabled={loading} style={primaryButtonStyle(loading)}>
-              {loading ? "로그인 중..." : "로그인"}
-            </button>
+            <button onClick={signIn} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "로그인 중..." : "로그인"}</button>
           ) : (
-            <button onClick={signUp} disabled={loading} style={primaryButtonStyle(loading)}>
-              {loading ? "가입 중..." : "회원가입"}
-            </button>
+            <button onClick={signUp} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "가입 중..." : "회원가입"}</button>
           )}
 
           {message && <div style={messageBoxStyle(message)}>{message}</div>}
@@ -902,14 +880,7 @@ export default function Home() {
   }
 
   if (initialLoading) {
-    return (
-      <main style={pageStyle}>
-        <div style={containerStyle}>
-          <h1 style={titleStyle}>미루지말자</h1>
-          <p style={subTextStyle}>데이터를 불러오는 중입니다...</p>
-        </div>
-      </main>
-    );
+    return <Shell title="미루지말자" text="데이터를 불러오는 중입니다..." />;
   }
 
   return (
@@ -917,14 +888,10 @@ export default function Home() {
       <div style={containerStyle}>
         <div style={accountHeaderStyle}>
           <div>
-            <div style={{ fontSize: "12px", color: "#047857", fontWeight: 700 }}>로그인 중</div>
-            <div style={{ marginTop: 2, fontSize: "14px", color: "#064e3b", fontWeight: 800 }}>
-              {currentProfile?.display_name || "사용자"}
-            </div>
+            <div style={accountLabelStyle}>로그인 중</div>
+            <div style={accountNameStyle}>{currentProfile?.display_name || "사용자"}</div>
           </div>
-          <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>
-            {loading ? "처리 중..." : "로그아웃"}
-          </button>
+          <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>{loading ? "처리 중..." : "로그아웃"}</button>
         </div>
 
         {!workspace ? (
@@ -934,38 +901,30 @@ export default function Home() {
 
             {workspaces.length > 0 && !showCreateWorkspace && (
               <section>
-                <h2 style={sectionTitleStyle}>기존 워크스페이스</h2>
+                <h2 style={sectionTitleStyle}>내 워크스페이스</h2>
                 <div style={listStyle}>
                   {workspaces.map((item) => (
                     <button key={item.id} onClick={() => selectWorkspace(item)} disabled={loading} style={workspaceSelectButtonStyle}>
                       <div style={{ textAlign: "left" }}>
-                        <div style={{ fontWeight: 800, fontSize: 16 }}>{item.name}</div>
-                        {item.description && <div style={{ marginTop: 4, color: "#64748b", fontSize: 13 }}>{item.description}</div>}
+                        <div style={cardTitleStyle}>{item.name}</div>
+                        {item.description && <div style={cardSubTextStyle}>{item.description}</div>}
                       </div>
-                      <span style={{ color: "#4f46e5", fontWeight: 800 }}>열기</span>
+                      <span style={openTextStyle}>열기</span>
                     </button>
                   ))}
                 </div>
-                <button onClick={() => setShowCreateWorkspace(true)} style={{ ...secondaryButtonStyle, marginTop: "16px" }}>
-                  새 워크스페이스 만들기
-                </button>
+                <button onClick={() => setShowCreateWorkspace(true)} style={{ ...secondaryButtonStyle, marginTop: "16px" }}>새 워크스페이스 만들기</button>
               </section>
             )}
 
             {(workspaces.length === 0 || showCreateWorkspace) && (
               <section style={workspaces.length > 0 ? sectionStyle : undefined}>
                 <h2 style={sectionTitleStyle}>새 워크스페이스 생성</h2>
-                <p style={subTextStyle}>가족 또는 그룹 공간을 만들어보세요</p>
+                <p style={subTextStyle}>워크스페이스 생성 시 현재 로그인 계정이 owner로 자동 등록됩니다.</p>
                 <input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} placeholder="예) 우리집" style={inputStyle} />
                 <textarea value={workspaceDescription} onChange={(e) => setWorkspaceDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
-                <button onClick={createWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>
-                  {loading ? "생성 중..." : "워크스페이스 만들기"}
-                </button>
-                {workspaces.length > 0 && (
-                  <button onClick={() => setShowCreateWorkspace(false)} disabled={loading} style={{ ...secondaryButtonStyle, marginTop: "10px" }}>
-                    기존 목록으로 돌아가기
-                  </button>
-                )}
+                <button onClick={createWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "워크스페이스 만들기"}</button>
+                {workspaces.length > 0 && <button onClick={() => setShowCreateWorkspace(false)} disabled={loading} style={{ ...secondaryButtonStyle, marginTop: "10px" }}>기존 목록으로 돌아가기</button>}
               </section>
             )}
           </>
@@ -974,10 +933,8 @@ export default function Home() {
             <div style={workspaceBoxStyle}>
               <div style={labelStyle}>현재 워크스페이스</div>
               <div style={{ fontSize: 22, fontWeight: 800 }}>{workspace.name}</div>
-              {workspace.description && <div style={{ marginTop: 4, color: "#64748b", fontSize: 14 }}>{workspace.description}</div>}
-              <button onClick={goBackToWorkspaceList} disabled={loading} style={{ ...secondaryButtonStyle, marginTop: "12px" }}>
-                워크스페이스 목록으로
-              </button>
+              {workspace.description && <div style={cardSubTextStyle}>{workspace.description}</div>}
+              <button onClick={goBackToWorkspaceList} disabled={loading} style={{ ...secondaryButtonStyle, marginTop: "12px" }}>워크스페이스 목록으로</button>
             </div>
 
             <section style={sectionStyle}>
@@ -988,18 +945,17 @@ export default function Home() {
                 <option value="manager">보호자/관리자</option>
                 <option value="member">참여자/자녀</option>
               </select>
-              <button onClick={addMember} disabled={loading} style={primaryButtonStyle(loading)}>
-                {loading ? "추가 중..." : "참여자 추가"}
-              </button>
+              <button onClick={addMember} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "추가 중..." : "참여자 추가"}</button>
+
               {members.length > 0 && (
                 <div style={listStyle}>
                   {members.map((member) => (
                     <div key={member.id} style={memberCardStyle}>
                       <div>
-                        <span style={{ fontWeight: 700 }}>{member.display_name}</span>
-                        <div style={{ marginTop: 4, color: "#64748b", fontSize: 13 }}>스티커 {balanceByMemberId(member.id)}개</div>
+                        <span style={memberNameStyle}>{member.display_name}</span>
+                        <div style={cardSubTextStyle}>스티커 {balanceByMemberId(member.id)}개</div>
                       </div>
-                      <span style={badgeStyle(member.role)}>{member.role === "manager" ? "보호자" : "참여자"}</span>
+                      <span style={badgeStyle(member.role)}>{roleLabel(member.role)}</span>
                     </div>
                   ))}
                 </div>
@@ -1043,11 +999,11 @@ export default function Home() {
                   {tasks.map((task) => (
                     <div key={task.id} style={taskCardStyle}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "flex-start" }}>
+                        <div style={taskHeaderStyle}>
                           <div>
-                            <div style={{ fontWeight: 800, fontSize: 16 }}>{task.title}</div>
-                            <div style={{ marginTop: 6, color: "#64748b", fontSize: 13 }}>대상: {memberNameById(task.assigned_member_id)}</div>
-                            <div style={{ marginTop: 4, color: "#64748b", fontSize: 13 }}>인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개</div>
+                            <div style={cardTitleStyle}>{task.title}</div>
+                            <div style={cardSubTextStyle}>대상: {memberNameById(task.assigned_member_id)}</div>
+                            <div style={cardSubTextStyle}>인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개</div>
                           </div>
                           <span style={taskStatusBadgeStyle(task.status)}>{taskStatusLabel(task.status)}</span>
                         </div>
@@ -1057,7 +1013,7 @@ export default function Home() {
                             {activeSubmitTaskId === task.id ? (
                               <>
                                 <textarea value={submissionText} onChange={(e) => setSubmissionText(e.target.value)} placeholder={task.verification_type === "none" ? "완료 메모를 남겨보세요. 선택사항입니다." : "인증 내용을 입력하세요. 예) 오늘 30분 연습했어요."} rows={3} style={{ ...inputStyle, marginBottom: "10px", resize: "vertical" }} />
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                                <div style={twoColumnStyle}>
                                   <button onClick={() => submitTask(task)} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "제출 중..." : "제출하기"}</button>
                                   <button onClick={() => { setActiveSubmitTaskId(null); setSubmissionText(""); }} disabled={loading} style={secondaryButtonStyle}>취소</button>
                                 </div>
@@ -1071,7 +1027,7 @@ export default function Home() {
                         {task.status === "submitted" && (
                           <div style={submittedActionBoxStyle}>
                             <div style={submittedTextStyle}>인증 제출 완료 · 보호자 승인 대기</div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "10px" }}>
+                            <div style={{ ...twoColumnStyle, marginTop: "10px" }}>
                               <button onClick={() => approveTask(task)} disabled={loading} style={approveButtonStyle(loading)}>승인</button>
                               <button onClick={() => rejectTask(task)} disabled={loading} style={rejectButtonStyle(loading)}>반려</button>
                             </div>
@@ -1111,9 +1067,9 @@ export default function Home() {
                     return (
                       <div key={reward.id} style={rewardCardStyle}>
                         <div>
-                          <div style={{ fontWeight: 800, fontSize: 16 }}>{reward.title}</div>
-                          {reward.description && <div style={{ marginTop: 4, color: "#64748b", fontSize: 13 }}>{reward.description}</div>}
-                          <div style={{ marginTop: 8, color: "#64748b", fontSize: 13 }}>대상: {memberNameById(reward.target_member_id)} · 필요 스티커 {reward.cost_points}개 · 현재 {balance}개</div>
+                          <div style={cardTitleStyle}>{reward.title}</div>
+                          {reward.description && <div style={cardSubTextStyle}>{reward.description}</div>}
+                          <div style={cardSubTextStyle}>대상: {memberNameById(reward.target_member_id)} · 필요 스티커 {reward.cost_points}개 · 현재 {balance}개</div>
                         </div>
                         {reward.status === "redeemed" ? <div style={redeemedBoxStyle}>교환 완료</div> : <button onClick={() => redeemReward(reward)} disabled={loading || !canRedeem} style={canRedeem ? rewardButtonStyle : disabledRewardButtonStyle}>교환하기</button>}
                       </div>
@@ -1124,11 +1080,27 @@ export default function Home() {
             )}
           </>
         )}
-
         {message && <div style={messageBoxStyle(message)}>{message}</div>}
       </div>
     </main>
   );
+}
+
+function Shell({ title, text }: { title: string; text: string }) {
+  return (
+    <main style={pageStyle}>
+      <div style={containerStyle}>
+        <h1 style={titleStyle}>{title}</h1>
+        <p style={subTextStyle}>{text}</p>
+      </div>
+    </main>
+  );
+}
+
+function roleLabel(role: string) {
+  if (role === "owner") return "owner";
+  if (role === "manager") return "보호자";
+  return "참여자";
 }
 
 function verificationLabel(type: string) {
@@ -1148,301 +1120,65 @@ function taskStatusLabel(status: string) {
   return status;
 }
 
-const pageStyle: CSSProperties = {
-  minHeight: "100vh",
-  background: "#f8fafc",
-  padding: "24px",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "flex-start",
-};
-
-const containerStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: "500px",
-  background: "#fff",
-  borderRadius: "24px",
-  padding: "24px",
-  boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-};
-
-const titleStyle: CSSProperties = {
-  marginBottom: "8px",
-  fontSize: "28px",
-};
-
-const sectionTitleStyle: CSSProperties = {
-  margin: "0 0 8px",
-  fontSize: "22px",
-};
-
-const subTextStyle: CSSProperties = {
-  color: "#64748b",
-  marginBottom: "20px",
-};
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  padding: "14px",
-  borderRadius: "12px",
-  border: "1px solid #dbeafe",
-  marginBottom: "12px",
-  outline: "none",
-};
-
-const accountHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "12px",
-  padding: "12px",
-  borderRadius: "16px",
-  background: "#ecfdf5",
-  marginBottom: "18px",
-  border: "1px solid #bbf7d0",
-};
-
-const logoutButtonStyle: CSSProperties = {
-  padding: "9px 12px",
-  borderRadius: "12px",
-  border: "1px solid #fecaca",
-  background: "#fef2f2",
-  color: "#b91c1c",
-  fontSize: "13px",
-  fontWeight: 800,
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-};
-
-const workspaceBoxStyle: CSSProperties = {
-  padding: "14px",
-  borderRadius: "16px",
-  background: "#eef2ff",
-  marginBottom: "22px",
-};
-
-const labelStyle: CSSProperties = {
-  color: "#4f46e5",
-  fontSize: "13px",
-  fontWeight: 700,
-  marginBottom: "4px",
-};
-
-const sectionStyle: CSSProperties = {
-  paddingTop: "22px",
-  marginTop: "22px",
-  borderTop: "1px solid #e2e8f0",
-};
-
-const listStyle: CSSProperties = {
-  marginTop: "16px",
-  display: "flex",
-  flexDirection: "column",
-  gap: "10px",
-};
-
-const workspaceSelectButtonStyle: CSSProperties = {
-  width: "100%",
-  padding: "14px",
-  borderRadius: "16px",
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  cursor: "pointer",
-};
-
-const memberCardStyle: CSSProperties = {
-  padding: "12px 14px",
-  borderRadius: "14px",
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-};
+const pageStyle: CSSProperties = { minHeight: "100vh", background: "#f8fafc", padding: "24px", display: "flex", justifyContent: "center", alignItems: "flex-start" };
+const containerStyle: CSSProperties = { width: "100%", maxWidth: "500px", background: "#fff", borderRadius: "24px", padding: "24px", boxShadow: "0 10px 30px rgba(0,0,0,0.08)" };
+const titleStyle: CSSProperties = { marginBottom: "8px", fontSize: "28px" };
+const sectionTitleStyle: CSSProperties = { margin: "0 0 8px", fontSize: "22px" };
+const subTextStyle: CSSProperties = { color: "#64748b", marginBottom: "20px" };
+const inputStyle: CSSProperties = { width: "100%", padding: "14px", borderRadius: "12px", border: "1px solid #dbeafe", marginBottom: "12px", outline: "none" };
+const tabGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "16px" };
+const accountHeaderStyle: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "16px", background: "#ecfdf5", marginBottom: "18px", border: "1px solid #bbf7d0" };
+const accountLabelStyle: CSSProperties = { fontSize: "12px", color: "#047857", fontWeight: 700 };
+const accountNameStyle: CSSProperties = { marginTop: 2, fontSize: "14px", color: "#064e3b", fontWeight: 800 };
+const logoutButtonStyle: CSSProperties = { padding: "9px 12px", borderRadius: "12px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", fontSize: "13px", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" };
+const workspaceBoxStyle: CSSProperties = { padding: "14px", borderRadius: "16px", background: "#eef2ff", marginBottom: "22px" };
+const labelStyle: CSSProperties = { color: "#4f46e5", fontSize: "13px", fontWeight: 700, marginBottom: "4px" };
+const sectionStyle: CSSProperties = { paddingTop: "22px", marginTop: "22px", borderTop: "1px solid #e2e8f0" };
+const listStyle: CSSProperties = { marginTop: "16px", display: "flex", flexDirection: "column", gap: "10px" };
+const workspaceSelectButtonStyle: CSSProperties = { width: "100%", padding: "14px", borderRadius: "16px", background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" };
+const memberCardStyle: CSSProperties = { padding: "12px 14px", borderRadius: "14px", background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" };
+const memberNameStyle: CSSProperties = { fontWeight: 700 };
+const cardTitleStyle: CSSProperties = { fontWeight: 800, fontSize: 16 };
+const cardSubTextStyle: CSSProperties = { marginTop: 4, color: "#64748b", fontSize: 13 };
+const openTextStyle: CSSProperties = { color: "#4f46e5", fontWeight: 800 };
+const taskCardStyle: CSSProperties = { padding: "14px", borderRadius: "16px", background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", gap: "12px" };
+const rewardCardStyle: CSSProperties = { padding: "14px", borderRadius: "16px", background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "12px" };
+const taskHeaderStyle: CSSProperties = { display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "flex-start" };
+const twoColumnStyle: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" };
+const secondaryButtonStyle: CSSProperties = { width: "100%", padding: "13px", borderRadius: "12px", border: "1px solid #c7d2fe", background: "#eef2ff", color: "#4338ca", fontWeight: "bold", cursor: "pointer" };
+const submittedActionBoxStyle: CSSProperties = { marginTop: "14px", padding: "12px", borderRadius: "12px", background: "#eff6ff" };
+const submittedTextStyle: CSSProperties = { color: "#1d4ed8", fontSize: "13px", fontWeight: 700 };
+const approvedBoxStyle: CSSProperties = { marginTop: "14px", padding: "12px", borderRadius: "12px", background: "#ecfdf5", color: "#047857", fontSize: "13px", fontWeight: 700 };
+const rejectedBoxStyle: CSSProperties = { marginTop: "14px", padding: "12px", borderRadius: "12px", background: "#fef2f2", color: "#b91c1c", fontSize: "13px", fontWeight: 700 };
+const rewardButtonStyle: CSSProperties = { width: "100%", padding: "13px", borderRadius: "12px", border: "none", background: "#f97316", color: "white", fontWeight: "bold", cursor: "pointer" };
+const disabledRewardButtonStyle: CSSProperties = { width: "100%", padding: "13px", borderRadius: "12px", border: "none", background: "#cbd5e1", color: "#64748b", fontWeight: "bold", cursor: "not-allowed" };
+const redeemedBoxStyle: CSSProperties = { padding: "12px", borderRadius: "12px", background: "#ecfdf5", color: "#047857", fontSize: "13px", fontWeight: 800, textAlign: "center" };
 
 function badgeStyle(role: string): CSSProperties {
-  return {
-    fontSize: "12px",
-    padding: "4px 8px",
-    borderRadius: "999px",
-    background: role === "manager" ? "#dbeafe" : "#dcfce7",
-    color: role === "manager" ? "#1d4ed8" : "#15803d",
-  };
+  if (role === "owner") return { fontSize: "12px", padding: "4px 8px", borderRadius: "999px", background: "#ede9fe", color: "#6d28d9", fontWeight: 800 };
+  return { fontSize: "12px", padding: "4px 8px", borderRadius: "999px", background: role === "manager" ? "#dbeafe" : "#dcfce7", color: role === "manager" ? "#1d4ed8" : "#15803d", fontWeight: 700 };
 }
-
-const taskCardStyle: CSSProperties = {
-  padding: "14px",
-  borderRadius: "16px",
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  display: "flex",
-  justifyContent: "space-between",
-  gap: "12px",
-};
-
-const rewardCardStyle: CSSProperties = {
-  padding: "14px",
-  borderRadius: "16px",
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  display: "flex",
-  flexDirection: "column",
-  gap: "12px",
-};
 
 function taskStatusBadgeStyle(status: string): CSSProperties {
   const isTodo = status === "todo";
   const isSubmitted = status === "submitted";
   const isApproved = status === "approved";
-
-  return {
-    height: "fit-content",
-    fontSize: "12px",
-    padding: "4px 8px",
-    borderRadius: "999px",
-    background: isApproved ? "#dcfce7" : isSubmitted ? "#dbeafe" : isTodo ? "#fef3c7" : "#fee2e2",
-    color: isApproved ? "#15803d" : isSubmitted ? "#1d4ed8" : isTodo ? "#92400e" : "#b91c1c",
-    fontWeight: 700,
-    whiteSpace: "nowrap",
-  };
+  return { height: "fit-content", fontSize: "12px", padding: "4px 8px", borderRadius: "999px", background: isApproved ? "#dcfce7" : isSubmitted ? "#dbeafe" : isTodo ? "#fef3c7" : "#fee2e2", color: isApproved ? "#15803d" : isSubmitted ? "#1d4ed8" : isTodo ? "#92400e" : "#b91c1c", fontWeight: 700, whiteSpace: "nowrap" };
 }
 
 function primaryButtonStyle(loading: boolean): CSSProperties {
-  return {
-    width: "100%",
-    padding: "14px",
-    borderRadius: "12px",
-    border: "none",
-    background: loading ? "#94a3b8" : "#4f46e5",
-    color: "white",
-    fontWeight: "bold",
-    cursor: loading ? "not-allowed" : "pointer",
-  };
+  return { width: "100%", padding: "14px", borderRadius: "12px", border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "white", fontWeight: "bold", cursor: loading ? "not-allowed" : "pointer" };
 }
 
-const secondaryButtonStyle: CSSProperties = {
-  width: "100%",
-  padding: "13px",
-  borderRadius: "12px",
-  border: "1px solid #c7d2fe",
-  background: "#eef2ff",
-  color: "#4338ca",
-  fontWeight: "bold",
-  cursor: "pointer",
-};
-
-const submittedActionBoxStyle: CSSProperties = {
-  marginTop: "14px",
-  padding: "12px",
-  borderRadius: "12px",
-  background: "#eff6ff",
-};
-
-const submittedTextStyle: CSSProperties = {
-  color: "#1d4ed8",
-  fontSize: "13px",
-  fontWeight: 700,
-};
-
 function approveButtonStyle(loading: boolean): CSSProperties {
-  return {
-    width: "100%",
-    padding: "12px",
-    borderRadius: "12px",
-    border: "none",
-    background: loading ? "#94a3b8" : "#16a34a",
-    color: "white",
-    fontWeight: "bold",
-    cursor: loading ? "not-allowed" : "pointer",
-  };
+  return { width: "100%", padding: "12px", borderRadius: "12px", border: "none", background: loading ? "#94a3b8" : "#16a34a", color: "white", fontWeight: "bold", cursor: loading ? "not-allowed" : "pointer" };
 }
 
 function rejectButtonStyle(loading: boolean): CSSProperties {
-  return {
-    width: "100%",
-    padding: "12px",
-    borderRadius: "12px",
-    border: "1px solid #fecaca",
-    background: loading ? "#fca5a5" : "#fef2f2",
-    color: "#b91c1c",
-    fontWeight: "bold",
-    cursor: loading ? "not-allowed" : "pointer",
-  };
+  return { width: "100%", padding: "12px", borderRadius: "12px", border: "1px solid #fecaca", background: loading ? "#fca5a5" : "#fef2f2", color: "#b91c1c", fontWeight: "bold", cursor: loading ? "not-allowed" : "pointer" };
 }
 
-const approvedBoxStyle: CSSProperties = {
-  marginTop: "14px",
-  padding: "12px",
-  borderRadius: "12px",
-  background: "#ecfdf5",
-  color: "#047857",
-  fontSize: "13px",
-  fontWeight: 700,
-};
-
-const rejectedBoxStyle: CSSProperties = {
-  marginTop: "14px",
-  padding: "12px",
-  borderRadius: "12px",
-  background: "#fef2f2",
-  color: "#b91c1c",
-  fontSize: "13px",
-  fontWeight: 700,
-};
-
-const rewardButtonStyle: CSSProperties = {
-  width: "100%",
-  padding: "13px",
-  borderRadius: "12px",
-  border: "none",
-  background: "#f97316",
-  color: "white",
-  fontWeight: "bold",
-  cursor: "pointer",
-};
-
-const disabledRewardButtonStyle: CSSProperties = {
-  width: "100%",
-  padding: "13px",
-  borderRadius: "12px",
-  border: "none",
-  background: "#cbd5e1",
-  color: "#64748b",
-  fontWeight: "bold",
-  cursor: "not-allowed",
-};
-
-const redeemedBoxStyle: CSSProperties = {
-  padding: "12px",
-  borderRadius: "12px",
-  background: "#ecfdf5",
-  color: "#047857",
-  fontSize: "13px",
-  fontWeight: 800,
-  textAlign: "center",
-};
-
 function messageBoxStyle(message: string): CSSProperties {
-  const ok =
-    message.includes("완료") ||
-    message.includes("성공") ||
-    message.includes("생성") ||
-    message.includes("추가") ||
-    message.includes("제출") ||
-    message.includes("승인") ||
-    message.includes("교환") ||
-    message.includes("불러왔습니다");
-
-  return {
-    marginTop: "16px",
-    padding: "12px",
-    borderRadius: "12px",
-    background: ok ? "#ecfdf5" : "#fef2f2",
-    color: ok ? "#047857" : "#b91c1c",
-    fontSize: "14px",
-    lineHeight: 1.5,
-  };
+  const ok = message.includes("완료") || message.includes("성공") || message.includes("생성") || message.includes("추가") || message.includes("제출") || message.includes("승인") || message.includes("교환") || message.includes("불러왔습니다") || message.includes("owner");
+  return { marginTop: "16px", padding: "12px", borderRadius: "12px", background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: "14px", lineHeight: 1.5 };
 }
