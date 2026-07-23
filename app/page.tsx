@@ -18,6 +18,7 @@ type Member = {
 
 type Task = {
   id: string;
+  workspace_id: string;
   title: string;
   description: string | null;
   task_type: string;
@@ -45,6 +46,11 @@ export default function Home() {
   const [verificationType, setVerificationType] = useState("none");
   const [rewardPoints, setRewardPoints] = useState(1);
   const [tasks, setTasks] = useState<Task[]>([]);
+
+  const [activeSubmitTaskId, setActiveSubmitTaskId] = useState<string | null>(
+    null
+  );
+  const [submissionText, setSubmissionText] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -168,6 +174,66 @@ export default function Home() {
     setVerificationType("none");
     setRewardPoints(1);
     setMessage(`미션 생성 완료: ${data.title}`);
+    setLoading(false);
+  }
+
+  async function submitTask(task: Task) {
+    if (!workspace) {
+      setMessage("워크스페이스 정보가 없습니다.");
+      return;
+    }
+
+    if (task.status !== "todo") {
+      setMessage("이미 제출된 미션입니다.");
+      return;
+    }
+
+    if (task.verification_type === "text" && !submissionText.trim()) {
+      setMessage("텍스트 인증 내용을 입력해주세요.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { error: submissionError } = await supabase
+      .from("task_submissions")
+      .insert({
+        task_id: task.id,
+        workspace_id: workspace.id,
+        submitted_by_member_id: task.assigned_member_id,
+        submission_text: submissionText.trim() || null,
+        status: "submitted",
+      });
+
+    if (submissionError) {
+      setMessage(`인증 제출 실패: ${submissionError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    const { data: updatedTask, error: taskUpdateError } = await supabase
+      .from("tasks")
+      .update({
+        status: "submitted",
+      })
+      .eq("id", task.id)
+      .select()
+      .single();
+
+    if (taskUpdateError) {
+      setMessage(`미션 상태 변경 실패: ${taskUpdateError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setTasks((prev) =>
+      prev.map((item) => (item.id === task.id ? updatedTask : item))
+    );
+
+    setSubmissionText("");
+    setActiveSubmitTaskId(null);
+    setMessage(`인증 제출 완료: ${task.title}`);
     setLoading(false);
   }
 
@@ -353,32 +419,117 @@ export default function Home() {
                 <div style={listStyle}>
                   {tasks.map((task) => (
                     <div key={task.id} style={taskCardStyle}>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: 16 }}>
-                          {task.title}
-                        </div>
+                      <div style={{ flex: 1 }}>
                         <div
                           style={{
-                            marginTop: 6,
-                            color: "#64748b",
-                            fontSize: 13,
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: "10px",
+                            alignItems: "flex-start",
                           }}
                         >
-                          대상: {memberNameById(task.assigned_member_id)}
-                        </div>
-                        <div
-                          style={{
-                            marginTop: 4,
-                            color: "#64748b",
-                            fontSize: 13,
-                          }}
-                        >
-                          인증: {verificationLabel(task.verification_type)} ·
-                          스티커 {task.reward_points}개
-                        </div>
-                      </div>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: 16 }}>
+                              {task.title}
+                            </div>
 
-                      <span style={taskStatusBadgeStyle}>{task.status}</span>
+                            <div
+                              style={{
+                                marginTop: 6,
+                                color: "#64748b",
+                                fontSize: 13,
+                              }}
+                            >
+                              대상: {memberNameById(task.assigned_member_id)}
+                            </div>
+
+                            <div
+                              style={{
+                                marginTop: 4,
+                                color: "#64748b",
+                                fontSize: 13,
+                              }}
+                            >
+                              인증: {verificationLabel(task.verification_type)} ·
+                              스티커 {task.reward_points}개
+                            </div>
+                          </div>
+
+                          <span style={taskStatusBadgeStyle(task.status)}>
+                            {taskStatusLabel(task.status)}
+                          </span>
+                        </div>
+
+                        {task.status === "todo" && (
+                          <div style={{ marginTop: "14px" }}>
+                            {activeSubmitTaskId === task.id ? (
+                              <>
+                                <textarea
+                                  value={submissionText}
+                                  onChange={(e) =>
+                                    setSubmissionText(e.target.value)
+                                  }
+                                  placeholder={
+                                    task.verification_type === "none"
+                                      ? "완료 메모를 남겨보세요. 선택사항입니다."
+                                      : "인증 내용을 입력하세요. 예) 오늘 30분 연습했어요."
+                                  }
+                                  rows={3}
+                                  style={{
+                                    ...inputStyle,
+                                    marginBottom: "10px",
+                                    resize: "vertical",
+                                  }}
+                                />
+
+                                <div
+                                  style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "1fr 1fr",
+                                    gap: "8px",
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => submitTask(task)}
+                                    disabled={loading}
+                                    style={primaryButtonStyle(loading)}
+                                  >
+                                    {loading ? "제출 중..." : "제출하기"}
+                                  </button>
+
+                                  <button
+                                    onClick={() => {
+                                      setActiveSubmitTaskId(null);
+                                      setSubmissionText("");
+                                    }}
+                                    disabled={loading}
+                                    style={secondaryButtonStyle}
+                                  >
+                                    취소
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setActiveSubmitTaskId(task.id);
+                                  setSubmissionText("");
+                                }}
+                                disabled={loading}
+                                style={secondaryButtonStyle}
+                              >
+                                완료/인증 제출
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {task.status === "submitted" && (
+                          <div style={submittedBoxStyle}>
+                            인증 제출 완료 · 보호자 승인 대기
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -387,11 +538,7 @@ export default function Home() {
           </>
         )}
 
-        {message && (
-          <div style={messageBoxStyle(message)}>
-            {message}
-          </div>
-        )}
+        {message && <div style={messageBoxStyle(message)}>{message}</div>}
       </div>
     </main>
   );
@@ -404,6 +551,14 @@ function verificationLabel(type: string) {
   if (type === "audio") return "음성";
   if (type === "location") return "위치";
   return "없음";
+}
+
+function taskStatusLabel(status: string) {
+  if (status === "todo") return "대기";
+  if (status === "submitted") return "제출됨";
+  if (status === "approved") return "승인됨";
+  if (status === "rejected") return "반려됨";
+  return status;
 }
 
 const pageStyle: React.CSSProperties = {
@@ -505,15 +660,34 @@ const taskCardStyle: React.CSSProperties = {
   gap: "12px",
 };
 
-const taskStatusBadgeStyle: React.CSSProperties = {
-  height: "fit-content",
-  fontSize: "12px",
-  padding: "4px 8px",
-  borderRadius: "999px",
-  background: "#fef3c7",
-  color: "#92400e",
-  fontWeight: 700,
-};
+function taskStatusBadgeStyle(status: string): React.CSSProperties {
+  const isTodo = status === "todo";
+  const isSubmitted = status === "submitted";
+  const isApproved = status === "approved";
+
+  return {
+    height: "fit-content",
+    fontSize: "12px",
+    padding: "4px 8px",
+    borderRadius: "999px",
+    background: isApproved
+      ? "#dcfce7"
+      : isSubmitted
+      ? "#dbeafe"
+      : isTodo
+      ? "#fef3c7"
+      : "#fee2e2",
+    color: isApproved
+      ? "#15803d"
+      : isSubmitted
+      ? "#1d4ed8"
+      : isTodo
+      ? "#92400e"
+      : "#b91c1c",
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+  };
+}
 
 function primaryButtonStyle(loading: boolean): React.CSSProperties {
   return {
@@ -528,8 +702,33 @@ function primaryButtonStyle(loading: boolean): React.CSSProperties {
   };
 }
 
+const secondaryButtonStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "13px",
+  borderRadius: "12px",
+  border: "1px solid #c7d2fe",
+  background: "#eef2ff",
+  color: "#4338ca",
+  fontWeight: "bold",
+  cursor: "pointer",
+};
+
+const submittedBoxStyle: React.CSSProperties = {
+  marginTop: "14px",
+  padding: "12px",
+  borderRadius: "12px",
+  background: "#eff6ff",
+  color: "#1d4ed8",
+  fontSize: "13px",
+  fontWeight: 700,
+};
+
 function messageBoxStyle(message: string): React.CSSProperties {
-  const ok = message.includes("완료") || message.includes("생성");
+  const ok =
+    message.includes("완료") ||
+    message.includes("생성") ||
+    message.includes("추가") ||
+    message.includes("제출");
 
   return {
     marginTop: "16px",
