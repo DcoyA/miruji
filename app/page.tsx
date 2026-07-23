@@ -129,31 +129,60 @@ export default function Home() {
 
     if (!data.user) {
       setCurrentProfile(null);
-      setAuthLoading(false);
       setInitialLoading(false);
+      setAuthLoading(false);
       return;
     }
 
-    await loadProfile(data.user.id);
-    await loadWorkspaces();
+    const profile = await loadProfile(data.user.id);
 
+    if (profile) {
+      await loadWorkspaces();
+    }
+
+    setInitialLoading(false);
     setAuthLoading(false);
   }
 
-  async function loadProfile(authUserId: string) {
+  async function loadProfile(authUserId: string): Promise<Profile | null> {
+    const { data: userData } = await supabase.auth.getUser();
+    const email = userData.user?.email || "사용자";
+
     const { data, error } = await supabase
       .from("profiles")
       .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
       .eq("auth_user_id", authUserId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       setMessage(`프로필 불러오기 실패: ${error.message}`);
       setCurrentProfile(null);
-      return;
+      return null;
     }
 
-    setCurrentProfile(data as Profile);
+    if (data) {
+      setCurrentProfile(data as Profile);
+      return data as Profile;
+    }
+
+    const { data: createdProfile, error: createError } = await supabase
+      .from("profiles")
+      .insert({
+        auth_user_id: authUserId,
+        display_name: email.split("@")[0],
+        onboarding_completed: false,
+      })
+      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
+      .single();
+
+    if (createError) {
+      setMessage(`프로필 생성 실패: ${createError.message}`);
+      setCurrentProfile(null);
+      return null;
+    }
+
+    setCurrentProfile(createdProfile as Profile);
+    return createdProfile as Profile;
   }
 
   async function signUp() {
