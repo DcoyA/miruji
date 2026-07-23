@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 
 type Workspace = {
@@ -54,6 +55,8 @@ export default function Home() {
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceDescription, setWorkspaceDescription] = useState("");
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
 
   const [memberName, setMemberName] = useState("");
   const [memberRole, setMemberRole] = useState<"manager" | "member">("member");
@@ -83,7 +86,120 @@ export default function Home() {
   const [submissionText, setSubmissionText] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    loadWorkspaces();
+  }, []);
+
+  async function loadWorkspaces() {
+    setInitialLoading(true);
+
+    const { data, error } = await supabase
+      .from("workspaces")
+      .select("id, name, description")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setMessage(`워크스페이스 목록 불러오기 실패: ${error.message}`);
+      setInitialLoading(false);
+      return;
+    }
+
+    setWorkspaces((data || []) as Workspace[]);
+    setInitialLoading(false);
+  }
+
+  async function selectWorkspace(selected: Workspace) {
+    setLoading(true);
+    setMessage("");
+
+    const [
+      membersResult,
+      tasksResult,
+      rewardsResult,
+      rewardTransactionsResult,
+    ] = await Promise.all([
+      supabase
+        .from("workspace_members")
+        .select("id, display_name, role, is_virtual")
+        .eq("workspace_id", selected.id)
+        .order("created_at", { ascending: true }),
+
+      supabase
+        .from("tasks")
+        .select(
+          "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
+        )
+        .eq("workspace_id", selected.id)
+        .order("created_at", { ascending: false }),
+
+      supabase
+        .from("rewards")
+        .select(
+          "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status"
+        )
+        .eq("workspace_id", selected.id)
+        .order("created_at", { ascending: false }),
+
+      supabase
+        .from("reward_transactions")
+        .select("id, member_id, amount, transaction_type, source_type, source_id")
+        .eq("workspace_id", selected.id)
+        .order("created_at", { ascending: true }),
+    ]);
+
+    if (membersResult.error) {
+      setMessage(`참여자 불러오기 실패: ${membersResult.error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    if (tasksResult.error) {
+      setMessage(`미션 불러오기 실패: ${tasksResult.error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    if (rewardsResult.error) {
+      setMessage(`보상 불러오기 실패: ${rewardsResult.error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    if (rewardTransactionsResult.error) {
+      setMessage(
+        `스티커 내역 불러오기 실패: ${rewardTransactionsResult.error.message}`
+      );
+      setLoading(false);
+      return;
+    }
+
+    setWorkspace(selected);
+    setMembers((membersResult.data || []) as Member[]);
+    setTasks((tasksResult.data || []) as Task[]);
+    setRewards((rewardsResult.data || []) as Reward[]);
+    setRewardTransactions(
+      (rewardTransactionsResult.data || []) as RewardTransaction[]
+    );
+
+    setShowCreateWorkspace(false);
+    setMessage(`${selected.name} 데이터를 불러왔습니다.`);
+    setLoading(false);
+  }
+
+  function goBackToWorkspaceList() {
+    setWorkspace(null);
+    setMembers([]);
+    setTasks([]);
+    setRewards([]);
+    setRewardTransactions([]);
+    setActiveSubmitTaskId(null);
+    setSubmissionText("");
+    setMessage("");
+    loadWorkspaces();
+  }
 
   async function createWorkspace() {
     if (!workspaceName.trim()) {
@@ -100,7 +216,7 @@ export default function Home() {
         name: workspaceName.trim(),
         description: workspaceDescription.trim() || null,
       })
-      .select()
+      .select("id, name, description")
       .single();
 
     if (error) {
@@ -109,16 +225,19 @@ export default function Home() {
       return;
     }
 
-    setWorkspace(data);
+    setWorkspaces((prev) => [data as Workspace, ...prev]);
     setWorkspaceName("");
     setWorkspaceDescription("");
+    setShowCreateWorkspace(false);
+
+    await selectWorkspace(data as Workspace);
     setMessage(`워크스페이스 생성 완료: ${data.name}`);
     setLoading(false);
   }
 
   async function addMember() {
     if (!workspace) {
-      setMessage("먼저 워크스페이스를 만들어주세요.");
+      setMessage("먼저 워크스페이스를 선택해주세요.");
       return;
     }
 
@@ -139,7 +258,7 @@ export default function Home() {
         status: "active",
         is_virtual: true,
       })
-      .select()
+      .select("id, display_name, role, is_virtual")
       .single();
 
     if (error) {
@@ -148,7 +267,7 @@ export default function Home() {
       return;
     }
 
-    setMembers((prev) => [...prev, data]);
+    setMembers((prev) => [...prev, data as Member]);
     setMemberName("");
     setMemberRole("member");
     setMessage(`참여자 추가 완료: ${data.display_name}`);
@@ -157,7 +276,7 @@ export default function Home() {
 
   async function createTask() {
     if (!workspace) {
-      setMessage("먼저 워크스페이스를 만들어주세요.");
+      setMessage("먼저 워크스페이스를 선택해주세요.");
       return;
     }
 
@@ -189,7 +308,9 @@ export default function Home() {
         reward_points: rewardPoints,
         rollover_enabled: true,
       })
-      .select()
+      .select(
+        "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
+      )
       .single();
 
     if (error) {
@@ -198,7 +319,7 @@ export default function Home() {
       return;
     }
 
-    setTasks((prev) => [data, ...prev]);
+    setTasks((prev) => [data as Task, ...prev]);
     setTaskTitle("");
     setTaskDescription("");
     setVerificationType("none");
@@ -248,7 +369,9 @@ export default function Home() {
         status: "submitted",
       })
       .eq("id", task.id)
-      .select()
+      .select(
+        "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
+      )
       .single();
 
     if (taskUpdateError) {
@@ -258,7 +381,7 @@ export default function Home() {
     }
 
     setTasks((prev) =>
-      prev.map((item) => (item.id === task.id ? updatedTask : item))
+      prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item))
     );
 
     setSubmissionText("");
@@ -316,7 +439,7 @@ export default function Home() {
         memo: `${task.title} 승인 보상`,
         created_by_member_id: manager?.id || null,
       })
-      .select()
+      .select("id, member_id, amount, transaction_type, source_type, source_id")
       .single();
 
     if (rewardError) {
@@ -331,7 +454,9 @@ export default function Home() {
         status: "approved",
       })
       .eq("id", task.id)
-      .select()
+      .select(
+        "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
+      )
       .single();
 
     if (taskUpdateError) {
@@ -340,9 +465,12 @@ export default function Home() {
       return;
     }
 
-    setRewardTransactions((prev) => [...prev, rewardData]);
+    setRewardTransactions((prev) => [
+      ...prev,
+      rewardData as RewardTransaction,
+    ]);
     setTasks((prev) =>
-      prev.map((item) => (item.id === task.id ? updatedTask : item))
+      prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item))
     );
 
     setMessage(
@@ -389,7 +517,9 @@ export default function Home() {
         status: "rejected",
       })
       .eq("id", task.id)
-      .select()
+      .select(
+        "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
+      )
       .single();
 
     if (taskUpdateError) {
@@ -399,7 +529,7 @@ export default function Home() {
     }
 
     setTasks((prev) =>
-      prev.map((item) => (item.id === task.id ? updatedTask : item))
+      prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item))
     );
 
     setMessage(`반려 완료: ${task.title}`);
@@ -425,7 +555,9 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const requester = members.find((member) => member.id === rewardTargetMemberId);
+    const requester = members.find(
+      (member) => member.id === rewardTargetMemberId
+    );
     const manager = members.find((member) => member.role === "manager");
 
     const { data, error } = await supabase
@@ -440,7 +572,9 @@ export default function Home() {
         cost_points: rewardCostPoints,
         status: "approved",
       })
-      .select()
+      .select(
+        "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status"
+      )
       .single();
 
     if (error) {
@@ -449,7 +583,7 @@ export default function Home() {
       return;
     }
 
-    setRewards((prev) => [data, ...prev]);
+    setRewards((prev) => [data as Reward, ...prev]);
     setRewardTitle("");
     setRewardDescription("");
     setRewardCostPoints(1);
@@ -499,7 +633,7 @@ export default function Home() {
         memo: `${reward.title} 보상 교환`,
         created_by_member_id: manager?.id || null,
       })
-      .select()
+      .select("id, member_id, amount, transaction_type, source_type, source_id")
       .single();
 
     if (spendError) {
@@ -515,7 +649,9 @@ export default function Home() {
         redeemed_at: new Date().toISOString(),
       })
       .eq("id", reward.id)
-      .select()
+      .select(
+        "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status"
+      )
       .single();
 
     if (rewardUpdateError) {
@@ -524,9 +660,14 @@ export default function Home() {
       return;
     }
 
-    setRewardTransactions((prev) => [...prev, spendData]);
+    setRewardTransactions((prev) => [
+      ...prev,
+      spendData as RewardTransaction,
+    ]);
     setRewards((prev) =>
-      prev.map((item) => (item.id === reward.id ? updatedReward : item))
+      prev.map((item) =>
+        item.id === reward.id ? (updatedReward as Reward) : item
+      )
     );
 
     setMessage(
@@ -546,36 +687,116 @@ export default function Home() {
       .reduce((sum, item) => sum + item.amount, 0);
   }
 
+  if (initialLoading) {
+    return (
+      <main style={pageStyle}>
+        <div style={containerStyle}>
+          <h1 style={titleStyle}>미루지말자</h1>
+          <p style={subTextStyle}>데이터를 불러오는 중입니다...</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main style={pageStyle}>
       <div style={containerStyle}>
         {!workspace ? (
           <>
-            <h1 style={titleStyle}>워크스페이스 생성</h1>
-            <p style={subTextStyle}>가족 또는 그룹 공간을 만들어보세요</p>
+            <h1 style={titleStyle}>미루지말자</h1>
+            <p style={subTextStyle}>
+              기존 워크스페이스를 선택하거나 새 공간을 만들어보세요
+            </p>
 
-            <input
-              value={workspaceName}
-              onChange={(e) => setWorkspaceName(e.target.value)}
-              placeholder="예) 우리집"
-              style={inputStyle}
-            />
+            {workspaces.length > 0 && !showCreateWorkspace && (
+              <section>
+                <h2 style={sectionTitleStyle}>기존 워크스페이스</h2>
 
-            <textarea
-              value={workspaceDescription}
-              onChange={(e) => setWorkspaceDescription(e.target.value)}
-              placeholder="설명 (선택)"
-              rows={3}
-              style={{ ...inputStyle, resize: "vertical" }}
-            />
+                <div style={listStyle}>
+                  {workspaces.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => selectWorkspace(item)}
+                      disabled={loading}
+                      style={workspaceSelectButtonStyle}
+                    >
+                      <div style={{ textAlign: "left" }}>
+                        <div style={{ fontWeight: 800, fontSize: 16 }}>
+                          {item.name}
+                        </div>
+                        {item.description && (
+                          <div
+                            style={{
+                              marginTop: 4,
+                              color: "#64748b",
+                              fontSize: 13,
+                            }}
+                          >
+                            {item.description}
+                          </div>
+                        )}
+                      </div>
+                      <span style={{ color: "#4f46e5", fontWeight: 800 }}>
+                        열기
+                      </span>
+                    </button>
+                  ))}
+                </div>
 
-            <button
-              onClick={createWorkspace}
-              disabled={loading}
-              style={primaryButtonStyle(loading)}
-            >
-              {loading ? "생성 중..." : "워크스페이스 만들기"}
-            </button>
+                <button
+                  onClick={() => setShowCreateWorkspace(true)}
+                  style={{
+                    ...secondaryButtonStyle,
+                    marginTop: "16px",
+                  }}
+                >
+                  새 워크스페이스 만들기
+                </button>
+              </section>
+            )}
+
+            {(workspaces.length === 0 || showCreateWorkspace) && (
+              <section style={workspaces.length > 0 ? sectionStyle : undefined}>
+                <h2 style={sectionTitleStyle}>새 워크스페이스 생성</h2>
+                <p style={subTextStyle}>가족 또는 그룹 공간을 만들어보세요</p>
+
+                <input
+                  value={workspaceName}
+                  onChange={(e) => setWorkspaceName(e.target.value)}
+                  placeholder="예) 우리집"
+                  style={inputStyle}
+                />
+
+                <textarea
+                  value={workspaceDescription}
+                  onChange={(e) => setWorkspaceDescription(e.target.value)}
+                  placeholder="설명 (선택)"
+                  rows={3}
+                  style={{ ...inputStyle, resize: "vertical" }}
+                />
+
+                <button
+                  onClick={createWorkspace}
+                  disabled={loading}
+                  style={primaryButtonStyle(loading)}
+                >
+                  {loading ? "생성 중..." : "워크스페이스 만들기"}
+                </button>
+
+                {workspaces.length > 0 && (
+                  <button
+                    onClick={() => setShowCreateWorkspace(false)}
+                    disabled={loading}
+                    style={{
+                      ...secondaryButtonStyle,
+                      marginTop: "10px",
+                    }}
+                  >
+                    기존 목록으로 돌아가기
+                  </button>
+                )}
+              </section>
+            )}
           </>
         ) : (
           <>
@@ -589,6 +810,17 @@ export default function Home() {
                   {workspace.description}
                 </div>
               )}
+
+              <button
+                onClick={goBackToWorkspaceList}
+                disabled={loading}
+                style={{
+                  ...secondaryButtonStyle,
+                  marginTop: "12px",
+                }}
+              >
+                워크스페이스 목록으로
+              </button>
             </div>
 
             <section style={sectionStyle}>
@@ -1036,7 +1268,7 @@ function taskStatusLabel(status: string) {
   return status;
 }
 
-const pageStyle: React.CSSProperties = {
+const pageStyle: CSSProperties = {
   minHeight: "100vh",
   background: "#f8fafc",
   padding: "24px",
@@ -1045,7 +1277,7 @@ const pageStyle: React.CSSProperties = {
   alignItems: "flex-start",
 };
 
-const containerStyle: React.CSSProperties = {
+const containerStyle: CSSProperties = {
   width: "100%",
   maxWidth: "500px",
   background: "#fff",
@@ -1054,22 +1286,22 @@ const containerStyle: React.CSSProperties = {
   boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
 };
 
-const titleStyle: React.CSSProperties = {
+const titleStyle: CSSProperties = {
   marginBottom: "8px",
   fontSize: "28px",
 };
 
-const sectionTitleStyle: React.CSSProperties = {
+const sectionTitleStyle: CSSProperties = {
   margin: "0 0 8px",
   fontSize: "22px",
 };
 
-const subTextStyle: React.CSSProperties = {
+const subTextStyle: CSSProperties = {
   color: "#64748b",
   marginBottom: "20px",
 };
 
-const inputStyle: React.CSSProperties = {
+const inputStyle: CSSProperties = {
   width: "100%",
   padding: "14px",
   borderRadius: "12px",
@@ -1078,34 +1310,46 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
 };
 
-const workspaceBoxStyle: React.CSSProperties = {
+const workspaceBoxStyle: CSSProperties = {
   padding: "14px",
   borderRadius: "16px",
   background: "#eef2ff",
   marginBottom: "22px",
 };
 
-const labelStyle: React.CSSProperties = {
+const labelStyle: CSSProperties = {
   color: "#4f46e5",
   fontSize: "13px",
   fontWeight: 700,
   marginBottom: "4px",
 };
 
-const sectionStyle: React.CSSProperties = {
+const sectionStyle: CSSProperties = {
   paddingTop: "22px",
   marginTop: "22px",
   borderTop: "1px solid #e2e8f0",
 };
 
-const listStyle: React.CSSProperties = {
+const listStyle: CSSProperties = {
   marginTop: "16px",
   display: "flex",
   flexDirection: "column",
   gap: "10px",
 };
 
-const memberCardStyle: React.CSSProperties = {
+const workspaceSelectButtonStyle: CSSProperties = {
+  width: "100%",
+  padding: "14px",
+  borderRadius: "16px",
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  cursor: "pointer",
+};
+
+const memberCardStyle: CSSProperties = {
   padding: "12px 14px",
   borderRadius: "14px",
   background: "#f8fafc",
@@ -1115,7 +1359,7 @@ const memberCardStyle: React.CSSProperties = {
   alignItems: "center",
 };
 
-function badgeStyle(role: string): React.CSSProperties {
+function badgeStyle(role: string): CSSProperties {
   return {
     fontSize: "12px",
     padding: "4px 8px",
@@ -1125,7 +1369,7 @@ function badgeStyle(role: string): React.CSSProperties {
   };
 }
 
-const taskCardStyle: React.CSSProperties = {
+const taskCardStyle: CSSProperties = {
   padding: "14px",
   borderRadius: "16px",
   background: "#f8fafc",
@@ -1135,7 +1379,7 @@ const taskCardStyle: React.CSSProperties = {
   gap: "12px",
 };
 
-const rewardCardStyle: React.CSSProperties = {
+const rewardCardStyle: CSSProperties = {
   padding: "14px",
   borderRadius: "16px",
   background: "#f8fafc",
@@ -1145,7 +1389,7 @@ const rewardCardStyle: React.CSSProperties = {
   gap: "12px",
 };
 
-function taskStatusBadgeStyle(status: string): React.CSSProperties {
+function taskStatusBadgeStyle(status: string): CSSProperties {
   const isTodo = status === "todo";
   const isSubmitted = status === "submitted";
   const isApproved = status === "approved";
@@ -1174,7 +1418,7 @@ function taskStatusBadgeStyle(status: string): React.CSSProperties {
   };
 }
 
-function primaryButtonStyle(loading: boolean): React.CSSProperties {
+function primaryButtonStyle(loading: boolean): CSSProperties {
   return {
     width: "100%",
     padding: "14px",
@@ -1187,7 +1431,7 @@ function primaryButtonStyle(loading: boolean): React.CSSProperties {
   };
 }
 
-const secondaryButtonStyle: React.CSSProperties = {
+const secondaryButtonStyle: CSSProperties = {
   width: "100%",
   padding: "13px",
   borderRadius: "12px",
@@ -1198,20 +1442,20 @@ const secondaryButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const submittedActionBoxStyle: React.CSSProperties = {
+const submittedActionBoxStyle: CSSProperties = {
   marginTop: "14px",
   padding: "12px",
   borderRadius: "12px",
   background: "#eff6ff",
 };
 
-const submittedTextStyle: React.CSSProperties = {
+const submittedTextStyle: CSSProperties = {
   color: "#1d4ed8",
   fontSize: "13px",
   fontWeight: 700,
 };
 
-function approveButtonStyle(loading: boolean): React.CSSProperties {
+function approveButtonStyle(loading: boolean): CSSProperties {
   return {
     width: "100%",
     padding: "12px",
@@ -1224,7 +1468,7 @@ function approveButtonStyle(loading: boolean): React.CSSProperties {
   };
 }
 
-function rejectButtonStyle(loading: boolean): React.CSSProperties {
+function rejectButtonStyle(loading: boolean): CSSProperties {
   return {
     width: "100%",
     padding: "12px",
@@ -1237,7 +1481,7 @@ function rejectButtonStyle(loading: boolean): React.CSSProperties {
   };
 }
 
-const approvedBoxStyle: React.CSSProperties = {
+const approvedBoxStyle: CSSProperties = {
   marginTop: "14px",
   padding: "12px",
   borderRadius: "12px",
@@ -1247,7 +1491,7 @@ const approvedBoxStyle: React.CSSProperties = {
   fontWeight: 700,
 };
 
-const rejectedBoxStyle: React.CSSProperties = {
+const rejectedBoxStyle: CSSProperties = {
   marginTop: "14px",
   padding: "12px",
   borderRadius: "12px",
@@ -1257,7 +1501,7 @@ const rejectedBoxStyle: React.CSSProperties = {
   fontWeight: 700,
 };
 
-const rewardButtonStyle: React.CSSProperties = {
+const rewardButtonStyle: CSSProperties = {
   width: "100%",
   padding: "13px",
   borderRadius: "12px",
@@ -1268,7 +1512,7 @@ const rewardButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const disabledRewardButtonStyle: React.CSSProperties = {
+const disabledRewardButtonStyle: CSSProperties = {
   width: "100%",
   padding: "13px",
   borderRadius: "12px",
@@ -1279,7 +1523,7 @@ const disabledRewardButtonStyle: React.CSSProperties = {
   cursor: "not-allowed",
 };
 
-const redeemedBoxStyle: React.CSSProperties = {
+const redeemedBoxStyle: CSSProperties = {
   padding: "12px",
   borderRadius: "12px",
   background: "#ecfdf5",
@@ -1289,14 +1533,15 @@ const redeemedBoxStyle: React.CSSProperties = {
   textAlign: "center",
 };
 
-function messageBoxStyle(message: string): React.CSSProperties {
+function messageBoxStyle(message: string): CSSProperties {
   const ok =
     message.includes("완료") ||
     message.includes("생성") ||
     message.includes("추가") ||
     message.includes("제출") ||
     message.includes("승인") ||
-    message.includes("교환");
+    message.includes("교환") ||
+    message.includes("불러왔습니다");
 
   return {
     marginTop: "16px",
