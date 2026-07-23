@@ -65,7 +65,7 @@ export default function Home() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
-  
+
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceDescription, setWorkspaceDescription] = useState("");
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -90,13 +90,9 @@ export default function Home() {
   const [rewardCostPoints, setRewardCostPoints] = useState(1);
   const [rewards, setRewards] = useState<Reward[]>([]);
 
-  const [rewardTransactions, setRewardTransactions] = useState<
-    RewardTransaction[]
-  >([]);
+  const [rewardTransactions, setRewardTransactions] = useState<RewardTransaction[]>([]);
 
-  const [activeSubmitTaskId, setActiveSubmitTaskId] = useState<string | null>(
-    null
-  );
+  const [activeSubmitTaskId, setActiveSubmitTaskId] = useState<string | null>(null);
   const [submissionText, setSubmissionText] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -111,9 +107,9 @@ export default function Home() {
         await loadProfile(session.user.id);
         await loadWorkspaces();
       } else {
+        resetAppState();
         setCurrentProfile(null);
-        setWorkspaces([]);
-        setWorkspace(null);
+        setInitialLoading(false);
       }
     });
 
@@ -122,6 +118,17 @@ export default function Home() {
     };
   }, []);
 
+  function resetAppState() {
+    setWorkspace(null);
+    setWorkspaces([]);
+    setMembers([]);
+    setTasks([]);
+    setRewards([]);
+    setRewardTransactions([]);
+    setActiveSubmitTaskId(null);
+    setSubmissionText("");
+  }
+
   async function initializeAuth() {
     setAuthLoading(true);
 
@@ -129,14 +136,13 @@ export default function Home() {
 
     if (!data.user) {
       setCurrentProfile(null);
-      setAuthLoading(false);
       setInitialLoading(false);
+      setAuthLoading(false);
       return;
     }
 
     await loadProfile(data.user.id);
     await loadWorkspaces();
-
     setAuthLoading(false);
   }
 
@@ -148,8 +154,8 @@ export default function Home() {
       .single();
 
     if (error) {
-      setMessage(`프로필 불러오기 실패: ${error.message}`);
       setCurrentProfile(null);
+      setMessage(`프로필 불러오기 실패: ${error.message}`);
       return;
     }
 
@@ -221,18 +227,12 @@ export default function Home() {
       return;
     }
 
+    resetAppState();
     setCurrentProfile(null);
-    setWorkspace(null);
-    setWorkspaces([]);
-    setMembers([]);
-    setTasks([]);
-    setRewards([]);
-    setRewardTransactions([]);
-
     setMessage("로그아웃 완료");
     setLoading(false);
   }
-  
+
   async function loadWorkspaces() {
     setInitialLoading(true);
 
@@ -255,40 +255,36 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const [
-      membersResult,
-      tasksResult,
-      rewardsResult,
-      rewardTransactionsResult,
-    ] = await Promise.all([
-      supabase
-        .from("workspace_members")
-        .select("id, display_name, role, is_virtual")
-        .eq("workspace_id", selected.id)
-        .order("created_at", { ascending: true }),
+    const [membersResult, tasksResult, rewardsResult, rewardTransactionsResult] =
+      await Promise.all([
+        supabase
+          .from("workspace_members")
+          .select("id, display_name, role, is_virtual")
+          .eq("workspace_id", selected.id)
+          .order("created_at", { ascending: true }),
 
-      supabase
-        .from("tasks")
-        .select(
-          "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
-        )
-        .eq("workspace_id", selected.id)
-        .order("created_at", { ascending: false }),
+        supabase
+          .from("tasks")
+          .select(
+            "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
+          )
+          .eq("workspace_id", selected.id)
+          .order("created_at", { ascending: false }),
 
-      supabase
-        .from("rewards")
-        .select(
-          "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status"
-        )
-        .eq("workspace_id", selected.id)
-        .order("created_at", { ascending: false }),
+        supabase
+          .from("rewards")
+          .select(
+            "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status"
+          )
+          .eq("workspace_id", selected.id)
+          .order("created_at", { ascending: false }),
 
-      supabase
-        .from("reward_transactions")
-        .select("id, member_id, amount, transaction_type, source_type, source_id")
-        .eq("workspace_id", selected.id)
-        .order("created_at", { ascending: true }),
-    ]);
+        supabase
+          .from("reward_transactions")
+          .select("id, member_id, amount, transaction_type, source_type, source_id")
+          .eq("workspace_id", selected.id)
+          .order("created_at", { ascending: true }),
+      ]);
 
     if (membersResult.error) {
       setMessage(`참여자 불러오기 실패: ${membersResult.error.message}`);
@@ -309,9 +305,7 @@ export default function Home() {
     }
 
     if (rewardTransactionsResult.error) {
-      setMessage(
-        `스티커 내역 불러오기 실패: ${rewardTransactionsResult.error.message}`
-      );
+      setMessage(`스티커 내역 불러오기 실패: ${rewardTransactionsResult.error.message}`);
       setLoading(false);
       return;
     }
@@ -320,10 +314,7 @@ export default function Home() {
     setMembers((membersResult.data || []) as Member[]);
     setTasks((tasksResult.data || []) as Task[]);
     setRewards((rewardsResult.data || []) as Reward[]);
-    setRewardTransactions(
-      (rewardTransactionsResult.data || []) as RewardTransaction[]
-    );
-
+    setRewardTransactions((rewardTransactionsResult.data || []) as RewardTransaction[]);
     setShowCreateWorkspace(false);
     setMessage(`${selected.name} 데이터를 불러왔습니다.`);
     setLoading(false);
@@ -342,6 +333,11 @@ export default function Home() {
   }
 
   async function createWorkspace() {
+    if (!currentProfile) {
+      setMessage("로그인이 필요합니다.");
+      return;
+    }
+
     if (!workspaceName.trim()) {
       setMessage("워크스페이스 이름을 입력해주세요.");
       return;
@@ -355,6 +351,7 @@ export default function Home() {
       .insert({
         name: workspaceName.trim(),
         description: workspaceDescription.trim() || null,
+        created_by: currentProfile.id,
       })
       .select("id, name, description")
       .single();
@@ -369,7 +366,6 @@ export default function Home() {
     setWorkspaceName("");
     setWorkspaceDescription("");
     setShowCreateWorkspace(false);
-
     await selectWorkspace(data as Workspace);
     setMessage(`워크스페이스 생성 완료: ${data.name}`);
     setLoading(false);
@@ -505,9 +501,7 @@ export default function Home() {
 
     const { data: updatedTask, error: taskUpdateError } = await supabase
       .from("tasks")
-      .update({
-        status: "submitted",
-      })
+      .update({ status: "submitted" })
       .eq("id", task.id)
       .select(
         "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
@@ -523,7 +517,6 @@ export default function Home() {
     setTasks((prev) =>
       prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item))
     );
-
     setSubmissionText("");
     setActiveSubmitTaskId(null);
     setMessage(`인증 제출 완료: ${task.title}`);
@@ -590,9 +583,7 @@ export default function Home() {
 
     const { data: updatedTask, error: taskUpdateError } = await supabase
       .from("tasks")
-      .update({
-        status: "approved",
-      })
+      .update({ status: "approved" })
       .eq("id", task.id)
       .select(
         "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
@@ -605,17 +596,11 @@ export default function Home() {
       return;
     }
 
-    setRewardTransactions((prev) => [
-      ...prev,
-      rewardData as RewardTransaction,
-    ]);
+    setRewardTransactions((prev) => [...prev, rewardData as RewardTransaction]);
     setTasks((prev) =>
       prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item))
     );
-
-    setMessage(
-      `승인 완료: ${task.title} · 스티커 ${task.reward_points}개 지급`
-    );
+    setMessage(`승인 완료: ${task.title} · 스티커 ${task.reward_points}개 지급`);
     setLoading(false);
   }
 
@@ -653,9 +638,7 @@ export default function Home() {
 
     const { data: updatedTask, error: taskUpdateError } = await supabase
       .from("tasks")
-      .update({
-        status: "rejected",
-      })
+      .update({ status: "rejected" })
       .eq("id", task.id)
       .select(
         "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points"
@@ -671,7 +654,6 @@ export default function Home() {
     setTasks((prev) =>
       prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item))
     );
-
     setMessage(`반려 완료: ${task.title}`);
     setLoading(false);
   }
@@ -695,9 +677,7 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const requester = members.find(
-      (member) => member.id === rewardTargetMemberId
-    );
+    const requester = members.find((member) => member.id === rewardTargetMemberId);
     const manager = members.find((member) => member.role === "manager");
 
     const { data, error } = await supabase
@@ -750,9 +730,7 @@ export default function Home() {
     const balance = balanceByMemberId(reward.target_member_id);
 
     if (balance < reward.cost_points) {
-      setMessage(
-        `스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`
-      );
+      setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`);
       return;
     }
 
@@ -800,19 +778,11 @@ export default function Home() {
       return;
     }
 
-    setRewardTransactions((prev) => [
-      ...prev,
-      spendData as RewardTransaction,
-    ]);
+    setRewardTransactions((prev) => [...prev, spendData as RewardTransaction]);
     setRewards((prev) =>
-      prev.map((item) =>
-        item.id === reward.id ? (updatedReward as Reward) : item
-      )
+      prev.map((item) => (item.id === reward.id ? (updatedReward as Reward) : item))
     );
-
-    setMessage(
-      `보상 교환 완료: ${reward.title} · 스티커 ${reward.cost_points}개 사용`
-    );
+    setMessage(`보상 교환 완료: ${reward.title} · 스티커 ${reward.cost_points}개 사용`);
     setLoading(false);
   }
 
@@ -825,6 +795,69 @@ export default function Home() {
     return rewardTransactions
       .filter((item) => item.member_id === memberId)
       .reduce((sum, item) => sum + item.amount, 0);
+  }
+
+  if (authLoading) {
+    return (
+      <main style={pageStyle}>
+        <div style={containerStyle}>
+          <h1 style={titleStyle}>미루지말자</h1>
+          <p style={subTextStyle}>로그인 상태를 확인하는 중입니다...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!currentProfile) {
+    return (
+      <main style={pageStyle}>
+        <div style={containerStyle}>
+          <h1 style={titleStyle}>미루지말자</h1>
+          <p style={subTextStyle}>부모와 자녀가 함께 쓰는 미션형 클라우드 다이어리</p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "16px" }}>
+            <button
+              onClick={() => setAuthMode("signin")}
+              style={authMode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}
+            >
+              로그인
+            </button>
+            <button
+              onClick={() => setAuthMode("signup")}
+              style={authMode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}
+            >
+              회원가입
+            </button>
+          </div>
+
+          <input
+            value={authEmail}
+            onChange={(e) => setAuthEmail(e.target.value)}
+            placeholder="이메일"
+            style={inputStyle}
+          />
+          <input
+            value={authPassword}
+            onChange={(e) => setAuthPassword(e.target.value)}
+            placeholder="비밀번호"
+            type="password"
+            style={inputStyle}
+          />
+
+          {authMode === "signin" ? (
+            <button onClick={signIn} disabled={loading} style={primaryButtonStyle(loading)}>
+              {loading ? "로그인 중..." : "로그인"}
+            </button>
+          ) : (
+            <button onClick={signUp} disabled={loading} style={primaryButtonStyle(loading)}>
+              {loading ? "가입 중..." : "회원가입"}
+            </button>
+          )}
+
+          {message && <div style={messageBoxStyle(message)}>{message}</div>}
+        </div>
+      </main>
+    );
   }
 
   if (initialLoading) {
@@ -843,15 +876,19 @@ export default function Home() {
       <div style={containerStyle}>
         {!workspace ? (
           <>
+            <div style={loginBoxStyle}>
+              로그인 중: {currentProfile.display_name}
+            </div>
+            <button onClick={signOut} disabled={loading} style={{ ...secondaryButtonStyle, marginBottom: "16px" }}>
+              로그아웃
+            </button>
+
             <h1 style={titleStyle}>미루지말자</h1>
-            <p style={subTextStyle}>
-              기존 워크스페이스를 선택하거나 새 공간을 만들어보세요
-            </p>
+            <p style={subTextStyle}>기존 워크스페이스를 선택하거나 새 공간을 만들어보세요</p>
 
             {workspaces.length > 0 && !showCreateWorkspace && (
               <section>
                 <h2 style={sectionTitleStyle}>기존 워크스페이스</h2>
-
                 <div style={listStyle}>
                   {workspaces.map((item) => (
                     <button
@@ -861,34 +898,20 @@ export default function Home() {
                       style={workspaceSelectButtonStyle}
                     >
                       <div style={{ textAlign: "left" }}>
-                        <div style={{ fontWeight: 800, fontSize: 16 }}>
-                          {item.name}
-                        </div>
+                        <div style={{ fontWeight: 800, fontSize: 16 }}>{item.name}</div>
                         {item.description && (
-                          <div
-                            style={{
-                              marginTop: 4,
-                              color: "#64748b",
-                              fontSize: 13,
-                            }}
-                          >
+                          <div style={{ marginTop: 4, color: "#64748b", fontSize: 13 }}>
                             {item.description}
                           </div>
                         )}
                       </div>
-                      <span style={{ color: "#4f46e5", fontWeight: 800 }}>
-                        열기
-                      </span>
+                      <span style={{ color: "#4f46e5", fontWeight: 800 }}>열기</span>
                     </button>
                   ))}
                 </div>
-
                 <button
                   onClick={() => setShowCreateWorkspace(true)}
-                  style={{
-                    ...secondaryButtonStyle,
-                    marginTop: "16px",
-                  }}
+                  style={{ ...secondaryButtonStyle, marginTop: "16px" }}
                 >
                   새 워크스페이스 만들기
                 </button>
@@ -899,14 +922,12 @@ export default function Home() {
               <section style={workspaces.length > 0 ? sectionStyle : undefined}>
                 <h2 style={sectionTitleStyle}>새 워크스페이스 생성</h2>
                 <p style={subTextStyle}>가족 또는 그룹 공간을 만들어보세요</p>
-
                 <input
                   value={workspaceName}
                   onChange={(e) => setWorkspaceName(e.target.value)}
                   placeholder="예) 우리집"
                   style={inputStyle}
                 />
-
                 <textarea
                   value={workspaceDescription}
                   onChange={(e) => setWorkspaceDescription(e.target.value)}
@@ -914,23 +935,14 @@ export default function Home() {
                   rows={3}
                   style={{ ...inputStyle, resize: "vertical" }}
                 />
-
-                <button
-                  onClick={createWorkspace}
-                  disabled={loading}
-                  style={primaryButtonStyle(loading)}
-                >
+                <button onClick={createWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>
                   {loading ? "생성 중..." : "워크스페이스 만들기"}
                 </button>
-
                 {workspaces.length > 0 && (
                   <button
                     onClick={() => setShowCreateWorkspace(false)}
                     disabled={loading}
-                    style={{
-                      ...secondaryButtonStyle,
-                      marginTop: "10px",
-                    }}
+                    style={{ ...secondaryButtonStyle, marginTop: "10px" }}
                   >
                     기존 목록으로 돌아가기
                   </button>
@@ -940,24 +952,25 @@ export default function Home() {
           </>
         ) : (
           <>
+            <div style={loginBoxStyle}>
+              로그인 중: {currentProfile.display_name}
+            </div>
+            <button onClick={signOut} disabled={loading} style={{ ...secondaryButtonStyle, marginBottom: "16px" }}>
+              로그아웃
+            </button>
+
             <div style={workspaceBoxStyle}>
               <div style={labelStyle}>현재 워크스페이스</div>
-              <div style={{ fontSize: 22, fontWeight: 800 }}>
-                {workspace.name}
-              </div>
+              <div style={{ fontSize: 22, fontWeight: 800 }}>{workspace.name}</div>
               {workspace.description && (
                 <div style={{ marginTop: 4, color: "#64748b", fontSize: 14 }}>
                   {workspace.description}
                 </div>
               )}
-
               <button
                 onClick={goBackToWorkspaceList}
                 disabled={loading}
-                style={{
-                  ...secondaryButtonStyle,
-                  marginTop: "12px",
-                }}
+                style={{ ...secondaryButtonStyle, marginTop: "12px" }}
               >
                 워크스페이스 목록으로
               </button>
@@ -966,52 +979,33 @@ export default function Home() {
             <section style={sectionStyle}>
               <h2 style={sectionTitleStyle}>1. 참여자 추가</h2>
               <p style={subTextStyle}>실명 대신 앱에서 부를 이름만 입력하세요</p>
-
               <input
                 value={memberName}
                 onChange={(e) => setMemberName(e.target.value)}
                 placeholder="예) 엄마, 첫째, 토끼"
                 style={inputStyle}
               />
-
               <select
                 value={memberRole}
-                onChange={(e) =>
-                  setMemberRole(e.target.value as "manager" | "member")
-                }
+                onChange={(e) => setMemberRole(e.target.value as "manager" | "member")}
                 style={inputStyle}
               >
                 <option value="manager">보호자/관리자</option>
                 <option value="member">참여자/자녀</option>
               </select>
-
-              <button
-                onClick={addMember}
-                disabled={loading}
-                style={primaryButtonStyle(loading)}
-              >
+              <button onClick={addMember} disabled={loading} style={primaryButtonStyle(loading)}>
                 {loading ? "추가 중..." : "참여자 추가"}
               </button>
-
               {members.length > 0 && (
                 <div style={listStyle}>
                   {members.map((member) => (
                     <div key={member.id} style={memberCardStyle}>
                       <div>
-                        <span style={{ fontWeight: 700 }}>
-                          {member.display_name}
-                        </span>
-                        <div
-                          style={{
-                            marginTop: 4,
-                            color: "#64748b",
-                            fontSize: 13,
-                          }}
-                        >
+                        <span style={{ fontWeight: 700 }}>{member.display_name}</span>
+                        <div style={{ marginTop: 4, color: "#64748b", fontSize: 13 }}>
                           스티커 {balanceByMemberId(member.id)}개
                         </div>
                       </div>
-
                       <span style={badgeStyle(member.role)}>
                         {member.role === "manager" ? "보호자" : "참여자"}
                       </span>
@@ -1024,17 +1018,13 @@ export default function Home() {
             {members.length > 0 && (
               <section style={sectionStyle}>
                 <h2 style={sectionTitleStyle}>2. 미션 만들기</h2>
-                <p style={subTextStyle}>
-                  참여자에게 오늘 할 미션을 부여하세요
-                </p>
-
+                <p style={subTextStyle}>참여자에게 오늘 할 미션을 부여하세요</p>
                 <input
                   value={taskTitle}
                   onChange={(e) => setTaskTitle(e.target.value)}
                   placeholder="예) 피아노 100번 치기"
                   style={inputStyle}
                 />
-
                 <textarea
                   value={taskDescription}
                   onChange={(e) => setTaskDescription(e.target.value)}
@@ -1042,7 +1032,6 @@ export default function Home() {
                   rows={3}
                   style={{ ...inputStyle, resize: "vertical" }}
                 />
-
                 <select
                   value={taskAssignedMemberId}
                   onChange={(e) => setTaskAssignedMemberId(e.target.value)}
@@ -1055,12 +1044,7 @@ export default function Home() {
                     </option>
                   ))}
                 </select>
-
-                <select
-                  value={taskType}
-                  onChange={(e) => setTaskType(e.target.value)}
-                  style={inputStyle}
-                >
+                <select value={taskType} onChange={(e) => setTaskType(e.target.value)} style={inputStyle}>
                   <option value="habit">습관</option>
                   <option value="study">학습</option>
                   <option value="chore">집안일</option>
@@ -1068,7 +1052,6 @@ export default function Home() {
                   <option value="promise">약속</option>
                   <option value="custom">기타</option>
                 </select>
-
                 <select
                   value={verificationType}
                   onChange={(e) => setVerificationType(e.target.value)}
@@ -1080,7 +1063,6 @@ export default function Home() {
                   <option value="video">영상 인증</option>
                   <option value="audio">음성 인증</option>
                 </select>
-
                 <input
                   type="number"
                   min={0}
@@ -1089,12 +1071,7 @@ export default function Home() {
                   placeholder="스티커 개수"
                   style={inputStyle}
                 />
-
-                <button
-                  onClick={createTask}
-                  disabled={loading}
-                  style={primaryButtonStyle(loading)}
-                >
+                <button onClick={createTask} disabled={loading} style={primaryButtonStyle(loading)}>
                   {loading ? "생성 중..." : "미션 만들기"}
                 </button>
               </section>
@@ -1103,49 +1080,21 @@ export default function Home() {
             {tasks.length > 0 && (
               <section style={sectionStyle}>
                 <h2 style={sectionTitleStyle}>3. 오늘의 미션</h2>
-
                 <div style={listStyle}>
                   {tasks.map((task) => (
                     <div key={task.id} style={taskCardStyle}>
                       <div style={{ flex: 1 }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: "10px",
-                            alignItems: "flex-start",
-                          }}
-                        >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "flex-start" }}>
                           <div>
-                            <div style={{ fontWeight: 800, fontSize: 16 }}>
-                              {task.title}
-                            </div>
-
-                            <div
-                              style={{
-                                marginTop: 6,
-                                color: "#64748b",
-                                fontSize: 13,
-                              }}
-                            >
+                            <div style={{ fontWeight: 800, fontSize: 16 }}>{task.title}</div>
+                            <div style={{ marginTop: 6, color: "#64748b", fontSize: 13 }}>
                               대상: {memberNameById(task.assigned_member_id)}
                             </div>
-
-                            <div
-                              style={{
-                                marginTop: 4,
-                                color: "#64748b",
-                                fontSize: 13,
-                              }}
-                            >
-                              인증: {verificationLabel(task.verification_type)} ·
-                              스티커 {task.reward_points}개
+                            <div style={{ marginTop: 4, color: "#64748b", fontSize: 13 }}>
+                              인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개
                             </div>
                           </div>
-
-                          <span style={taskStatusBadgeStyle(task.status)}>
-                            {taskStatusLabel(task.status)}
-                          </span>
+                          <span style={taskStatusBadgeStyle(task.status)}>{taskStatusLabel(task.status)}</span>
                         </div>
 
                         {task.status === "todo" && (
@@ -1154,37 +1103,19 @@ export default function Home() {
                               <>
                                 <textarea
                                   value={submissionText}
-                                  onChange={(e) =>
-                                    setSubmissionText(e.target.value)
-                                  }
+                                  onChange={(e) => setSubmissionText(e.target.value)}
                                   placeholder={
                                     task.verification_type === "none"
                                       ? "완료 메모를 남겨보세요. 선택사항입니다."
                                       : "인증 내용을 입력하세요. 예) 오늘 30분 연습했어요."
                                   }
                                   rows={3}
-                                  style={{
-                                    ...inputStyle,
-                                    marginBottom: "10px",
-                                    resize: "vertical",
-                                  }}
+                                  style={{ ...inputStyle, marginBottom: "10px", resize: "vertical" }}
                                 />
-
-                                <div
-                                  style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "1fr 1fr",
-                                    gap: "8px",
-                                  }}
-                                >
-                                  <button
-                                    onClick={() => submitTask(task)}
-                                    disabled={loading}
-                                    style={primaryButtonStyle(loading)}
-                                  >
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                                  <button onClick={() => submitTask(task)} disabled={loading} style={primaryButtonStyle(loading)}>
                                     {loading ? "제출 중..." : "제출하기"}
                                   </button>
-
                                   <button
                                     onClick={() => {
                                       setActiveSubmitTaskId(null);
@@ -1214,31 +1145,12 @@ export default function Home() {
 
                         {task.status === "submitted" && (
                           <div style={submittedActionBoxStyle}>
-                            <div style={submittedTextStyle}>
-                              인증 제출 완료 · 보호자 승인 대기
-                            </div>
-
-                            <div
-                              style={{
-                                display: "grid",
-                                gridTemplateColumns: "1fr 1fr",
-                                gap: "8px",
-                                marginTop: "10px",
-                              }}
-                            >
-                              <button
-                                onClick={() => approveTask(task)}
-                                disabled={loading}
-                                style={approveButtonStyle(loading)}
-                              >
+                            <div style={submittedTextStyle}>인증 제출 완료 · 보호자 승인 대기</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "10px" }}>
+                              <button onClick={() => approveTask(task)} disabled={loading} style={approveButtonStyle(loading)}>
                                 승인
                               </button>
-
-                              <button
-                                onClick={() => rejectTask(task)}
-                                disabled={loading}
-                                style={rejectButtonStyle(loading)}
-                              >
+                              <button onClick={() => rejectTask(task)} disabled={loading} style={rejectButtonStyle(loading)}>
                                 반려
                               </button>
                             </div>
@@ -1246,15 +1158,10 @@ export default function Home() {
                         )}
 
                         {task.status === "approved" && (
-                          <div style={approvedBoxStyle}>
-                            승인 완료 · 스티커 {task.reward_points}개 지급됨
-                          </div>
+                          <div style={approvedBoxStyle}>승인 완료 · 스티커 {task.reward_points}개 지급됨</div>
                         )}
-
                         {task.status === "rejected" && (
-                          <div style={rejectedBoxStyle}>
-                            반려됨 · 다시 제출이 필요합니다
-                          </div>
+                          <div style={rejectedBoxStyle}>반려됨 · 다시 제출이 필요합니다</div>
                         )}
                       </div>
                     </div>
@@ -1266,17 +1173,13 @@ export default function Home() {
             {members.length > 0 && (
               <section style={sectionStyle}>
                 <h2 style={sectionTitleStyle}>4. 보상 만들기</h2>
-                <p style={subTextStyle}>
-                  모은 스티커로 교환할 수 있는 보상을 등록하세요
-                </p>
-
+                <p style={subTextStyle}>모은 스티커로 교환할 수 있는 보상을 등록하세요</p>
                 <input
                   value={rewardTitle}
                   onChange={(e) => setRewardTitle(e.target.value)}
                   placeholder="예) 게임 30분, 떡볶이 먹기"
                   style={inputStyle}
                 />
-
                 <textarea
                   value={rewardDescription}
                   onChange={(e) => setRewardDescription(e.target.value)}
@@ -1284,7 +1187,6 @@ export default function Home() {
                   rows={3}
                   style={{ ...inputStyle, resize: "vertical" }}
                 />
-
                 <select
                   value={rewardTargetMemberId}
                   onChange={(e) => setRewardTargetMemberId(e.target.value)}
@@ -1297,7 +1199,6 @@ export default function Home() {
                     </option>
                   ))}
                 </select>
-
                 <input
                   type="number"
                   min={0}
@@ -1306,12 +1207,7 @@ export default function Home() {
                   placeholder="필요 스티커 개수"
                   style={inputStyle}
                 />
-
-                <button
-                  onClick={createReward}
-                  disabled={loading}
-                  style={primaryButtonStyle(loading)}
-                >
+                <button onClick={createReward} disabled={loading} style={primaryButtonStyle(loading)}>
                   {loading ? "생성 중..." : "보상 만들기"}
                 </button>
               </section>
@@ -1320,58 +1216,30 @@ export default function Home() {
             {rewards.length > 0 && (
               <section style={sectionStyle}>
                 <h2 style={sectionTitleStyle}>5. 보상 목록</h2>
-
                 <div style={listStyle}>
                   {rewards.map((reward) => {
-                    const balance = reward.target_member_id
-                      ? balanceByMemberId(reward.target_member_id)
-                      : 0;
-
-                    const canRedeem =
-                      reward.status !== "redeemed" &&
-                      balance >= reward.cost_points;
-
+                    const balance = reward.target_member_id ? balanceByMemberId(reward.target_member_id) : 0;
+                    const canRedeem = reward.status !== "redeemed" && balance >= reward.cost_points;
                     return (
                       <div key={reward.id} style={rewardCardStyle}>
                         <div>
-                          <div style={{ fontWeight: 800, fontSize: 16 }}>
-                            {reward.title}
-                          </div>
+                          <div style={{ fontWeight: 800, fontSize: 16 }}>{reward.title}</div>
                           {reward.description && (
-                            <div
-                              style={{
-                                marginTop: 4,
-                                color: "#64748b",
-                                fontSize: 13,
-                              }}
-                            >
+                            <div style={{ marginTop: 4, color: "#64748b", fontSize: 13 }}>
                               {reward.description}
                             </div>
                           )}
-
-                          <div
-                            style={{
-                              marginTop: 8,
-                              color: "#64748b",
-                              fontSize: 13,
-                            }}
-                          >
-                            대상: {memberNameById(reward.target_member_id)} · 필요
-                            스티커 {reward.cost_points}개 · 현재 {balance}개
+                          <div style={{ marginTop: 8, color: "#64748b", fontSize: 13 }}>
+                            대상: {memberNameById(reward.target_member_id)} · 필요 스티커 {reward.cost_points}개 · 현재 {balance}개
                           </div>
                         </div>
-
                         {reward.status === "redeemed" ? (
                           <div style={redeemedBoxStyle}>교환 완료</div>
                         ) : (
                           <button
                             onClick={() => redeemReward(reward)}
                             disabled={loading || !canRedeem}
-                            style={
-                              canRedeem
-                                ? rewardButtonStyle
-                                : disabledRewardButtonStyle
-                            }
+                            style={canRedeem ? rewardButtonStyle : disabledRewardButtonStyle}
                           >
                             교환하기
                           </button>
@@ -1448,6 +1316,16 @@ const inputStyle: CSSProperties = {
   border: "1px solid #dbeafe",
   marginBottom: "12px",
   outline: "none",
+};
+
+const loginBoxStyle: CSSProperties = {
+  padding: "12px",
+  borderRadius: "14px",
+  background: "#ecfdf5",
+  marginBottom: "14px",
+  color: "#047857",
+  fontSize: "14px",
+  fontWeight: 700,
 };
 
 const workspaceBoxStyle: CSSProperties = {
@@ -1676,6 +1554,7 @@ const redeemedBoxStyle: CSSProperties = {
 function messageBoxStyle(message: string): CSSProperties {
   const ok =
     message.includes("완료") ||
+    message.includes("성공") ||
     message.includes("생성") ||
     message.includes("추가") ||
     message.includes("제출") ||
