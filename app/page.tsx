@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
+
 import AuthPanel from "@/components/AuthPanel";
 import BottomNav from "@/components/BottomNav";
 import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 import CreateWorkspaceCard from "@/components/CreateWorkspaceCard";
+
 import CalendarGrid from "@/features/calendar/CalendarGrid";
 import CalendarToolbar from "@/features/calendar/CalendarToolbar";
 import DayTaskList from "@/features/calendar/DayTaskList";
@@ -17,17 +19,11 @@ import SettingsTab from "@/features/settings/SettingsTab";
 import {
   addMonths,
   endOfMonth,
-  formatKoreanDate,
   startOfMonth,
   toDateKey,
 } from "@/lib/date";
 
-import {
-  memberNameById,
-  statusLabel,
-  tabTitle,
-  verificationLabel,
-} from "@/lib/labels";
+import { tabTitle } from "@/lib/labels";
 
 import type {
   ActiveTab,
