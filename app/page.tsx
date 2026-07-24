@@ -8,6 +8,7 @@ import BottomNav from "@/components/BottomNav";
 import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 import CreateWorkspaceCard from "@/components/CreateWorkspaceCard";
 import CalendarGrid from "@/features/calendar/CalendarGrid";
+import CalendarToolbar from "@/features/calendar/CalendarToolbar";
 
 import {
   addMonths,
@@ -679,10 +680,6 @@ function SummaryStrip({ monthTaskCount, pendingCount, approvedCount }: { monthTa
   return <section style={summaryGridStyle}><div style={summaryCardStyle}><div style={summaryNumberStyle}>{monthTaskCount}</div><div style={summaryLabelStyle}>이번 달 미션</div></div><div style={summaryCardStyle}><div style={summaryNumberStyle}>{pendingCount}</div><div style={summaryLabelStyle}>승인 대기</div></div><div style={summaryCardStyle}><div style={summaryNumberStyle}>{approvedCount}</div><div style={summaryLabelStyle}>승인 완료</div></div></section>;
 }
 
-function CalendarToolbar({ currentMonth, onPrev, onNext, onToday }: { currentMonth: Date; onPrev: () => void; onNext: () => void; onToday: () => void; }) {
-  return <section style={calendarToolbarStyle}><button onClick={onPrev} style={monthButtonStyle}>‹</button><div style={monthTitleStyle}>{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</div><button onClick={onNext} style={monthButtonStyle}>›</button><button onClick={onToday} style={todayButtonStyle}>오늘</button></section>;
-}
-
 function DayTaskList({ selectedDate, tasks, members }: { selectedDate: string; tasks: Task[]; members: Member[]; }) {
   return <section style={dayTaskSectionStyle}><h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션</h2>{tasks.length === 0 ? <div style={emptyStateStyle}>이 날짜에 등록된 미션이 없습니다.</div> : <TaskList tasks={tasks} members={members} />}</section>;
 }
@@ -797,10 +794,6 @@ const summaryGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: 
 const summaryCardStyle: CSSProperties = { padding: 12, borderRadius: 16, background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center" };
 const summaryNumberStyle: CSSProperties = { fontSize: 20, fontWeight: 900, color: "#4f46e5" };
 const summaryLabelStyle: CSSProperties = { marginTop: 4, fontSize: 11, color: "#64748b", fontWeight: 800 };
-const calendarToolbarStyle: CSSProperties = { display: "grid", gridTemplateColumns: "44px 1fr 44px 64px", gap: 8, alignItems: "center", marginBottom: 12 };
-const monthButtonStyle: CSSProperties = { height: 44, border: "1px solid #e2e8f0", borderRadius: 14, background: "#fff", fontSize: 24, fontWeight: 800, cursor: "pointer" };
-const monthTitleStyle: CSSProperties = { textAlign: "center", fontWeight: 900, fontSize: 18 };
-const todayButtonStyle: CSSProperties = { height: 44, border: "none", borderRadius: 14, background: "#4f46e5", color: "#fff", fontWeight: 800, cursor: "pointer" };
 const sectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 20, letterSpacing: "-0.03em" };
 const dayTaskSectionStyle: CSSProperties = { marginBottom: 80 };
 const emptyStateStyle: CSSProperties = { padding: 18, borderRadius: 18, background: "#f8fafc", color: "#64748b", textAlign: "center" };
