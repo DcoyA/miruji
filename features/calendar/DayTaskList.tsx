@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Member, Task } from "@/types/app";
 import { formatKoreanDate } from "@/lib/date";
-import { statusLabel, verificationLabel, memberNameById } from "@/lib/labels";
 import TaskList from "@/features/tasks/TaskList";
 
 type DayTaskListProps = {
@@ -27,19 +26,6 @@ export default function DayTaskList({
     </section>
   );
 }
-
-  const color = colors[status] || colors.todo;
-
-  return {
-    height: "fit-content",
-    padding: "4px 8px",
-    borderRadius: 999,
-    background: color.bg,
-    color: color.text,
-    fontSize: 12,
-    fontWeight: 800,
-    whiteSpace: "nowrap",
-  };
 
 const dayTaskSectionStyle: CSSProperties = {
   marginBottom: 80,
