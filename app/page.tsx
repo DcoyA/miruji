@@ -38,6 +38,8 @@ type Task = {
   reward_points: number;
 };
 
+type ActiveTab = "calendar" | "missions" | "rewards" | "settings";
+
 const memberSelect = "id, profile_id, display_name, role, is_virtual";
 const taskSelect = "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points";
 
@@ -59,24 +61,29 @@ export default function Home() {
   const [members, setMembers] = useState<Member[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
 
+  const [activeTab, setActiveTab] = useState<ActiveTab>("calendar");
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
+
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDescription, setNewTaskDescription] = useState("");
+  const [newTaskAssignedMemberId, setNewTaskAssignedMemberId] = useState("");
+  const [newTaskVerificationType, setNewTaskVerificationType] = useState("none");
+  const [newTaskRewardPoints, setNewTaskRewardPoints] = useState(1);
 
   useEffect(() => {
     initializeAuth();
 
     const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
-        resetAppState();
+        resetState();
         setProfile(null);
         setAuthLoading(false);
         return;
       }
 
       const loadedProfile = await loadProfile(session.user.id);
-      if (loadedProfile) {
-        await loadWorkspaces(loadedProfile.id);
-      }
+      if (loadedProfile) await loadWorkspaces(loadedProfile.id);
       setAuthLoading(false);
     });
 
@@ -85,11 +92,14 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (workspace?.id) {
-      loadWorkspaceData(workspace.id);
-    }
+    if (workspace?.id) loadWorkspaceData(workspace.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace?.id, currentMonth.getFullYear(), currentMonth.getMonth()]);
+
+  const selectedTasks = useMemo(() => tasks.filter((task) => task.due_date === selectedDate), [tasks, selectedDate]);
+  const monthTaskCount = tasks.length;
+  const pendingCount = tasks.filter((task) => task.status === "submitted").length;
+  const approvedCount = tasks.filter((task) => task.status === "approved").length;
 
   async function initializeAuth() {
     setAuthLoading(true);
@@ -102,9 +112,7 @@ export default function Home() {
     }
 
     const loadedProfile = await loadProfile(data.user.id);
-    if (loadedProfile) {
-      await loadWorkspaces(loadedProfile.id);
-    }
+    if (loadedProfile) await loadWorkspaces(loadedProfile.id);
     setAuthLoading(false);
   }
 
@@ -124,21 +132,14 @@ export default function Home() {
     }
 
     if (data) {
-      const loaded = {
-        ...(data as Profile),
-        display_name: data.display_name || fallbackName,
-      };
+      const loaded = { ...(data as Profile), display_name: data.display_name || fallbackName };
       setProfile(loaded);
       return loaded;
     }
 
     const { data: created, error: createError } = await supabase
       .from("profiles")
-      .insert({
-        auth_user_id: authUserId,
-        display_name: fallbackName,
-        onboarding_completed: false,
-      })
+      .insert({ auth_user_id: authUserId, display_name: fallbackName, onboarding_completed: false })
       .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
       .single();
 
@@ -167,12 +168,7 @@ export default function Home() {
       options: { data: { display_name: authEmail.split("@")[0] } },
     });
 
-    if (error) {
-      setMessage(`회원가입 실패: ${error.message}`);
-    } else {
-      setMessage("회원가입 완료. 인증 메일 확인 후 로그인해주세요.");
-    }
-
+    setMessage(error ? `회원가입 실패: ${error.message}` : "회원가입 완료. 인증 메일 확인 후 로그인해주세요.");
     setLoading(false);
   }
 
@@ -207,7 +203,6 @@ export default function Home() {
       await loadWorkspaces(loadedProfile.id);
       setMessage("로그인 성공");
     }
-
     setLoading(false);
   }
 
@@ -231,7 +226,7 @@ export default function Home() {
       });
     }
 
-    resetAppState();
+    resetState();
     setProfile(null);
     setAuthEmail("");
     setAuthPassword("");
@@ -240,13 +235,18 @@ export default function Home() {
     setMessage("로그아웃 완료");
   }
 
-  function resetAppState() {
+  function resetState() {
     setWorkspaces([]);
     setWorkspace(null);
     setMembers([]);
     setTasks([]);
     setWorkspaceName("");
     setWorkspaceDescription("");
+    setNewTaskTitle("");
+    setNewTaskDescription("");
+    setNewTaskAssignedMemberId("");
+    setNewTaskVerificationType("none");
+    setNewTaskRewardPoints(1);
   }
 
   async function loadWorkspaces(profileId: string) {
@@ -264,9 +264,7 @@ export default function Home() {
     const list = (data || []) as Workspace[];
     setWorkspaces(list);
 
-    if (list.length > 0) {
-      setWorkspace((current) => current || list[0]);
-    }
+    if (list.length > 0) setWorkspace((current) => current || list[0]);
   }
 
   async function createWorkspace() {
@@ -285,11 +283,7 @@ export default function Home() {
 
     const { data: createdWorkspace, error: workspaceError } = await supabase
       .from("workspaces")
-      .insert({
-        name: workspaceName.trim(),
-        description: workspaceDescription.trim() || null,
-        created_by: profile.id,
-      })
+      .insert({ name: workspaceName.trim(), description: workspaceDescription.trim() || null, created_by: profile.id })
       .select("id, name, description")
       .single();
 
@@ -332,18 +326,8 @@ export default function Home() {
     const monthEnd = toDateKey(endOfMonth(currentMonth));
 
     const [membersResult, tasksResult] = await Promise.all([
-      supabase
-        .from("workspace_members")
-        .select(memberSelect)
-        .eq("workspace_id", workspaceId)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("tasks")
-        .select(taskSelect)
-        .eq("workspace_id", workspaceId)
-        .gte("due_date", monthStart)
-        .lte("due_date", monthEnd)
-        .order("due_date", { ascending: true }),
+      supabase.from("workspace_members").select(memberSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
+      supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd).order("due_date", { ascending: true }),
     ]);
 
     if (membersResult.error) {
@@ -360,9 +344,60 @@ export default function Home() {
     setTasks((tasksResult.data || []) as Task[]);
   }
 
-  const selectedTasks = useMemo(() => {
-    return tasks.filter((task) => task.due_date === selectedDate);
-  }, [tasks, selectedDate]);
+  async function createTask() {
+    if (!workspace) {
+      setMessage("워크스페이스를 먼저 선택해주세요.");
+      return;
+    }
+
+    if (!newTaskTitle.trim()) {
+      setMessage("미션 제목을 입력해주세요.");
+      return;
+    }
+
+    if (!newTaskAssignedMemberId) {
+      setMessage("미션을 받을 참여자를 선택해주세요.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const creatorMemberId = members.find((member) => member.role === "owner" || member.role === "manager")?.id || null;
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert({
+        workspace_id: workspace.id,
+        title: newTaskTitle.trim(),
+        description: newTaskDescription.trim() || null,
+        task_type: "custom",
+        status: "todo",
+        due_date: selectedDate,
+        assigned_member_id: newTaskAssignedMemberId,
+        verification_type: newTaskVerificationType,
+        verification_required: newTaskVerificationType !== "none",
+        reward_points: newTaskRewardPoints,
+        rollover_enabled: true,
+        created_by_member_id: creatorMemberId,
+      })
+      .select(taskSelect)
+      .single();
+
+    if (error) {
+      setMessage(`미션 생성 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setTasks((prev) => [...prev, data as Task]);
+    setNewTaskTitle("");
+    setNewTaskDescription("");
+    setNewTaskVerificationType("none");
+    setNewTaskRewardPoints(1);
+    setMessage("미션 생성 완료");
+    setLoading(false);
+  }
 
   if (authLoading) {
     return (
@@ -398,11 +433,9 @@ export default function Home() {
         <header style={topBarStyle}>
           <div>
             <div style={eyebrowStyle}>미루지말자</div>
-            <h1 style={headerTitleStyle}>캘린더</h1>
+            <h1 style={headerTitleStyle}>{tabTitle(activeTab)}</h1>
           </div>
-          <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>
-            로그아웃
-          </button>
+          <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>로그아웃</button>
         </header>
 
         <section style={accountBoxStyle}>
@@ -410,9 +443,7 @@ export default function Home() {
             <div style={smallLabelStyle}>로그인 중</div>
             <strong>{profile.display_name}</strong>
           </div>
-          <a href="/dev" style={devLinkStyle}>
-            개발화면
-          </a>
+          <a href="/dev" style={devLinkStyle}>개발화면</a>
         </section>
 
         {workspaces.length > 0 ? (
@@ -435,8 +466,9 @@ export default function Home() {
           />
         )}
 
-        {workspace && (
+        {workspace && activeTab === "calendar" && (
           <>
+            <SummaryStrip monthTaskCount={monthTaskCount} pendingCount={pendingCount} approvedCount={approvedCount} />
             <CalendarToolbar
               currentMonth={currentMonth}
               onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))}
@@ -447,19 +479,35 @@ export default function Home() {
                 setSelectedDate(toDateKey(today));
               }}
             />
-
-            <CalendarGrid
-              currentMonth={currentMonth}
-              selectedDate={selectedDate}
-              tasks={tasks}
-              onSelectDate={setSelectedDate}
-            />
-
+            <CalendarGrid currentMonth={currentMonth} selectedDate={selectedDate} tasks={tasks} onSelectDate={setSelectedDate} />
             <DayTaskList selectedDate={selectedDate} tasks={selectedTasks} members={members} />
           </>
         )}
 
-        {workspaces.length > 0 && (
+        {workspace && activeTab === "missions" && (
+          <MissionTab
+            selectedDate={selectedDate}
+            members={members}
+            tasks={selectedTasks}
+            title={newTaskTitle}
+            description={newTaskDescription}
+            assignedMemberId={newTaskAssignedMemberId}
+            verificationType={newTaskVerificationType}
+            rewardPoints={newTaskRewardPoints}
+            loading={loading}
+            onTitleChange={setNewTaskTitle}
+            onDescriptionChange={setNewTaskDescription}
+            onAssignedMemberIdChange={setNewTaskAssignedMemberId}
+            onVerificationTypeChange={setNewTaskVerificationType}
+            onRewardPointsChange={setNewTaskRewardPoints}
+            onCreate={createTask}
+          />
+        )}
+
+        {workspace && activeTab === "rewards" && <PlaceholderTab title="보상" text="다음 단계에서 보상 목록/교환 UI를 이 탭으로 옮깁니다." />}
+        {workspace && activeTab === "settings" && <PlaceholderTab title="설정" text="다음 단계에서 프로필 수정, 초대코드, 워크스페이스 설정을 붙입니다." />}
+
+        {workspaces.length > 0 && activeTab === "settings" && (
           <section style={secondarySectionStyle}>
             <h2 style={sectionTitleStyle}>새 워크스페이스</h2>
             <CreateWorkspaceCard
@@ -476,233 +524,63 @@ export default function Home() {
 
         {message && <div style={messageBoxStyle(message)}>{message}</div>}
 
-        <nav style={bottomNavStyle}>
-          <button style={bottomNavActiveStyle}>캘린더</button>
-          <button style={bottomNavButtonStyle}>미션</button>
-          <button style={bottomNavButtonStyle}>보상</button>
-          <button style={bottomNavButtonStyle}>설정</button>
-        </nav>
+        <BottomNav activeTab={activeTab} onChange={setActiveTab} />
       </div>
     </main>
   );
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <main style={pageStyle}>
-      <div style={phoneStyle}>{children}</div>
-    </main>
-  );
+  return <main style={pageStyle}><div style={phoneStyle}>{children}</div></main>;
 }
 
-function AuthPanel({
-  mode,
-  email,
-  password,
-  loading,
-  message,
-  onModeChange,
-  onEmailChange,
-  onPasswordChange,
-  onSignIn,
-  onSignUp,
-}: {
-  mode: "signin" | "signup";
-  email: string;
-  password: string;
-  loading: boolean;
-  message: string;
-  onModeChange: (mode: "signin" | "signup") => void;
-  onEmailChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
-  onSignIn: () => void;
-  onSignUp: () => void;
-}) {
-  return (
-    <>
-      <h1 style={titleStyle}>미루지말자</h1>
-      <p style={subTextStyle}>부모와 자녀가 함께 쓰는 미션형 클라우드 다이어리</p>
-
-      <div style={tabGridStyle}>
-        <button onClick={() => onModeChange("signin")} style={mode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}>
-          로그인
-        </button>
-        <button onClick={() => onModeChange("signup")} style={mode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}>
-          회원가입
-        </button>
-      </div>
-
-      <input value={email} onChange={(event) => onEmailChange(event.target.value)} placeholder="이메일" style={inputStyle} />
-      <input value={password} onChange={(event) => onPasswordChange(event.target.value)} placeholder="비밀번호" type="password" style={inputStyle} />
-
-      {mode === "signin" ? (
-        <button onClick={onSignIn} disabled={loading} style={primaryButtonStyle(loading)}>
-          {loading ? "로그인 중..." : "로그인"}
-        </button>
-      ) : (
-        <button onClick={onSignUp} disabled={loading} style={primaryButtonStyle(loading)}>
-          {loading ? "가입 중..." : "회원가입"}
-        </button>
-      )}
-
-      {message && <div style={messageBoxStyle(message)}>{message}</div>}
-    </>
-  );
+function AuthPanel({ mode, email, password, loading, message, onModeChange, onEmailChange, onPasswordChange, onSignIn, onSignUp }: { mode: "signin" | "signup"; email: string; password: string; loading: boolean; message: string; onModeChange: (mode: "signin" | "signup") => void; onEmailChange: (value: string) => void; onPasswordChange: (value: string) => void; onSignIn: () => void; onSignUp: () => void; }) {
+  return <><h1 style={titleStyle}>미루지말자</h1><p style={subTextStyle}>부모와 자녀가 함께 쓰는 미션형 클라우드 다이어리</p><div style={tabGridStyle}><button onClick={() => onModeChange("signin")} style={mode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}>로그인</button><button onClick={() => onModeChange("signup")} style={mode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}>회원가입</button></div><input value={email} onChange={(event) => onEmailChange(event.target.value)} placeholder="이메일" style={inputStyle} /><input value={password} onChange={(event) => onPasswordChange(event.target.value)} placeholder="비밀번호" type="password" style={inputStyle} />{mode === "signin" ? <button onClick={onSignIn} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "로그인 중..." : "로그인"}</button> : <button onClick={onSignUp} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "가입 중..." : "회원가입"}</button>}{message && <div style={messageBoxStyle(message)}>{message}</div>}</>;
 }
 
-function WorkspaceSwitcher({
-  workspaces,
-  currentWorkspaceId,
-  onSelect,
-}: {
-  workspaces: Workspace[];
-  currentWorkspaceId: string;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <section style={workspaceSwitcherStyle}>
-      <label style={smallLabelStyle}>워크스페이스</label>
-      <select value={currentWorkspaceId} onChange={(event) => onSelect(event.target.value)} style={selectStyle}>
-        {workspaces.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.name}
-          </option>
-        ))}
-      </select>
-    </section>
-  );
+function WorkspaceSwitcher({ workspaces, currentWorkspaceId, onSelect }: { workspaces: Workspace[]; currentWorkspaceId: string; onSelect: (id: string) => void; }) {
+  return <section style={workspaceSwitcherStyle}><label style={smallLabelStyle}>워크스페이스</label><select value={currentWorkspaceId} onChange={(event) => onSelect(event.target.value)} style={selectStyle}>{workspaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></section>;
 }
 
-function CreateWorkspaceCard({
-  name,
-  description,
-  loading,
-  compact,
-  onNameChange,
-  onDescriptionChange,
-  onCreate,
-}: {
-  name: string;
-  description: string;
-  loading: boolean;
-  compact?: boolean;
-  onNameChange: (value: string) => void;
-  onDescriptionChange: (value: string) => void;
-  onCreate: () => void;
-}) {
-  return (
-    <section style={compact ? compactCreateBoxStyle : createBoxStyle}>
-      {!compact && <h2 style={sectionTitleStyle}>첫 워크스페이스 만들기</h2>}
-      <input value={name} onChange={(event) => onNameChange(event.target.value)} placeholder="예) 우리집" style={inputStyle} />
-      <textarea value={description} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
-      <button onClick={onCreate} disabled={loading} style={primaryButtonStyle(loading)}>
-        {loading ? "생성 중..." : "워크스페이스 만들기"}
-      </button>
-    </section>
-  );
+function CreateWorkspaceCard({ name, description, loading, compact, onNameChange, onDescriptionChange, onCreate }: { name: string; description: string; loading: boolean; compact?: boolean; onNameChange: (value: string) => void; onDescriptionChange: (value: string) => void; onCreate: () => void; }) {
+  return <section style={compact ? compactCreateBoxStyle : createBoxStyle}>{!compact && <h2 style={sectionTitleStyle}>첫 워크스페이스 만들기</h2>}<input value={name} onChange={(event) => onNameChange(event.target.value)} placeholder="예) 우리집" style={inputStyle} /><textarea value={description} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><button onClick={onCreate} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "워크스페이스 만들기"}</button></section>;
 }
 
-function CalendarToolbar({
-  currentMonth,
-  onPrev,
-  onNext,
-  onToday,
-}: {
-  currentMonth: Date;
-  onPrev: () => void;
-  onNext: () => void;
-  onToday: () => void;
-}) {
-  return (
-    <section style={calendarToolbarStyle}>
-      <button onClick={onPrev} style={monthButtonStyle}>‹</button>
-      <div style={monthTitleStyle}>{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</div>
-      <button onClick={onNext} style={monthButtonStyle}>›</button>
-      <button onClick={onToday} style={todayButtonStyle}>오늘</button>
-    </section>
-  );
+function SummaryStrip({ monthTaskCount, pendingCount, approvedCount }: { monthTaskCount: number; pendingCount: number; approvedCount: number; }) {
+  return <section style={summaryGridStyle}><div style={summaryCardStyle}><div style={summaryNumberStyle}>{monthTaskCount}</div><div style={summaryLabelStyle}>이번 달 미션</div></div><div style={summaryCardStyle}><div style={summaryNumberStyle}>{pendingCount}</div><div style={summaryLabelStyle}>승인 대기</div></div><div style={summaryCardStyle}><div style={summaryNumberStyle}>{approvedCount}</div><div style={summaryLabelStyle}>승인 완료</div></div></section>;
 }
 
-function CalendarGrid({
-  currentMonth,
-  selectedDate,
-  tasks,
-  onSelectDate,
-}: {
-  currentMonth: Date;
-  selectedDate: string;
-  tasks: Task[];
-  onSelectDate: (date: string) => void;
-}) {
+function CalendarToolbar({ currentMonth, onPrev, onNext, onToday }: { currentMonth: Date; onPrev: () => void; onNext: () => void; onToday: () => void; }) {
+  return <section style={calendarToolbarStyle}><button onClick={onPrev} style={monthButtonStyle}>‹</button><div style={monthTitleStyle}>{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</div><button onClick={onNext} style={monthButtonStyle}>›</button><button onClick={onToday} style={todayButtonStyle}>오늘</button></section>;
+}
+
+function CalendarGrid({ currentMonth, selectedDate, tasks, onSelectDate }: { currentMonth: Date; selectedDate: string; tasks: Task[]; onSelectDate: (date: string) => void; }) {
   const days = buildCalendarDays(currentMonth);
-
-  return (
-    <section style={calendarBoxStyle}>
-      <div style={weekHeaderGridStyle}>
-        {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
-          <div key={day} style={weekHeaderStyle}>{day}</div>
-        ))}
-      </div>
-      <div style={calendarGridStyle}>
-        {days.map((day) => {
-          const dateKey = toDateKey(day);
-          const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
-          const isSelected = dateKey === selectedDate;
-          const dayTasks = tasks.filter((task) => task.due_date === dateKey);
-          const approved = dayTasks.filter((task) => task.status === "approved").length;
-          const pending = dayTasks.filter((task) => task.status === "submitted").length;
-
-          return (
-            <button
-              key={dateKey}
-              onClick={() => onSelectDate(dateKey)}
-              style={{
-                ...calendarDayStyle,
-                opacity: isCurrentMonth ? 1 : 0.35,
-                borderColor: isSelected ? "#4f46e5" : "#e2e8f0",
-                background: isSelected ? "#eef2ff" : "#fff",
-              }}
-            >
-              <div style={dayNumberStyle}>{day.getDate()}</div>
-              {dayTasks.length > 0 && (
-                <div style={dayMetaStyle}>
-                  <span>{dayTasks.length}</span>
-                  {pending > 0 && <span style={pendingDotStyle} />}
-                  {approved > 0 && <span style={approvedDotStyle} />}
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
+  return <section style={calendarBoxStyle}><div style={weekHeaderGridStyle}>{["일", "월", "화", "수", "목", "금", "토"].map((day) => <div key={day} style={weekHeaderStyle}>{day}</div>)}</div><div style={calendarGridStyle}>{days.map((day) => { const dateKey = toDateKey(day); const isCurrentMonth = day.getMonth() === currentMonth.getMonth(); const isSelected = dateKey === selectedDate; const dayTasks = tasks.filter((task) => task.due_date === dateKey); const approved = dayTasks.filter((task) => task.status === "approved").length; const pending = dayTasks.filter((task) => task.status === "submitted").length; return <button key={dateKey} onClick={() => onSelectDate(dateKey)} style={{ ...calendarDayStyle, opacity: isCurrentMonth ? 1 : 0.35, borderColor: isSelected ? "#4f46e5" : "#e2e8f0", background: isSelected ? "#eef2ff" : "#fff" }}><div style={dayNumberStyle}>{day.getDate()}</div>{dayTasks.length > 0 && <div style={dayMetaStyle}><span>{dayTasks.length}</span>{pending > 0 && <span style={pendingDotStyle} />}{approved > 0 && <span style={approvedDotStyle} />}</div>}</button>; })}</div></section>;
 }
 
-function DayTaskList({ selectedDate, tasks, members }: { selectedDate: string; tasks: Task[]; members: Member[] }) {
-  return (
-    <section style={dayTaskSectionStyle}>
-      <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션</h2>
-      {tasks.length === 0 ? (
-        <div style={emptyStateStyle}>이 날짜에 등록된 미션이 없습니다.</div>
-      ) : (
-        <div style={taskListStyle}>
-          {tasks.map((task) => (
-            <div key={task.id} style={taskCardStyle}>
-              <div>
-                <div style={taskTitleStyle}>{task.title}</div>
-                <div style={taskSubTextStyle}>대상: {memberNameById(members, task.assigned_member_id)}</div>
-                <div style={taskSubTextStyle}>인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개</div>
-              </div>
-              <span style={statusBadgeStyle(task.status)}>{statusLabel(task.status)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
+function DayTaskList({ selectedDate, tasks, members }: { selectedDate: string; tasks: Task[]; members: Member[]; }) {
+  return <section style={dayTaskSectionStyle}><h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션</h2>{tasks.length === 0 ? <div style={emptyStateStyle}>이 날짜에 등록된 미션이 없습니다.</div> : <TaskList tasks={tasks} members={members} />}</section>;
 }
 
+function MissionTab({ selectedDate, members, tasks, title, description, assignedMemberId, verificationType, rewardPoints, loading, onTitleChange, onDescriptionChange, onAssignedMemberIdChange, onVerificationTypeChange, onRewardPointsChange, onCreate }: { selectedDate: string; members: Member[]; tasks: Task[]; title: string; description: string; assignedMemberId: string; verificationType: string; rewardPoints: number; loading: boolean; onTitleChange: (value: string) => void; onDescriptionChange: (value: string) => void; onAssignedMemberIdChange: (value: string) => void; onVerificationTypeChange: (value: string) => void; onRewardPointsChange: (value: number) => void; onCreate: () => void; }) {
+  return <><section style={createBoxStyle}><h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션 추가</h2><input value={title} onChange={(event) => onTitleChange(event.target.value)} placeholder="예) 피아노 100번 치기" style={inputStyle} /><textarea value={description} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><select value={assignedMemberId} onChange={(event) => onAssignedMemberIdChange(event.target.value)} style={inputStyle}><option value="">미션 받을 참여자 선택</option>{members.map((member) => <option key={member.id} value={member.id}>{member.display_name}</option>)}</select><select value={verificationType} onChange={(event) => onVerificationTypeChange(event.target.value)} style={inputStyle}><option value="none">인증 없음</option><option value="text">텍스트 인증</option><option value="photo">사진 인증</option><option value="video">영상 인증</option><option value="audio">음성 인증</option></select><input type="number" min={0} value={rewardPoints} onChange={(event) => onRewardPointsChange(Number(event.target.value))} placeholder="스티커 개수" style={inputStyle} /><button onClick={onCreate} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "미션 만들기"}</button></section><section style={dayTaskSectionStyle}><h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션 목록</h2>{tasks.length === 0 ? <div style={emptyStateStyle}>이 날짜에 등록된 미션이 없습니다.</div> : <TaskList tasks={tasks} members={members} />}</section></>;
+}
+
+function TaskList({ tasks, members }: { tasks: Task[]; members: Member[]; }) {
+  return <div style={taskListStyle}>{tasks.map((task) => <div key={task.id} style={taskCardStyle}><div><div style={taskTitleStyle}>{task.title}</div><div style={taskSubTextStyle}>대상: {memberNameById(members, task.assigned_member_id)}</div><div style={taskSubTextStyle}>인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개</div></div><span style={statusBadgeStyle(task.status)}>{statusLabel(task.status)}</span></div>)}</div>;
+}
+
+function PlaceholderTab({ title, text }: { title: string; text: string; }) {
+  return <section style={createBoxStyle}><h2 style={sectionTitleStyle}>{title}</h2><p style={subTextStyle}>{text}</p></section>;
+}
+
+function BottomNav({ activeTab, onChange }: { activeTab: ActiveTab; onChange: (tab: ActiveTab) => void; }) {
+  const items: { key: ActiveTab; label: string }[] = [{ key: "calendar", label: "캘린더" }, { key: "missions", label: "미션" }, { key: "rewards", label: "보상" }, { key: "settings", label: "설정" }];
+  return <nav style={bottomNavStyle}>{items.map((item) => <button key={item.key} onClick={() => onChange(item.key)} style={activeTab === item.key ? bottomNavActiveStyle : bottomNavButtonStyle}>{item.label}</button>)}</nav>;
+}
+
+function tabTitle(tab: ActiveTab) { if (tab === "missions") return "미션"; if (tab === "rewards") return "보상"; if (tab === "settings") return "설정"; return "캘린더"; }
 function startOfMonth(date: Date) { return new Date(date.getFullYear(), date.getMonth(), 1); }
 function endOfMonth(date: Date) { return new Date(date.getFullYear(), date.getMonth() + 1, 0); }
 function addMonths(date: Date, amount: number) { return new Date(date.getFullYear(), date.getMonth() + amount, 1); }
@@ -714,6 +592,7 @@ function verificationLabel(type: string) { if (type === "text") return "텍스�
 function statusLabel(status: string) { if (status === "todo") return "대기"; if (status === "submitted") return "제출됨"; if (status === "approved") return "승인됨"; if (status === "rejected") return "반려됨"; return status; }
 function statusBadgeStyle(status: string): CSSProperties { const colors: Record<string, { bg: string; text: string }> = { todo: { bg: "#fef3c7", text: "#92400e" }, submitted: { bg: "#dbeafe", text: "#1d4ed8" }, approved: { bg: "#dcfce7", text: "#15803d" }, rejected: { bg: "#fee2e2", text: "#b91c1c" } }; const color = colors[status] || colors.todo; return { height: "fit-content", padding: "4px 8px", borderRadius: 999, background: color.bg, color: color.text, fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }; }
 function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer" }; }
+
 const pageStyle: CSSProperties = { minHeight: "100vh", background: "#e2f3f1", padding: 16, display: "flex", justifyContent: "center", alignItems: "flex-start" };
 const phoneStyle: CSSProperties = { width: "100%", maxWidth: 480, minHeight: "calc(100vh - 32px)", background: "#fff", borderRadius: 28, padding: 22, boxShadow: "0 20px 60px rgba(15,23,42,0.12)" };
 const topBarStyle: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16 };
@@ -732,6 +611,10 @@ const workspaceSwitcherStyle: CSSProperties = { marginBottom: 18 };
 const selectStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #dbeafe", background: "#fff", fontWeight: 700 };
 const createBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18 };
 const compactCreateBoxStyle: CSSProperties = { marginTop: 12 };
+const summaryGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 14 };
+const summaryCardStyle: CSSProperties = { padding: 12, borderRadius: 16, background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center" };
+const summaryNumberStyle: CSSProperties = { fontSize: 20, fontWeight: 900, color: "#4f46e5" };
+const summaryLabelStyle: CSSProperties = { marginTop: 4, fontSize: 11, color: "#64748b", fontWeight: 800 };
 const calendarToolbarStyle: CSSProperties = { display: "grid", gridTemplateColumns: "44px 1fr 44px 64px", gap: 8, alignItems: "center", marginBottom: 12 };
 const monthButtonStyle: CSSProperties = { height: 44, border: "1px solid #e2e8f0", borderRadius: 14, background: "#fff", fontSize: 24, fontWeight: 800, cursor: "pointer" };
 const monthTitleStyle: CSSProperties = { textAlign: "center", fontWeight: 900, fontSize: 18 };
