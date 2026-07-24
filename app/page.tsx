@@ -116,7 +116,20 @@ export default function Home() {
   const selectedTasks = useMemo(() => {
     return tasks.filter((task) => task.due_date === selectedDate);
   }, [tasks, selectedDate]);
-
+  
+  const currentMember = useMemo(() => {
+    if (!profile) return null;
+  
+    return (
+      members.find((member) => member.profile_id === profile.id) || null
+    );
+  }, [members, profile]);
+  
+  const isManager =
+    currentMember?.role === "owner" || currentMember?.role === "manager";
+  
+  const isMember = currentMember?.role === "member";
+  
   const monthTaskCount = tasks.length;
   const pendingCount = tasks.filter((task) => task.status === "submitted").length;
   const approvedCount = tasks.filter((task) => task.status === "approved").length;
@@ -837,6 +850,8 @@ export default function Home() {
           onVerificationTypeChange={setNewTaskVerificationType}
           onRewardPointsChange={setNewTaskRewardPoints}
           onCreate={createTask}
+          currentMember={currentMember}
+          isManager={isManager}
         />
       )}
 
@@ -856,6 +871,8 @@ export default function Home() {
           onCostPointsChange={setNewRewardCostPoints}
           onCreate={createReward}
           onRedeem={redeemReward}
+          currentMember={currentMember}
+          isManager={isManager}
         />
       )}
 
@@ -880,6 +897,8 @@ export default function Home() {
           joinInviteCode={joinInviteCode}
           onJoinInviteCodeChange={setJoinInviteCode}
           onAcceptInvite={acceptInviteCode}
+          currentMember={currentMember}
+          isManager={isManager}
         />
       )}
 
