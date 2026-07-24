@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
+import AuthPanel from "@/components/AuthPanel";
 
 import {
   addMonths,
@@ -657,10 +658,6 @@ export default function Home() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return <main style={pageStyle}><div style={phoneStyle}>{children}</div></main>;
-}
-
-function AuthPanel({ mode, email, password, loading, message, onModeChange, onEmailChange, onPasswordChange, onSignIn, onSignUp }: { mode: "signin" | "signup"; email: string; password: string; loading: boolean; message: string; onModeChange: (mode: "signin" | "signup") => void; onEmailChange: (value: string) => void; onPasswordChange: (value: string) => void; onSignIn: () => void; onSignUp: () => void; }) {
-  return <><h1 style={titleStyle}>미루지말자</h1><p style={subTextStyle}>부모와 자녀가 함께 쓰는 미션형 클라우드 다이어리</p><div style={tabGridStyle}><button onClick={() => onModeChange("signin")} style={mode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}>로그인</button><button onClick={() => onModeChange("signup")} style={mode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}>회원가입</button></div><input value={email} onChange={(event) => onEmailChange(event.target.value)} placeholder="이메일" style={inputStyle} /><input value={password} onChange={(event) => onPasswordChange(event.target.value)} placeholder="비밀번호" type="password" style={inputStyle} />{mode === "signin" ? <button onClick={onSignIn} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "로그인 중..." : "로그인"}</button> : <button onClick={onSignUp} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "가입 중..." : "회원가입"}</button>}{message && <div style={messageBoxStyle(message)}>{message}</div>}</>;
 }
 
 function WorkspaceSwitcher({ workspaces, currentWorkspaceId, onSelect }: { workspaces: Workspace[]; currentWorkspaceId: string; onSelect: (id: string) => void; }) {
