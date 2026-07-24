@@ -5,7 +5,7 @@ type MemberRole = "manager" | "member";
 
 type SettingsTabProps = {
   workspaces: Workspace[];
-  workspace: Workspace;
+  workspace: Workspace | null;
   members: Member[];
 
   workspaceName: string;
@@ -54,6 +54,8 @@ export default function SettingsTab({
   onJoinInviteCodeChange,
   onAcceptInvite,
 }: SettingsTabProps) {
+  const hasWorkspace = Boolean(workspace);
+
   return (
     <>
       <section style={createBoxStyle}>
@@ -63,13 +65,27 @@ export default function SettingsTab({
           워크스페이스, 참여자, 초대코드를 관리합니다.
         </p>
 
-        <div style={settingLineStyle}>
-          현재 워크스페이스: <strong>{workspace.name}</strong>
-        </div>
+        {workspace ? (
+          <>
+            <div style={settingLineStyle}>
+              현재 워크스페이스: <strong>{workspace.name}</strong>
+            </div>
 
-        <div style={settingLineStyle}>워크스페이스 수: {workspaces.length}</div>
+            <div style={settingLineStyle}>
+              워크스페이스 수: {workspaces.length}
+            </div>
 
-        <div style={settingLineStyle}>참여자 수: {members.length}</div>
+            <div style={settingLineStyle}>
+              참여자 수: {members.length}
+            </div>
+          </>
+        ) : (
+          <div style={emptyStateStyle}>
+            아직 참여 중인 워크스페이스가 없습니다.
+            <br />
+            초대코드를 입력하거나 새 워크스페이스를 만들어주세요.
+          </div>
+        )}
       </section>
 
       <section style={createBoxStyle}>
@@ -97,81 +113,87 @@ export default function SettingsTab({
         </button>
       </section>
 
-      <section style={createBoxStyle}>
-        <h2 style={sectionTitleStyle}>참여자 추가</h2>
+      {hasWorkspace && (
+        <>
+          <section style={createBoxStyle}>
+            <h2 style={sectionTitleStyle}>참여자 추가</h2>
 
-        <p style={subTextStyle}>
-          먼저 가상 참여자를 만들고, 초대코드로 실제 계정과 연결합니다.
-        </p>
+            <p style={subTextStyle}>
+              먼저 가상 참여자를 만들고, 초대코드로 실제 계정과 연결합니다.
+            </p>
 
-        <input
-          value={newMemberName}
-          onChange={(event) => onNewMemberNameChange(event.target.value)}
-          placeholder="예) 첫째, 아빠, 엄마, 토끼"
-          style={inputStyle}
-        />
+            <input
+              value={newMemberName}
+              onChange={(event) => onNewMemberNameChange(event.target.value)}
+              placeholder="예) 첫째, 아빠, 엄마, 토끼"
+              style={inputStyle}
+            />
 
-        <select
-          value={newMemberRole}
-          onChange={(event) =>
-            onNewMemberRoleChange(event.target.value as MemberRole)
-          }
-          style={inputStyle}
-        >
-          <option value="member">참여자</option>
-          <option value="manager">보호자/관리자</option>
-        </select>
+            <select
+              value={newMemberRole}
+              onChange={(event) =>
+                onNewMemberRoleChange(event.target.value as MemberRole)
+              }
+              style={inputStyle}
+            >
+              <option value="member">참여자</option>
+              <option value="manager">보호자/관리자</option>
+            </select>
 
-        <button
-          onClick={onAddMember}
-          disabled={loading}
-          style={primaryButtonStyle(loading)}
-        >
-          {loading ? "추가 중..." : "참여자 추가"}
-        </button>
-      </section>
+            <button
+              onClick={onAddMember}
+              disabled={loading}
+              style={primaryButtonStyle(loading)}
+            >
+              {loading ? "추가 중..." : "참여자 추가"}
+            </button>
+          </section>
 
-      <section style={createBoxStyle}>
-        <h2 style={sectionTitleStyle}>참여자 목록</h2>
+          <section style={createBoxStyle}>
+            <h2 style={sectionTitleStyle}>참여자 목록</h2>
 
-        {members.length === 0 ? (
-          <div style={emptyStateStyle}>아직 참여자가 없습니다.</div>
-        ) : (
-          <div style={memberListStyle}>
-            {members.map((member) => (
-              <div key={member.id} style={memberCardStyle}>
-                <div>
-                  <div style={memberNameStyle}>{member.display_name}</div>
+            {members.length === 0 ? (
+              <div style={emptyStateStyle}>아직 참여자가 없습니다.</div>
+            ) : (
+              <div style={memberListStyle}>
+                {members.map((member) => (
+                  <div key={member.id} style={memberCardStyle}>
+                    <div>
+                      <div style={memberNameStyle}>{member.display_name}</div>
 
-                  <div style={memberMetaStyle}>
-                    {roleLabel(member.role)} ·{" "}
-                    {member.is_virtual ? "초대 대기" : "계정 연결됨"}
-                  </div>
+                      <div style={memberMetaStyle}>
+                        {roleLabel(member.role)} ·{" "}
+                        {member.is_virtual ? "초대 대기" : "계정 연결됨"}
+                      </div>
 
-                  {inviteCodes[member.id] && (
-                    <div style={inviteCodeBoxStyle}>
-                      초대코드: <strong>{inviteCodes[member.id]}</strong>
+                      {inviteCodes[member.id] && (
+                        <div style={inviteCodeBoxStyle}>
+                          초대코드: <strong>{inviteCodes[member.id]}</strong>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                {member.is_virtual && (
-                  <button
-                    onClick={() => onCreateInvite(member)}
-                    disabled={loading}
-                    style={smallButtonStyle}
-                  >
-                    초대코드 생성
-                  </button>
-                )}
+                    {member.is_virtual && (
+                      <button
+                        onClick={() => onCreateInvite(member)}
+                        disabled={loading}
+                        style={smallButtonStyle}
+                      >
+                        초대코드 생성
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            )}
+          </section>
+        </>
+      )}
 
       <section style={createBoxStyle}>
-        <h2 style={sectionTitleStyle}>새 워크스페이스 만들기</h2>
+        <h2 style={sectionTitleStyle}>
+          {hasWorkspace ? "새 워크스페이스 만들기" : "첫 워크스페이스 만들기"}
+        </h2>
 
         <p style={subTextStyle}>
           가족, 팀, 클래스처럼 별도 공간이 필요하면 새 워크스페이스를 만들 수 있습니다.
@@ -255,6 +277,7 @@ const emptyStateStyle: CSSProperties = {
   background: "#fff",
   color: "#64748b",
   textAlign: "center",
+  lineHeight: 1.6,
 };
 
 const memberListStyle: CSSProperties = {
