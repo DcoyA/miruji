@@ -7,10 +7,10 @@ import AuthPanel from "@/components/AuthPanel";
 import BottomNav from "@/components/BottomNav";
 import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 import CreateWorkspaceCard from "@/components/CreateWorkspaceCard";
+import CalendarGrid from "@/features/calendar/CalendarGrid";
 
 import {
   addMonths,
-  buildCalendarDays,
   endOfMonth,
   formatKoreanDate,
   startOfMonth,
@@ -683,11 +683,6 @@ function CalendarToolbar({ currentMonth, onPrev, onNext, onToday }: { currentMon
   return <section style={calendarToolbarStyle}><button onClick={onPrev} style={monthButtonStyle}>‹</button><div style={monthTitleStyle}>{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</div><button onClick={onNext} style={monthButtonStyle}>›</button><button onClick={onToday} style={todayButtonStyle}>오늘</button></section>;
 }
 
-function CalendarGrid({ currentMonth, selectedDate, tasks, onSelectDate }: { currentMonth: Date; selectedDate: string; tasks: Task[]; onSelectDate: (date: string) => void; }) {
-  const days = buildCalendarDays(currentMonth);
-  return <section style={calendarBoxStyle}><div style={weekHeaderGridStyle}>{["일", "월", "화", "수", "목", "금", "토"].map((day) => <div key={day} style={weekHeaderStyle}>{day}</div>)}</div><div style={calendarGridStyle}>{days.map((day) => { const dateKey = toDateKey(day); const isCurrentMonth = day.getMonth() === currentMonth.getMonth(); const isSelected = dateKey === selectedDate; const dayTasks = tasks.filter((task) => task.due_date === dateKey); const approved = dayTasks.filter((task) => task.status === "approved").length; const pending = dayTasks.filter((task) => task.status === "submitted").length; return <button key={dateKey} onClick={() => onSelectDate(dateKey)} style={{ ...calendarDayStyle, opacity: isCurrentMonth ? 1 : 0.35, borderColor: isSelected ? "#4f46e5" : "#e2e8f0", background: isSelected ? "#eef2ff" : "#fff" }}><div style={dayNumberStyle}>{day.getDate()}</div>{dayTasks.length > 0 && <div style={dayMetaStyle}><span>{dayTasks.length}</span>{pending > 0 && <span style={pendingDotStyle} />}{approved > 0 && <span style={approvedDotStyle} />}</div>}</button>; })}</div></section>;
-}
-
 function DayTaskList({ selectedDate, tasks, members }: { selectedDate: string; tasks: Task[]; members: Member[]; }) {
   return <section style={dayTaskSectionStyle}><h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션</h2>{tasks.length === 0 ? <div style={emptyStateStyle}>이 날짜에 등록된 미션이 없습니다.</div> : <TaskList tasks={tasks} members={members} />}</section>;
 }
@@ -806,15 +801,6 @@ const calendarToolbarStyle: CSSProperties = { display: "grid", gridTemplateColum
 const monthButtonStyle: CSSProperties = { height: 44, border: "1px solid #e2e8f0", borderRadius: 14, background: "#fff", fontSize: 24, fontWeight: 800, cursor: "pointer" };
 const monthTitleStyle: CSSProperties = { textAlign: "center", fontWeight: 900, fontSize: 18 };
 const todayButtonStyle: CSSProperties = { height: 44, border: "none", borderRadius: 14, background: "#4f46e5", color: "#fff", fontWeight: 800, cursor: "pointer" };
-const calendarBoxStyle: CSSProperties = { border: "1px solid #e2e8f0", borderRadius: 20, padding: 12, marginBottom: 18 };
-const weekHeaderGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 8 };
-const weekHeaderStyle: CSSProperties = { textAlign: "center", color: "#94a3b8", fontSize: 12, fontWeight: 800 };
-const calendarGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 };
-const calendarDayStyle: CSSProperties = { minHeight: 54, border: "1px solid #e2e8f0", borderRadius: 14, background: "#fff", padding: 6, textAlign: "left", cursor: "pointer" };
-const dayNumberStyle: CSSProperties = { fontWeight: 800, fontSize: 13 };
-const dayMetaStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 4, marginTop: 8, fontSize: 11, color: "#64748b", fontWeight: 800 };
-const pendingDotStyle: CSSProperties = { width: 6, height: 6, borderRadius: 999, background: "#3b82f6" };
-const approvedDotStyle: CSSProperties = { width: 6, height: 6, borderRadius: 999, background: "#22c55e" };
 const sectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 20, letterSpacing: "-0.03em" };
 const dayTaskSectionStyle: CSSProperties = { marginBottom: 80 };
 const emptyStateStyle: CSSProperties = { padding: 18, borderRadius: 18, background: "#f8fafc", color: "#64748b", textAlign: "center" };
