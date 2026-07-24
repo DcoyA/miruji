@@ -809,3 +809,14 @@ const taskListStyle: CSSProperties = {
   flexDirection: "column",
   gap: 10,
 };
+
+const taskTitleStyle: CSSProperties = {
+  fontWeight: 900,
+  fontSize: 16,
+};
+
+const taskSubTextStyle: CSSProperties = {
+  marginTop: 5,
+  color: "#64748b",
+  fontSize: 13,
+};
