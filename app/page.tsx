@@ -10,6 +10,7 @@ import CreateWorkspaceCard from "@/components/CreateWorkspaceCard";
 import CalendarGrid from "@/features/calendar/CalendarGrid";
 import CalendarToolbar from "@/features/calendar/CalendarToolbar";
 import DayTaskList from "@/features/calendar/DayTaskList";
+import TaskList from "@/features/tasks/TaskList";
 
 import {
   addMonths,
@@ -689,10 +690,6 @@ function RewardTab({ members, rewards, title, description, targetMemberId, costP
   return <><section style={createBoxStyle}><h2 style={sectionTitleStyle}>보상 만들기</h2><p style={subTextStyle}>모은 스티커로 교환할 수 있는 보상을 등록하세요.</p><input value={title} onChange={(event) => onTitleChange(event.target.value)} placeholder="예) 게임 30분, 떡볶이 먹기" style={inputStyle} /><textarea value={description} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><select value={targetMemberId} onChange={(event) => onTargetMemberIdChange(event.target.value)} style={inputStyle}><option value="">보상 대상 참여자 선택</option>{members.map((member) => <option key={member.id} value={member.id}>{member.display_name} · 스티커 {balanceByMemberId(member.id)}개</option>)}</select><input type="number" min={0} value={costPoints} onChange={(event) => onCostPointsChange(Number(event.target.value))} placeholder="필요 스티커 개수" style={inputStyle} /><button onClick={onCreate} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "보상 만들기"}</button></section><section style={dayTaskSectionStyle}><h2 style={sectionTitleStyle}>보상 목록</h2>{rewards.length === 0 ? <div style={emptyStateStyle}>등록된 보상이 없습니다.</div> : <div style={taskListStyle}>{rewards.map((reward) => { const balance = reward.target_member_id ? balanceByMemberId(reward.target_member_id) : 0; const canRedeem = reward.status !== "redeemed" && balance >= reward.cost_points; return <div key={reward.id} style={rewardCardStyle}><div><div style={taskTitleStyle}>{reward.title}</div>{reward.description && <div style={taskSubTextStyle}>{reward.description}</div>}<div style={taskSubTextStyle}>대상: {memberNameById(members, reward.target_member_id)} · 필요 {reward.cost_points}개 · 현재 {balance}개</div></div>{reward.status === "redeemed" ? <span style={statusBadgeStyle("approved")}>교환 완료</span> : <button onClick={() => onRedeem(reward)} disabled={loading || !canRedeem} style={canRedeem ? rewardButtonStyle : disabledRewardButtonStyle}>교환하기</button>}</div>; })}</div>}</section></>;
 }
 
-function TaskList({ tasks, members }: { tasks: Task[]; members: Member[]; }) {
-  return <div style={taskListStyle}>{tasks.map((task) => <div key={task.id} style={taskCardStyle}><div><div style={taskTitleStyle}>{task.title}</div><div style={taskSubTextStyle}>대상: {memberNameById(members, task.assigned_member_id)}</div><div style={taskSubTextStyle}>인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개</div></div><span style={statusBadgeStyle(task.status)}>{statusLabel(task.status)}</span></div>)}</div>;
-}
-
 function SettingsTab({
   workspaces,
   workspace,
@@ -794,11 +791,7 @@ const summaryLabelStyle: CSSProperties = { marginTop: 4, fontSize: 11, color: "#
 const sectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 20, letterSpacing: "-0.03em" };
 const dayTaskSectionStyle: CSSProperties = { marginBottom: 80 };
 const emptyStateStyle: CSSProperties = { padding: 18, borderRadius: 18, background: "#f8fafc", color: "#64748b", textAlign: "center" };
-const taskListStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 10 };
-const taskCardStyle: CSSProperties = { padding: 14, borderRadius: 18, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", gap: 12 };
 const rewardCardStyle: CSSProperties = { padding: 14, borderRadius: 18, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: 12 };
-const taskTitleStyle: CSSProperties = { fontWeight: 900, fontSize: 16 };
-const taskSubTextStyle: CSSProperties = { marginTop: 5, color: "#64748b", fontSize: 13 };
 const rewardButtonStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#f97316", color: "#fff", fontWeight: 800, cursor: "pointer" };
 const disabledRewardButtonStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#cbd5e1", color: "#64748b", fontWeight: 800, cursor: "not-allowed" };
 const settingLineStyle: CSSProperties = { padding: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, marginTop: 8, color: "#334155" };
