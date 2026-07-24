@@ -1,76 +1,20 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 
-type Profile = {
-  id: string;
-  auth_user_id: string;
-  display_name: string;
-  avatar_url: string | null;
-  onboarding_completed: boolean;
-};
-
-type Workspace = {
-  id: string;
-  name: string;
-  description: string | null;
-};
-
-type Member = {
-  id: string;
-  profile_id?: string | null;
-  display_name: string;
-  role: "owner" | "manager" | "member";
-  is_virtual: boolean;
-};
-
-type Task = {
-  id: string;
-  workspace_id: string;
-  title: string;
-  description: string | null;
-  task_type: string;
-  status: string;
-  due_date: string | null;
-  assigned_member_id: string | null;
-  verification_type: string;
-  verification_required: boolean;
-  reward_points: number;
-};
-
-type Reward = {
-  id: string;
-  workspace_id: string;
-  title: string;
-  description: string | null;
-  requested_by_member_id: string | null;
-  target_member_id: string | null;
-  cost_points: number;
-  status: string;
-};
-
-type RewardTransaction = {
-  id: string;
-  member_id: string;
-  amount: number;
-  transaction_type: string;
-  source_type: string;
-  source_id: string | null;
-};
-
-const taskSelect =
-  "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points";
-
-const rewardSelect =
-  "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status";
-
-const rewardTxSelect =
-  "id, member_id, amount, transaction_type, source_type, source_id";
+type Profile = { id: string; auth_user_id: string; display_name: string; avatar_url: string | null; onboarding_completed: boolean };
+type Workspace = { id: string; name: string; description: string | null };
+type Member = { id: string; profile_id?: string | null; display_name: string; role: "owner" | "manager" | "member"; is_virtual: boolean };
+type Task = { id: string; workspace_id: string; title: string; description: string | null; task_type: string; status: string; due_date: string | null; assigned_member_id: string | null; verification_type: string; verification_required: boolean; reward_points: number };
+type Reward = { id: string; workspace_id: string; title: string; description: string | null; requested_by_member_id: string | null; target_member_id: string | null; cost_points: number; status: string };
+type RewardTransaction = { id: string; member_id: string; amount: number; transaction_type: string; source_type: string; source_id: string | null };
 
 const memberSelect = "id, profile_id, display_name, role, is_virtual";
+const taskSelect = "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points";
+const rewardSelect = "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status";
+const rewardTxSelect = "id, member_id, amount, transaction_type, source_type, source_id";
 
 export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
@@ -78,6 +22,10 @@ export default function Home() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
+
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -98,6 +46,7 @@ export default function Home() {
   const [rewardPoints, setRewardPoints] = useState(1);
   const [activeSubmitTaskId, setActiveSubmitTaskId] = useState<string | null>(null);
   const [submissionText, setSubmissionText] = useState("");
+  const [submissionFile, setSubmissionFile] = useState<File | null>(null);
 
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [rewardTitle, setRewardTitle] = useState("");
@@ -106,19 +55,12 @@ export default function Home() {
   const [rewardCostPoints, setRewardCostPoints] = useState(1);
   const [rewardTransactions, setRewardTransactions] = useState<RewardTransaction[]>([]);
 
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [message, setMessage] = useState("");
-
   useEffect(() => {
     initializeAuth();
-
     const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const profile = await loadProfile(session.user.id);
-        if (profile) {
-          await loadWorkspaces(profile.id);
-        }
+        if (profile) await loadWorkspaces(profile.id);
       } else {
         resetAppState();
         setCurrentProfile(null);
@@ -126,999 +68,261 @@ export default function Home() {
         setAuthLoading(false);
       }
     });
-
     return () => data.subscription.unsubscribe();
   }, []);
 
   function resetAppState() {
-    setWorkspace(null);
-    setWorkspaces([]);
-    setMembers([]);
-    setTasks([]);
-    setRewards([]);
-    setRewardTransactions([]);
-    setActiveSubmitTaskId(null);
-    setSubmissionText("");
-    setShowCreateWorkspace(false);
+    setWorkspace(null); setWorkspaces([]); setMembers([]); setTasks([]); setRewards([]); setRewardTransactions([]);
+    setActiveSubmitTaskId(null); setSubmissionText(""); setSubmissionFile(null); setShowCreateWorkspace(false);
   }
 
   async function initializeAuth() {
     setAuthLoading(true);
     const { data } = await supabase.auth.getUser();
-
-    if (!data.user) {
-      setCurrentProfile(null);
-      setInitialLoading(false);
-      setAuthLoading(false);
-      return;
-    }
-
+    if (!data.user) { setCurrentProfile(null); setInitialLoading(false); setAuthLoading(false); return; }
     const profile = await loadProfile(data.user.id);
     if (profile) await loadWorkspaces(profile.id);
-
-    setInitialLoading(false);
-    setAuthLoading(false);
+    setInitialLoading(false); setAuthLoading(false);
   }
 
   async function loadProfile(authUserId: string): Promise<Profile | null> {
     const { data: userData } = await supabase.auth.getUser();
     const email = userData.user?.email || "사용자";
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
-      .eq("auth_user_id", authUserId)
-      .maybeSingle();
-
-    if (error) {
-      setMessage(`프로필 불러오기 실패: ${error.message}`);
-      setCurrentProfile(null);
-      return null;
-    }
-
-    if (data) {
-      const profile = {
-        ...(data as Profile),
-        display_name: data.display_name || email.split("@")[0] || "사용자",
-      };
-      setCurrentProfile(profile);
-      return profile;
-    }
-
-    const { data: createdProfile, error: createError } = await supabase
-      .from("profiles")
-      .insert({
-        auth_user_id: authUserId,
-        display_name: email.split("@")[0] || "사용자",
-        onboarding_completed: false,
-      })
-      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
-      .single();
-
-    if (createError) {
-      setMessage(`프로필 생성 실패: ${createError.message}`);
-      setCurrentProfile(null);
-      return null;
-    }
-
-    const profile = {
-      ...(createdProfile as Profile),
-      display_name: createdProfile.display_name || email.split("@")[0] || "사용자",
-    };
-    setCurrentProfile(profile);
-    return profile;
+    const { data, error } = await supabase.from("profiles").select("id, auth_user_id, display_name, avatar_url, onboarding_completed").eq("auth_user_id", authUserId).maybeSingle();
+    if (error) { setMessage(`프로필 불러오기 실패: ${error.message}`); setCurrentProfile(null); return null; }
+    if (data) { const profile = { ...(data as Profile), display_name: data.display_name || email.split("@")[0] || "사용자" }; setCurrentProfile(profile); return profile; }
+    const { data: createdProfile, error: createError } = await supabase.from("profiles").insert({ auth_user_id: authUserId, display_name: email.split("@")[0] || "사용자", onboarding_completed: false }).select("id, auth_user_id, display_name, avatar_url, onboarding_completed").single();
+    if (createError) { setMessage(`프로필 생성 실패: ${createError.message}`); setCurrentProfile(null); return null; }
+    const profile = { ...(createdProfile as Profile), display_name: createdProfile.display_name || email.split("@")[0] || "사용자" };
+    setCurrentProfile(profile); return profile;
   }
 
   async function signUp() {
-    if (!authEmail.trim() || !authPassword.trim()) {
-      setMessage("이메일과 비밀번호를 입력해주세요.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    const { error } = await supabase.auth.signUp({
-      email: authEmail.trim(),
-      password: authPassword.trim(),
-      options: { data: { display_name: authEmail.split("@")[0] } },
-    });
-
-    if (error) {
-      setMessage(`회원가입 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setMessage("회원가입 완료. 인증 메일을 확인한 뒤 로그인해주세요.");
+    if (!authEmail.trim() || !authPassword.trim()) { setMessage("이메일과 비밀번호를 입력해주세요."); return; }
+    setLoading(true); setMessage("");
+    const { error } = await supabase.auth.signUp({ email: authEmail.trim(), password: authPassword.trim(), options: { data: { display_name: authEmail.split("@")[0] } } });
+    if (error) setMessage(`회원가입 실패: ${error.message}`); else setMessage("회원가입 완료. 인증 메일을 확인한 뒤 로그인해주세요.");
     setLoading(false);
   }
 
   async function signIn() {
-    if (!authEmail.trim() || !authPassword.trim()) {
-      setMessage("이메일과 비밀번호를 입력해주세요.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: authEmail.trim(),
-      password: authPassword.trim(),
-    });
-
-    if (error) {
-      setMessage(`로그인 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    if (!data.user) {
-      setMessage("로그인 사용자 정보를 가져오지 못했습니다.");
-      setLoading(false);
-      return;
-    }
-
+    if (!authEmail.trim() || !authPassword.trim()) { setMessage("이메일과 비밀번호를 입력해주세요."); return; }
+    setLoading(true); setMessage("");
+    const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword.trim() });
+    if (error) { setMessage(`로그인 실패: ${error.message}`); setLoading(false); return; }
+    if (!data.user) { setMessage("로그인 사용자 정보를 가져오지 못했습니다."); setLoading(false); return; }
     const profile = await loadProfile(data.user.id);
-    if (!profile) {
-      setLoading(false);
-      return;
-    }
-
-    await loadWorkspaces(profile.id);
-    setMessage("로그인 성공");
+    if (profile) { await loadWorkspaces(profile.id); setMessage("로그인 성공"); }
     setLoading(false);
   }
 
   async function signOut() {
-    setLoading(true);
-    setMessage("");
-
+    setLoading(true); setMessage("");
     const { error } = await supabase.auth.signOut({ scope: "global" });
-
-    if (error) {
-      setMessage(`로그아웃 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    if (typeof window !== "undefined") {
-      Object.keys(window.localStorage).forEach((key) => {
-        if (key.startsWith("sb-") || key.includes("supabase") || key.includes("auth-token")) {
-          window.localStorage.removeItem(key);
-        }
-      });
-    }
-
-    resetAppState();
-    setCurrentProfile(null);
-    setAuthEmail("");
-    setAuthPassword("");
-    setAuthMode("signin");
-    setInitialLoading(false);
-    setAuthLoading(false);
-    setLoading(false);
-    setMessage("로그아웃 완료");
+    if (error) { setMessage(`로그아웃 실패: ${error.message}`); setLoading(false); return; }
+    if (typeof window !== "undefined") Object.keys(window.localStorage).forEach((key) => { if (key.startsWith("sb-") || key.includes("supabase") || key.includes("auth-token")) window.localStorage.removeItem(key); });
+    resetAppState(); setCurrentProfile(null); setAuthEmail(""); setAuthPassword(""); setAuthMode("signin"); setInitialLoading(false); setAuthLoading(false); setLoading(false); setMessage("로그아웃 완료");
   }
 
   async function loadWorkspaces(profileId?: string) {
     setInitialLoading(true);
     const targetProfileId = profileId || currentProfile?.id;
-
-    if (!targetProfileId) {
-      setInitialLoading(false);
-      setWorkspaces([]);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("workspaces")
-      .select("id, name, description")
-      .eq("created_by", targetProfileId)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      setMessage(`워크스페이스 목록 불러오기 실패: ${error.message}`);
-      setInitialLoading(false);
-      return;
-    }
-
-    setWorkspaces((data || []) as Workspace[]);
-    setInitialLoading(false);
+    if (!targetProfileId) { setWorkspaces([]); setInitialLoading(false); return; }
+    const { data, error } = await supabase.from("workspaces").select("id, name, description").eq("created_by", targetProfileId).order("created_at", { ascending: false });
+    if (error) { setMessage(`워크스페이스 목록 불러오기 실패: ${error.message}`); setInitialLoading(false); return; }
+    setWorkspaces((data || []) as Workspace[]); setInitialLoading(false);
   }
 
   async function selectWorkspace(selected: Workspace) {
-    setLoading(true);
-    setMessage("");
-
+    setLoading(true); setMessage("");
     const [membersResult, tasksResult, rewardsResult, rewardTransactionsResult] = await Promise.all([
       supabase.from("workspace_members").select(memberSelect).eq("workspace_id", selected.id).order("created_at", { ascending: true }),
       supabase.from("tasks").select(taskSelect).eq("workspace_id", selected.id).order("created_at", { ascending: false }),
       supabase.from("rewards").select(rewardSelect).eq("workspace_id", selected.id).order("created_at", { ascending: false }),
       supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", selected.id).order("created_at", { ascending: true }),
     ]);
-
-    if (membersResult.error) {
-      setMessage(`참여자 불러오기 실패: ${membersResult.error.message}`);
-      setLoading(false);
-      return;
-    }
-    if (tasksResult.error) {
-      setMessage(`미션 불러오기 실패: ${tasksResult.error.message}`);
-      setLoading(false);
-      return;
-    }
-    if (rewardsResult.error) {
-      setMessage(`보상 불러오기 실패: ${rewardsResult.error.message}`);
-      setLoading(false);
-      return;
-    }
-    if (rewardTransactionsResult.error) {
-      setMessage(`스티커 내역 불러오기 실패: ${rewardTransactionsResult.error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setWorkspace(selected);
-    setMembers((membersResult.data || []) as Member[]);
-    setTasks((tasksResult.data || []) as Task[]);
-    setRewards((rewardsResult.data || []) as Reward[]);
-    setRewardTransactions((rewardTransactionsResult.data || []) as RewardTransaction[]);
-    setShowCreateWorkspace(false);
-    setMessage(`${selected.name} 데이터를 불러왔습니다.`);
-    setLoading(false);
+    if (membersResult.error) { setMessage(`참여자 불러오기 실패: ${membersResult.error.message}`); setLoading(false); return; }
+    if (tasksResult.error) { setMessage(`미션 불러오기 실패: ${tasksResult.error.message}`); setLoading(false); return; }
+    if (rewardsResult.error) { setMessage(`보상 불러오기 실패: ${rewardsResult.error.message}`); setLoading(false); return; }
+    if (rewardTransactionsResult.error) { setMessage(`스티커 내역 불러오기 실패: ${rewardTransactionsResult.error.message}`); setLoading(false); return; }
+    setWorkspace(selected); setMembers((membersResult.data || []) as Member[]); setTasks((tasksResult.data || []) as Task[]); setRewards((rewardsResult.data || []) as Reward[]); setRewardTransactions((rewardTransactionsResult.data || []) as RewardTransaction[]); setShowCreateWorkspace(false); setMessage(`${selected.name} 데이터를 불러왔습니다.`); setLoading(false);
   }
 
-  function goBackToWorkspaceList() {
-    setWorkspace(null);
-    setMembers([]);
-    setTasks([]);
-    setRewards([]);
-    setRewardTransactions([]);
-    setActiveSubmitTaskId(null);
-    setSubmissionText("");
-    setMessage("");
-    loadWorkspaces(currentProfile?.id);
-  }
+  function goBackToWorkspaceList() { setWorkspace(null); setMembers([]); setTasks([]); setRewards([]); setRewardTransactions([]); setActiveSubmitTaskId(null); setSubmissionText(""); setSubmissionFile(null); setMessage(""); loadWorkspaces(currentProfile?.id); }
 
   async function createWorkspace() {
-    if (!currentProfile) {
-      setMessage("로그인이 필요합니다.");
-      return;
-    }
-    if (!workspaceName.trim()) {
-      setMessage("워크스페이스 이름을 입력해주세요.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    const { data: workspaceData, error: workspaceError } = await supabase
-      .from("workspaces")
-      .insert({
-        name: workspaceName.trim(),
-        description: workspaceDescription.trim() || null,
-        created_by: currentProfile.id,
-      })
-      .select("id, name, description")
-      .single();
-
-    if (workspaceError) {
-      setMessage(`워크스페이스 생성 실패: ${workspaceError.message}`);
-      setLoading(false);
-      return;
-    }
-
-    const { data: ownerMember, error: ownerError } = await supabase
-      .from("workspace_members")
-      .insert({
-        workspace_id: workspaceData.id,
-        profile_id: currentProfile.id,
-        display_name: currentProfile.display_name || "사용자",
-        role: "owner",
-        status: "active",
-        is_virtual: false,
-        created_by: currentProfile.id,
-        joined_at: new Date().toISOString(),
-      })
-      .select(memberSelect)
-      .single();
-
-    if (ownerError) {
-      setMessage(`워크스페이스 생성은 완료됐지만 owner 등록 실패: ${ownerError.message}`);
-      setLoading(false);
-      return;
-    }
-
+    if (!currentProfile) { setMessage("로그인이 필요합니다."); return; }
+    if (!workspaceName.trim()) { setMessage("워크스페이스 이름을 입력해주세요."); return; }
+    setLoading(true); setMessage("");
+    const { data: workspaceData, error: workspaceError } = await supabase.from("workspaces").insert({ name: workspaceName.trim(), description: workspaceDescription.trim() || null, created_by: currentProfile.id }).select("id, name, description").single();
+    if (workspaceError) { setMessage(`워크스페이스 생성 실패: ${workspaceError.message}`); setLoading(false); return; }
+    const { data: ownerMember, error: ownerError } = await supabase.from("workspace_members").insert({ workspace_id: workspaceData.id, profile_id: currentProfile.id, display_name: currentProfile.display_name || "사용자", role: "owner", status: "active", is_virtual: false, created_by: currentProfile.id, joined_at: new Date().toISOString() }).select(memberSelect).single();
+    if (ownerError) { setMessage(`워크스페이스 생성은 완료됐지만 owner 등록 실패: ${ownerError.message}`); setLoading(false); return; }
     const createdWorkspace = workspaceData as Workspace;
-    setWorkspaces((prev) => [createdWorkspace, ...prev]);
-    setWorkspace(createdWorkspace);
-    setMembers([ownerMember as Member]);
-    setTasks([]);
-    setRewards([]);
-    setRewardTransactions([]);
-    setWorkspaceName("");
-    setWorkspaceDescription("");
-    setShowCreateWorkspace(false);
-    setMessage(`워크스페이스 생성 완료: ${createdWorkspace.name} · owner 자동 등록`);
-    setLoading(false);
+    setWorkspaces((prev) => [createdWorkspace, ...prev]); setWorkspace(createdWorkspace); setMembers([ownerMember as Member]); setTasks([]); setRewards([]); setRewardTransactions([]); setWorkspaceName(""); setWorkspaceDescription(""); setShowCreateWorkspace(false); setMessage(`워크스페이스 생성 완료: ${createdWorkspace.name} · owner 자동 등록`); setLoading(false);
   }
 
   async function addMember() {
-    if (!workspace) {
-      setMessage("먼저 워크스페이스를 선택해주세요.");
-      return;
-    }
-    if (!memberName.trim()) {
-      setMessage("참여자 이름을 입력해주세요.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("workspace_members")
-      .insert({
-        workspace_id: workspace.id,
-        display_name: memberName.trim(),
-        role: memberRole,
-        status: "active",
-        is_virtual: true,
-        created_by: currentProfile?.id || null,
-      })
-      .select(memberSelect)
-      .single();
-
-    if (error) {
-      setMessage(`참여자 추가 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setMembers((prev) => [...prev, data as Member]);
-    setMemberName("");
-    setMemberRole("member");
-    setMessage(`참여자 추가 완료: ${data.display_name}`);
-    setLoading(false);
+    if (!workspace) { setMessage("먼저 워크스페이스를 선택해주세요."); return; }
+    if (!memberName.trim()) { setMessage("참여자 이름을 입력해주세요."); return; }
+    setLoading(true); setMessage("");
+    const { data, error } = await supabase.from("workspace_members").insert({ workspace_id: workspace.id, display_name: memberName.trim(), role: memberRole, status: "active", is_virtual: true, created_by: currentProfile?.id || null }).select(memberSelect).single();
+    if (error) { setMessage(`참여자 추가 실패: ${error.message}`); setLoading(false); return; }
+    setMembers((prev) => [...prev, data as Member]); setMemberName(""); setMemberRole("member"); setMessage(`참여자 추가 완료: ${data.display_name}`); setLoading(false);
   }
 
   async function createTask() {
-    if (!workspace) {
-      setMessage("먼저 워크스페이스를 선택해주세요.");
-      return;
-    }
-    if (!taskTitle.trim()) {
-      setMessage("미션 제목을 입력해주세요.");
-      return;
-    }
-    if (!taskAssignedMemberId) {
-      setMessage("미션을 받을 참여자를 선택해주세요.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("tasks")
-      .insert({
-        workspace_id: workspace.id,
-        title: taskTitle.trim(),
-        description: taskDescription.trim() || null,
-        task_type: taskType,
-        status: "todo",
-        due_date: new Date().toISOString().slice(0, 10),
-        assigned_member_id: taskAssignedMemberId,
-        verification_type: verificationType,
-        verification_required: verificationType !== "none",
-        reward_points: rewardPoints,
-        rollover_enabled: true,
-        created_by_member_id: currentMemberId(),
-      })
-      .select(taskSelect)
-      .single();
-
-    if (error) {
-      setMessage(`미션 생성 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setTasks((prev) => [data as Task, ...prev]);
-    setTaskTitle("");
-    setTaskDescription("");
-    setVerificationType("none");
-    setRewardPoints(1);
-    setMessage(`미션 생성 완료: ${data.title}`);
-    setLoading(false);
+    if (!workspace) { setMessage("먼저 워크스페이스를 선택해주세요."); return; }
+    if (!taskTitle.trim()) { setMessage("미션 제목을 입력해주세요."); return; }
+    if (!taskAssignedMemberId) { setMessage("미션을 받을 참여자를 선택해주세요."); return; }
+    setLoading(true); setMessage("");
+    const { data, error } = await supabase.from("tasks").insert({ workspace_id: workspace.id, title: taskTitle.trim(), description: taskDescription.trim() || null, task_type: taskType, status: "todo", due_date: new Date().toISOString().slice(0, 10), assigned_member_id: taskAssignedMemberId, verification_type: verificationType, verification_required: verificationType !== "none", reward_points: rewardPoints, rollover_enabled: true, created_by_member_id: currentMemberId() }).select(taskSelect).single();
+    if (error) { setMessage(`미션 생성 실패: ${error.message}`); setLoading(false); return; }
+    setTasks((prev) => [data as Task, ...prev]); setTaskTitle(""); setTaskDescription(""); setVerificationType("none"); setRewardPoints(1); setMessage(`미션 생성 완료: ${data.title}`); setLoading(false);
   }
 
   async function submitTask(task: Task) {
-    if (!workspace) {
-      setMessage("워크스페이스 정보가 없습니다.");
-      return;
+    if (!workspace) { setMessage("워크스페이스 정보가 없습니다."); return; }
+    if (task.status !== "todo") { setMessage("이미 제출된 미션입니다."); return; }
+    if (task.verification_type === "text" && !submissionText.trim()) { setMessage("텍스트 인증 내용을 입력해주세요."); return; }
+    if (isFileVerification(task.verification_type) && !submissionFile) { setMessage(`${verificationLabel(task.verification_type)} 인증 파일을 선택해주세요.`); return; }
+    setLoading(true); setMessage("");
+    let imageUrl: string | null = null; let videoUrl: string | null = null; let audioUrl: string | null = null;
+    if (submissionFile && isFileVerification(task.verification_type)) {
+      const safeFileName = submissionFile.name.replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-");
+      const filePath = `${workspace.id}/${task.id}/${Date.now()}-${safeFileName}`;
+      const { error: uploadError } = await supabase.storage.from("task-evidence").upload(filePath, submissionFile, { cacheControl: "3600", upsert: false, contentType: submissionFile.type || undefined });
+      if (uploadError) { setMessage(`인증 파일 업로드 실패: ${uploadError.message}`); setLoading(false); return; }
+      if (task.verification_type === "photo") imageUrl = filePath;
+      if (task.verification_type === "video") videoUrl = filePath;
+      if (task.verification_type === "audio") audioUrl = filePath;
     }
-    if (task.status !== "todo") {
-      setMessage("이미 제출된 미션입니다.");
-      return;
-    }
-    if (task.verification_type === "text" && !submissionText.trim()) {
-      setMessage("텍스트 인증 내용을 입력해주세요.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    const { error: submissionError } = await supabase.from("task_submissions").insert({
-      task_id: task.id,
-      workspace_id: workspace.id,
-      submitted_by_member_id: task.assigned_member_id,
-      submission_text: submissionText.trim() || null,
-      status: "submitted",
-    });
-
-    if (submissionError) {
-      setMessage(`인증 제출 실패: ${submissionError.message}`);
-      setLoading(false);
-      return;
-    }
-
-    const { data: updatedTask, error: taskUpdateError } = await supabase
-      .from("tasks")
-      .update({ status: "submitted" })
-      .eq("id", task.id)
-      .select(taskSelect)
-      .single();
-
-    if (taskUpdateError) {
-      setMessage(`미션 상태 변경 실패: ${taskUpdateError.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setTasks((prev) => prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item)));
-    setSubmissionText("");
-    setActiveSubmitTaskId(null);
-    setMessage(`인증 제출 완료: ${task.title}`);
-    setLoading(false);
+    const { error: submissionError } = await supabase.from("task_submissions").insert({ task_id: task.id, workspace_id: workspace.id, submitted_by_member_id: task.assigned_member_id, submission_text: submissionText.trim() || null, image_url: imageUrl, video_url: videoUrl, audio_url: audioUrl, status: "submitted" });
+    if (submissionError) { setMessage(`인증 제출 실패: ${submissionError.message}`); setLoading(false); return; }
+    const { data: updatedTask, error: taskUpdateError } = await supabase.from("tasks").update({ status: "submitted" }).eq("id", task.id).select(taskSelect).single();
+    if (taskUpdateError) { setMessage(`미션 상태 변경 실패: ${taskUpdateError.message}`); setLoading(false); return; }
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item))); setSubmissionText(""); setSubmissionFile(null); setActiveSubmitTaskId(null); setMessage(`인증 제출 완료: ${task.title}`); setLoading(false);
   }
 
   async function approveTask(task: Task) {
-    if (!workspace) {
-      setMessage("워크스페이스 정보가 없습니다.");
-      return;
-    }
-    if (!task.assigned_member_id) {
-      setMessage("미션 대상자가 없습니다.");
-      return;
-    }
-    if (task.status !== "submitted") {
-      setMessage("승인 대기 상태의 미션만 승인할 수 있습니다.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
+    if (!workspace) { setMessage("워크스페이스 정보가 없습니다."); return; }
+    if (!task.assigned_member_id) { setMessage("미션 대상자가 없습니다."); return; }
+    if (task.status !== "submitted") { setMessage("승인 대기 상태의 미션만 승인할 수 있습니다."); return; }
+    setLoading(true); setMessage("");
     const approver = managerMember() || ownerMember();
-
-    const { error: approvalError } = await supabase.from("approvals").insert({
-      workspace_id: workspace.id,
-      task_id: task.id,
-      requested_by_member_id: task.assigned_member_id,
-      approved_by_member_id: approver?.id || null,
-      status: "approved",
-      comment: "참 잘했어요!",
-      approved_at: new Date().toISOString(),
-    });
-
-    if (approvalError) {
-      setMessage(`승인 기록 생성 실패: ${approvalError.message}`);
-      setLoading(false);
-      return;
-    }
-
-    const { data: rewardData, error: rewardError } = await supabase
-      .from("reward_transactions")
-      .insert({
-        workspace_id: workspace.id,
-        member_id: task.assigned_member_id,
-        amount: task.reward_points,
-        transaction_type: "earn",
-        source_type: "task",
-        source_id: task.id,
-        memo: `${task.title} 승인 보상`,
-        created_by_member_id: approver?.id || null,
-      })
-      .select(rewardTxSelect)
-      .single();
-
-    if (rewardError) {
-      setMessage(`스티커 지급 실패: ${rewardError.message}`);
-      setLoading(false);
-      return;
-    }
-
-    const { data: updatedTask, error: taskUpdateError } = await supabase
-      .from("tasks")
-      .update({ status: "approved" })
-      .eq("id", task.id)
-      .select(taskSelect)
-      .single();
-
-    if (taskUpdateError) {
-      setMessage(`미션 승인 상태 변경 실패: ${taskUpdateError.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setRewardTransactions((prev) => [...prev, rewardData as RewardTransaction]);
-    setTasks((prev) => prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item)));
-    setMessage(`승인 완료: ${task.title} · 스티커 ${task.reward_points}개 지급`);
-    setLoading(false);
+    const { error: approvalError } = await supabase.from("approvals").insert({ workspace_id: workspace.id, task_id: task.id, requested_by_member_id: task.assigned_member_id, approved_by_member_id: approver?.id || null, status: "approved", comment: "참 잘했어요!", approved_at: new Date().toISOString() });
+    if (approvalError) { setMessage(`승인 기록 생성 실패: ${approvalError.message}`); setLoading(false); return; }
+    const { data: rewardData, error: rewardError } = await supabase.from("reward_transactions").insert({ workspace_id: workspace.id, member_id: task.assigned_member_id, amount: task.reward_points, transaction_type: "earn", source_type: "task", source_id: task.id, memo: `${task.title} 승인 보상`, created_by_member_id: approver?.id || null }).select(rewardTxSelect).single();
+    if (rewardError) { setMessage(`스티커 지급 실패: ${rewardError.message}`); setLoading(false); return; }
+    const { data: updatedTask, error: taskUpdateError } = await supabase.from("tasks").update({ status: "approved" }).eq("id", task.id).select(taskSelect).single();
+    if (taskUpdateError) { setMessage(`미션 승인 상태 변경 실패: ${taskUpdateError.message}`); setLoading(false); return; }
+    setRewardTransactions((prev) => [...prev, rewardData as RewardTransaction]); setTasks((prev) => prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item))); setMessage(`승인 완료: ${task.title} · 스티커 ${task.reward_points}개 지급`); setLoading(false);
   }
 
   async function rejectTask(task: Task) {
-    if (!workspace) {
-      setMessage("워크스페이스 정보가 없습니다.");
-      return;
-    }
-    if (task.status !== "submitted") {
-      setMessage("승인 대기 상태의 미션만 반려할 수 있습니다.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
+    if (!workspace) { setMessage("워크스페이스 정보가 없습니다."); return; }
+    if (task.status !== "submitted") { setMessage("승인 대기 상태의 미션만 반려할 수 있습니다."); return; }
+    setLoading(true); setMessage("");
     const approver = managerMember() || ownerMember();
-
-    const { error: approvalError } = await supabase.from("approvals").insert({
-      workspace_id: workspace.id,
-      task_id: task.id,
-      requested_by_member_id: task.assigned_member_id,
-      approved_by_member_id: approver?.id || null,
-      status: "rejected",
-      comment: "다시 한번 해볼까요?",
-      approved_at: new Date().toISOString(),
-    });
-
-    if (approvalError) {
-      setMessage(`반려 기록 생성 실패: ${approvalError.message}`);
-      setLoading(false);
-      return;
-    }
-
-    const { data: updatedTask, error: taskUpdateError } = await supabase
-      .from("tasks")
-      .update({ status: "rejected" })
-      .eq("id", task.id)
-      .select(taskSelect)
-      .single();
-
-    if (taskUpdateError) {
-      setMessage(`미션 반려 상태 변경 실패: ${taskUpdateError.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setTasks((prev) => prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item)));
-    setMessage(`반려 완료: ${task.title}`);
-    setLoading(false);
+    const { error: approvalError } = await supabase.from("approvals").insert({ workspace_id: workspace.id, task_id: task.id, requested_by_member_id: task.assigned_member_id, approved_by_member_id: approver?.id || null, status: "rejected", comment: "다시 한번 해볼까요?", approved_at: new Date().toISOString() });
+    if (approvalError) { setMessage(`반려 기록 생성 실패: ${approvalError.message}`); setLoading(false); return; }
+    const { data: updatedTask, error: taskUpdateError } = await supabase.from("tasks").update({ status: "rejected" }).eq("id", task.id).select(taskSelect).single();
+    if (taskUpdateError) { setMessage(`미션 반려 상태 변경 실패: ${taskUpdateError.message}`); setLoading(false); return; }
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item))); setMessage(`반려 완료: ${task.title}`); setLoading(false);
   }
 
   async function createReward() {
-    if (!workspace) {
-      setMessage("워크스페이스 정보가 없습니다.");
-      return;
-    }
-    if (!rewardTitle.trim()) {
-      setMessage("보상 이름을 입력해주세요.");
-      return;
-    }
-    if (!rewardTargetMemberId) {
-      setMessage("보상을 받을 참여자를 선택해주세요.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    const requester = members.find((member) => member.id === rewardTargetMemberId);
-    const approver = managerMember() || ownerMember();
-
-    const { data, error } = await supabase
-      .from("rewards")
-      .insert({
-        workspace_id: workspace.id,
-        title: rewardTitle.trim(),
-        description: rewardDescription.trim() || null,
-        requested_by_member_id: requester?.id || null,
-        target_member_id: rewardTargetMemberId,
-        approved_by_member_id: approver?.id || null,
-        cost_points: rewardCostPoints,
-        status: "approved",
-      })
-      .select(rewardSelect)
-      .single();
-
-    if (error) {
-      setMessage(`보상 생성 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setRewards((prev) => [data as Reward, ...prev]);
-    setRewardTitle("");
-    setRewardDescription("");
-    setRewardCostPoints(1);
-    setMessage(`보상 생성 완료: ${data.title}`);
-    setLoading(false);
+    if (!workspace) { setMessage("워크스페이스 정보가 없습니다."); return; }
+    if (!rewardTitle.trim()) { setMessage("보상 이름을 입력해주세요."); return; }
+    if (!rewardTargetMemberId) { setMessage("보상을 받을 참여자를 선택해주세요."); return; }
+    setLoading(true); setMessage("");
+    const requester = members.find((member) => member.id === rewardTargetMemberId); const approver = managerMember() || ownerMember();
+    const { data, error } = await supabase.from("rewards").insert({ workspace_id: workspace.id, title: rewardTitle.trim(), description: rewardDescription.trim() || null, requested_by_member_id: requester?.id || null, target_member_id: rewardTargetMemberId, approved_by_member_id: approver?.id || null, cost_points: rewardCostPoints, status: "approved" }).select(rewardSelect).single();
+    if (error) { setMessage(`보상 생성 실패: ${error.message}`); setLoading(false); return; }
+    setRewards((prev) => [data as Reward, ...prev]); setRewardTitle(""); setRewardDescription(""); setRewardCostPoints(1); setMessage(`보상 생성 완료: ${data.title}`); setLoading(false);
   }
 
   async function redeemReward(reward: Reward) {
-    if (!workspace) {
-      setMessage("워크스페이스 정보가 없습니다.");
-      return;
-    }
-    if (!reward.target_member_id) {
-      setMessage("보상 대상자가 없습니다.");
-      return;
-    }
-    if (reward.status === "redeemed") {
-      setMessage("이미 교환한 보상입니다.");
-      return;
-    }
-
+    if (!workspace) { setMessage("워크스페이스 정보가 없습니다."); return; }
+    if (!reward.target_member_id) { setMessage("보상 대상자가 없습니다."); return; }
+    if (reward.status === "redeemed") { setMessage("이미 교환한 보상입니다."); return; }
     const balance = balanceByMemberId(reward.target_member_id);
-    if (balance < reward.cost_points) {
-      setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`);
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
+    if (balance < reward.cost_points) { setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`); return; }
+    setLoading(true); setMessage("");
     const approver = managerMember() || ownerMember();
-
-    const { data: spendData, error: spendError } = await supabase
-      .from("reward_transactions")
-      .insert({
-        workspace_id: workspace.id,
-        member_id: reward.target_member_id,
-        amount: -reward.cost_points,
-        transaction_type: "spend",
-        source_type: "reward",
-        source_id: reward.id,
-        memo: `${reward.title} 보상 교환`,
-        created_by_member_id: approver?.id || null,
-      })
-      .select(rewardTxSelect)
-      .single();
-
-    if (spendError) {
-      setMessage(`스티커 차감 실패: ${spendError.message}`);
-      setLoading(false);
-      return;
-    }
-
-    const { data: updatedReward, error: rewardUpdateError } = await supabase
-      .from("rewards")
-      .update({ status: "redeemed", redeemed_at: new Date().toISOString() })
-      .eq("id", reward.id)
-      .select(rewardSelect)
-      .single();
-
-    if (rewardUpdateError) {
-      setMessage(`보상 상태 변경 실패: ${rewardUpdateError.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setRewardTransactions((prev) => [...prev, spendData as RewardTransaction]);
-    setRewards((prev) => prev.map((item) => (item.id === reward.id ? (updatedReward as Reward) : item)));
-    setMessage(`보상 교환 완료: ${reward.title} · 스티커 ${reward.cost_points}개 사용`);
-    setLoading(false);
+    const { data: spendData, error: spendError } = await supabase.from("reward_transactions").insert({ workspace_id: workspace.id, member_id: reward.target_member_id, amount: -reward.cost_points, transaction_type: "spend", source_type: "reward", source_id: reward.id, memo: `${reward.title} 보상 교환`, created_by_member_id: approver?.id || null }).select(rewardTxSelect).single();
+    if (spendError) { setMessage(`스티커 차감 실패: ${spendError.message}`); setLoading(false); return; }
+    const { data: updatedReward, error: rewardUpdateError } = await supabase.from("rewards").update({ status: "redeemed", redeemed_at: new Date().toISOString() }).eq("id", reward.id).select(rewardSelect).single();
+    if (rewardUpdateError) { setMessage(`보상 상태 변경 실패: ${rewardUpdateError.message}`); setLoading(false); return; }
+    setRewardTransactions((prev) => [...prev, spendData as RewardTransaction]); setRewards((prev) => prev.map((item) => (item.id === reward.id ? (updatedReward as Reward) : item))); setMessage(`보상 교환 완료: ${reward.title} · 스티커 ${reward.cost_points}개 사용`); setLoading(false);
   }
 
-  function ownerMember() {
-    return members.find((member) => member.role === "owner");
-  }
+  function ownerMember() { return members.find((member) => member.role === "owner"); }
+  function managerMember() { return members.find((member) => member.role === "manager"); }
+  function currentMemberId() { return ownerMember()?.id || managerMember()?.id || null; }
+  function memberNameById(id: string | null) { if (!id) return "미지정"; return members.find((member) => member.id === id)?.display_name || "미지정"; }
+  function balanceByMemberId(memberId: string) { return rewardTransactions.filter((item) => item.member_id === memberId).reduce((sum, item) => sum + item.amount, 0); }
 
-  function managerMember() {
-    return members.find((member) => member.role === "manager");
-  }
-
-  function currentMemberId() {
-    return ownerMember()?.id || managerMember()?.id || null;
-  }
-
-  function memberNameById(id: string | null) {
-    if (!id) return "미지정";
-    return members.find((member) => member.id === id)?.display_name || "미지정";
-  }
-
-  function balanceByMemberId(memberId: string) {
-    return rewardTransactions
-      .filter((item) => item.member_id === memberId)
-      .reduce((sum, item) => sum + item.amount, 0);
-  }
-
-  if (authLoading) {
-    return <Shell title="미루지말자" text="로그인 상태를 확인하는 중입니다..." />;
-  }
+  if (authLoading) return <Shell title="미루지말자" text="로그인 상태를 확인하는 중입니다..." />;
 
   if (!currentProfile) {
     return (
-      <main style={pageStyle}>
-        <div style={containerStyle}>
-          <h1 style={titleStyle}>미루지말자</h1>
-          <p style={subTextStyle}>부모와 자녀가 함께 쓰는 미션형 클라우드 다이어리</p>
-
-          <div style={tabGridStyle}>
-            <button onClick={() => setAuthMode("signin")} style={authMode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}>로그인</button>
-            <button onClick={() => setAuthMode("signup")} style={authMode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}>회원가입</button>
-          </div>
-
-          <input value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="이메일" style={inputStyle} />
-          <input value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="비밀번호" type="password" style={inputStyle} />
-
-          {authMode === "signin" ? (
-            <button onClick={signIn} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "로그인 중..." : "로그인"}</button>
-          ) : (
-            <button onClick={signUp} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "가입 중..." : "회원가입"}</button>
-          )}
-
-          {message && <div style={messageBoxStyle(message)}>{message}</div>}
-        </div>
-      </main>
+      <main style={pageStyle}><div style={containerStyle}>
+        <h1 style={titleStyle}>미루지말자</h1><p style={subTextStyle}>부모와 자녀가 함께 쓰는 미션형 클라우드 다이어리</p>
+        <div style={tabGridStyle}><button onClick={() => setAuthMode("signin")} style={authMode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}>로그인</button><button onClick={() => setAuthMode("signup")} style={authMode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}>회원가입</button></div>
+        <input value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="이메일" style={inputStyle} />
+        <input value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="비밀번호" type="password" style={inputStyle} />
+        {authMode === "signin" ? <button onClick={signIn} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "로그인 중..." : "로그인"}</button> : <button onClick={signUp} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "가입 중..." : "회원가입"}</button>}
+        {message && <div style={messageBoxStyle(message)}>{message}</div>}
+      </div></main>
     );
   }
 
-  if (initialLoading) {
-    return <Shell title="미루지말자" text="데이터를 불러오는 중입니다..." />;
+  if (initialLoading) return <Shell title="미루지말자" text="데이터를 불러오는 중입니다..." />;
+
+  return (
+    <main style={pageStyle}><div style={containerStyle}>
+      <div style={accountHeaderStyle}><div><div style={accountLabelStyle}>로그인 중</div><div style={accountNameStyle}>{currentProfile?.display_name || "사용자"}</div></div><button onClick={signOut} disabled={loading} style={logoutButtonStyle}>{loading ? "처리 중..." : "로그아웃"}</button></div>
+
+      {!workspace ? <>
+        <h1 style={titleStyle}>미루지말자</h1><p style={subTextStyle}>기존 워크스페이스를 선택하거나 새 공간을 만들어보세요</p>
+        {workspaces.length > 0 && !showCreateWorkspace && <section><h2 style={sectionTitleStyle}>내 워크스페이스</h2><div style={listStyle}>{workspaces.map((item) => <button key={item.id} onClick={() => selectWorkspace(item)} disabled={loading} style={workspaceSelectButtonStyle}><div style={{ textAlign: "left" }}><div style={cardTitleStyle}>{item.name}</div>{item.description && <div style={cardSubTextStyle}>{item.description}</div>}</div><span style={openTextStyle}>열기</span></button>)}</div><button onClick={() => setShowCreateWorkspace(true)} style={{ ...secondaryButtonStyle, marginTop: "16px" }}>새 워크스페이스 만들기</button></section>}
+        {(workspaces.length === 0 || showCreateWorkspace) && <section style={workspaces.length > 0 ? sectionStyle : undefined}><h2 style={sectionTitleStyle}>새 워크스페이스 생성</h2><p style={subTextStyle}>워크스페이스 생성 시 현재 로그인 계정이 owner로 자동 등록됩니다.</p><input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} placeholder="예) 우리집" style={inputStyle} /><textarea value={workspaceDescription} onChange={(e) => setWorkspaceDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><button onClick={createWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "워크스페이스 만들기"}</button>{workspaces.length > 0 && <button onClick={() => setShowCreateWorkspace(false)} disabled={loading} style={{ ...secondaryButtonStyle, marginTop: "10px" }}>기존 목록으로 돌아가기</button>}</section>}
+      </> : <>
+        <div style={workspaceBoxStyle}><div style={labelStyle}>현재 워크스페이스</div><div style={{ fontSize: 22, fontWeight: 800 }}>{workspace.name}</div>{workspace.description && <div style={cardSubTextStyle}>{workspace.description}</div>}<button onClick={goBackToWorkspaceList} disabled={loading} style={{ ...secondaryButtonStyle, marginTop: "12px" }}>워크스페이스 목록으로</button></div>
+        <section style={sectionStyle}><h2 style={sectionTitleStyle}>1. 참여자 추가</h2><p style={subTextStyle}>실명 대신 앱에서 부를 이름만 입력하세요</p><input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="예) 엄마, 첫째, 토끼" style={inputStyle} /><select value={memberRole} onChange={(e) => setMemberRole(e.target.value as "manager" | "member")} style={inputStyle}><option value="manager">보호자/관리자</option><option value="member">참여자/자녀</option></select><button onClick={addMember} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "추가 중..." : "참여자 추가"}</button>{members.length > 0 && <div style={listStyle}>{members.map((member) => <div key={member.id} style={memberCardStyle}><div><span style={memberNameStyle}>{member.display_name}</span><div style={cardSubTextStyle}>스티커 {balanceByMemberId(member.id)}개</div></div><span style={badgeStyle(member.role)}>{roleLabel(member.role)}</span></div>)}</div>}</section>
+        {members.length > 0 && <TaskCreateSection />}
+        {tasks.length > 0 && <TaskListSection />}
+        {members.length > 0 && <RewardCreateSection />}
+        {rewards.length > 0 && <RewardListSection />}
+      </>}
+      {message && <div style={messageBoxStyle(message)}>{message}</div>}
+    </div></main>
+  );
+
+  function TaskCreateSection() {
+    return <section style={sectionStyle}><h2 style={sectionTitleStyle}>2. 미션 만들기</h2><p style={subTextStyle}>참여자에게 오늘 할 미션을 부여하세요</p><input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="예) 피아노 100번 치기" style={inputStyle} /><textarea value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><select value={taskAssignedMemberId} onChange={(e) => setTaskAssignedMemberId(e.target.value)} style={inputStyle}><option value="">미션 받을 참여자 선택</option>{members.map((member) => <option key={member.id} value={member.id}>{member.display_name}</option>)}</select><select value={taskType} onChange={(e) => setTaskType(e.target.value)} style={inputStyle}><option value="habit">습관</option><option value="study">학습</option><option value="chore">집안일</option><option value="health">건강</option><option value="promise">약속</option><option value="custom">기타</option></select><select value={verificationType} onChange={(e) => setVerificationType(e.target.value)} style={inputStyle}><option value="none">인증 없음</option><option value="text">텍스트 인증</option><option value="photo">사진 인증</option><option value="video">영상 인증</option><option value="audio">음성 인증</option></select><input type="number" min={0} value={rewardPoints} onChange={(e) => setRewardPoints(Number(e.target.value))} placeholder="스티커 개수" style={inputStyle} /><button onClick={createTask} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "미션 만들기"}</button></section>;
   }
 
-  return (
-    <main style={pageStyle}>
-      <div style={containerStyle}>
-        <div style={accountHeaderStyle}>
-          <div>
-            <div style={accountLabelStyle}>로그인 중</div>
-            <div style={accountNameStyle}>{currentProfile?.display_name || "사용자"}</div>
-          </div>
-          <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>{loading ? "처리 중..." : "로그아웃"}</button>
-        </div>
+  function TaskListSection() {
+    return <section style={sectionStyle}><h2 style={sectionTitleStyle}>3. 오늘의 미션</h2><div style={listStyle}>{tasks.map((task) => <div key={task.id} style={taskCardStyle}><div style={{ flex: 1 }}><div style={taskHeaderStyle}><div><div style={cardTitleStyle}>{task.title}</div><div style={cardSubTextStyle}>대상: {memberNameById(task.assigned_member_id)}</div><div style={cardSubTextStyle}>인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개</div></div><span style={taskStatusBadgeStyle(task.status)}>{taskStatusLabel(task.status)}</span></div>{task.status === "todo" && <div style={{ marginTop: "14px" }}>{activeSubmitTaskId === task.id ? <><textarea value={submissionText} onChange={(e) => setSubmissionText(e.target.value)} placeholder={task.verification_type === "none" ? "완료 메모를 남겨보세요. 선택사항입니다." : "인증 내용을 입력하세요. 예) 오늘 30분 연습했어요."} rows={3} style={{ ...inputStyle, marginBottom: "10px", resize: "vertical" }} />{isFileVerification(task.verification_type) && <div style={fileBoxStyle}><div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{verificationLabel(task.verification_type)} 파일 첨부</div><input type="file" accept={acceptedFileTypes(task.verification_type)} onChange={(e) => setSubmissionFile(e.target.files?.[0] || null)} style={{ width: "100%" }} />{submissionFile && <div style={{ marginTop: 8, color: "#64748b", fontSize: 12 }}>선택됨: {submissionFile.name}</div>}</div>}<div style={twoColumnStyle}><button onClick={() => submitTask(task)} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "제출 중..." : "제출하기"}</button><button onClick={() => { setActiveSubmitTaskId(null); setSubmissionText(""); setSubmissionFile(null); }} disabled={loading} style={secondaryButtonStyle}>취소</button></div></> : <button onClick={() => { setActiveSubmitTaskId(task.id); setSubmissionText(""); setSubmissionFile(null); }} disabled={loading} style={secondaryButtonStyle}>완료/인증 제출</button>}</div>}{task.status === "submitted" && <div style={submittedActionBoxStyle}><div style={submittedTextStyle}>인증 제출 완료 · 보호자 승인 대기</div><div style={{ ...twoColumnStyle, marginTop: "10px" }}><button onClick={() => approveTask(task)} disabled={loading} style={approveButtonStyle(loading)}>승인</button><button onClick={() => rejectTask(task)} disabled={loading} style={rejectButtonStyle(loading)}>반려</button></div></div>}{task.status === "approved" && <div style={approvedBoxStyle}>승인 완료 · 스티커 {task.reward_points}개 지급됨</div>}{task.status === "rejected" && <div style={rejectedBoxStyle}>반려됨 · 다시 제출이 필요합니다</div>}</div></div>)}</div></section>;
+  }
 
-        {!workspace ? (
-          <>
-            <h1 style={titleStyle}>미루지말자</h1>
-            <p style={subTextStyle}>기존 워크스페이스를 선택하거나 새 공간을 만들어보세요</p>
+  function RewardCreateSection() {
+    return <section style={sectionStyle}><h2 style={sectionTitleStyle}>4. 보상 만들기</h2><p style={subTextStyle}>모은 스티커로 교환할 수 있는 보상을 등록하세요</p><input value={rewardTitle} onChange={(e) => setRewardTitle(e.target.value)} placeholder="예) 게임 30분, 떡볶이 먹기" style={inputStyle} /><textarea value={rewardDescription} onChange={(e) => setRewardDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><select value={rewardTargetMemberId} onChange={(e) => setRewardTargetMemberId(e.target.value)} style={inputStyle}><option value="">보상 대상 참여자 선택</option>{members.map((member) => <option key={member.id} value={member.id}>{member.display_name}</option>)}</select><input type="number" min={0} value={rewardCostPoints} onChange={(e) => setRewardCostPoints(Number(e.target.value))} placeholder="필요 스티커 개수" style={inputStyle} /><button onClick={createReward} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "보상 만들기"}</button></section>;
+  }
 
-            {workspaces.length > 0 && !showCreateWorkspace && (
-              <section>
-                <h2 style={sectionTitleStyle}>내 워크스페이스</h2>
-                <div style={listStyle}>
-                  {workspaces.map((item) => (
-                    <button key={item.id} onClick={() => selectWorkspace(item)} disabled={loading} style={workspaceSelectButtonStyle}>
-                      <div style={{ textAlign: "left" }}>
-                        <div style={cardTitleStyle}>{item.name}</div>
-                        {item.description && <div style={cardSubTextStyle}>{item.description}</div>}
-                      </div>
-                      <span style={openTextStyle}>열기</span>
-                    </button>
-                  ))}
-                </div>
-                <button onClick={() => setShowCreateWorkspace(true)} style={{ ...secondaryButtonStyle, marginTop: "16px" }}>새 워크스페이스 만들기</button>
-              </section>
-            )}
-
-            {(workspaces.length === 0 || showCreateWorkspace) && (
-              <section style={workspaces.length > 0 ? sectionStyle : undefined}>
-                <h2 style={sectionTitleStyle}>새 워크스페이스 생성</h2>
-                <p style={subTextStyle}>워크스페이스 생성 시 현재 로그인 계정이 owner로 자동 등록됩니다.</p>
-                <input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} placeholder="예) 우리집" style={inputStyle} />
-                <textarea value={workspaceDescription} onChange={(e) => setWorkspaceDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
-                <button onClick={createWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "워크스페이스 만들기"}</button>
-                {workspaces.length > 0 && <button onClick={() => setShowCreateWorkspace(false)} disabled={loading} style={{ ...secondaryButtonStyle, marginTop: "10px" }}>기존 목록으로 돌아가기</button>}
-              </section>
-            )}
-          </>
-        ) : (
-          <>
-            <div style={workspaceBoxStyle}>
-              <div style={labelStyle}>현재 워크스페이스</div>
-              <div style={{ fontSize: 22, fontWeight: 800 }}>{workspace.name}</div>
-              {workspace.description && <div style={cardSubTextStyle}>{workspace.description}</div>}
-              <button onClick={goBackToWorkspaceList} disabled={loading} style={{ ...secondaryButtonStyle, marginTop: "12px" }}>워크스페이스 목록으로</button>
-            </div>
-
-            <section style={sectionStyle}>
-              <h2 style={sectionTitleStyle}>1. 참여자 추가</h2>
-              <p style={subTextStyle}>실명 대신 앱에서 부를 이름만 입력하세요</p>
-              <input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="예) 엄마, 첫째, 토끼" style={inputStyle} />
-              <select value={memberRole} onChange={(e) => setMemberRole(e.target.value as "manager" | "member")} style={inputStyle}>
-                <option value="manager">보호자/관리자</option>
-                <option value="member">참여자/자녀</option>
-              </select>
-              <button onClick={addMember} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "추가 중..." : "참여자 추가"}</button>
-
-              {members.length > 0 && (
-                <div style={listStyle}>
-                  {members.map((member) => (
-                    <div key={member.id} style={memberCardStyle}>
-                      <div>
-                        <span style={memberNameStyle}>{member.display_name}</span>
-                        <div style={cardSubTextStyle}>스티커 {balanceByMemberId(member.id)}개</div>
-                      </div>
-                      <span style={badgeStyle(member.role)}>{roleLabel(member.role)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {members.length > 0 && (
-              <section style={sectionStyle}>
-                <h2 style={sectionTitleStyle}>2. 미션 만들기</h2>
-                <p style={subTextStyle}>참여자에게 오늘 할 미션을 부여하세요</p>
-                <input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="예) 피아노 100번 치기" style={inputStyle} />
-                <textarea value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
-                <select value={taskAssignedMemberId} onChange={(e) => setTaskAssignedMemberId(e.target.value)} style={inputStyle}>
-                  <option value="">미션 받을 참여자 선택</option>
-                  {members.map((member) => <option key={member.id} value={member.id}>{member.display_name}</option>)}
-                </select>
-                <select value={taskType} onChange={(e) => setTaskType(e.target.value)} style={inputStyle}>
-                  <option value="habit">습관</option>
-                  <option value="study">학습</option>
-                  <option value="chore">집안일</option>
-                  <option value="health">건강</option>
-                  <option value="promise">약속</option>
-                  <option value="custom">기타</option>
-                </select>
-                <select value={verificationType} onChange={(e) => setVerificationType(e.target.value)} style={inputStyle}>
-                  <option value="none">인증 없음</option>
-                  <option value="text">텍스트 인증</option>
-                  <option value="photo">사진 인증</option>
-                  <option value="video">영상 인증</option>
-                  <option value="audio">음성 인증</option>
-                </select>
-                <input type="number" min={0} value={rewardPoints} onChange={(e) => setRewardPoints(Number(e.target.value))} placeholder="스티커 개수" style={inputStyle} />
-                <button onClick={createTask} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "미션 만들기"}</button>
-              </section>
-            )}
-
-            {tasks.length > 0 && (
-              <section style={sectionStyle}>
-                <h2 style={sectionTitleStyle}>3. 오늘의 미션</h2>
-                <div style={listStyle}>
-                  {tasks.map((task) => (
-                    <div key={task.id} style={taskCardStyle}>
-                      <div style={{ flex: 1 }}>
-                        <div style={taskHeaderStyle}>
-                          <div>
-                            <div style={cardTitleStyle}>{task.title}</div>
-                            <div style={cardSubTextStyle}>대상: {memberNameById(task.assigned_member_id)}</div>
-                            <div style={cardSubTextStyle}>인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개</div>
-                          </div>
-                          <span style={taskStatusBadgeStyle(task.status)}>{taskStatusLabel(task.status)}</span>
-                        </div>
-
-                        {task.status === "todo" && (
-                          <div style={{ marginTop: "14px" }}>
-                            {activeSubmitTaskId === task.id ? (
-                              <>
-                                <textarea value={submissionText} onChange={(e) => setSubmissionText(e.target.value)} placeholder={task.verification_type === "none" ? "완료 메모를 남겨보세요. 선택사항입니다." : "인증 내용을 입력하세요. 예) 오늘 30분 연습했어요."} rows={3} style={{ ...inputStyle, marginBottom: "10px", resize: "vertical" }} />
-                                <div style={twoColumnStyle}>
-                                  <button onClick={() => submitTask(task)} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "제출 중..." : "제출하기"}</button>
-                                  <button onClick={() => { setActiveSubmitTaskId(null); setSubmissionText(""); }} disabled={loading} style={secondaryButtonStyle}>취소</button>
-                                </div>
-                              </>
-                            ) : (
-                              <button onClick={() => { setActiveSubmitTaskId(task.id); setSubmissionText(""); }} disabled={loading} style={secondaryButtonStyle}>완료/인증 제출</button>
-                            )}
-                          </div>
-                        )}
-
-                        {task.status === "submitted" && (
-                          <div style={submittedActionBoxStyle}>
-                            <div style={submittedTextStyle}>인증 제출 완료 · 보호자 승인 대기</div>
-                            <div style={{ ...twoColumnStyle, marginTop: "10px" }}>
-                              <button onClick={() => approveTask(task)} disabled={loading} style={approveButtonStyle(loading)}>승인</button>
-                              <button onClick={() => rejectTask(task)} disabled={loading} style={rejectButtonStyle(loading)}>반려</button>
-                            </div>
-                          </div>
-                        )}
-                        {task.status === "approved" && <div style={approvedBoxStyle}>승인 완료 · 스티커 {task.reward_points}개 지급됨</div>}
-                        {task.status === "rejected" && <div style={rejectedBoxStyle}>반려됨 · 다시 제출이 필요합니다</div>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {members.length > 0 && (
-              <section style={sectionStyle}>
-                <h2 style={sectionTitleStyle}>4. 보상 만들기</h2>
-                <p style={subTextStyle}>모은 스티커로 교환할 수 있는 보상을 등록하세요</p>
-                <input value={rewardTitle} onChange={(e) => setRewardTitle(e.target.value)} placeholder="예) 게임 30분, 떡볶이 먹기" style={inputStyle} />
-                <textarea value={rewardDescription} onChange={(e) => setRewardDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
-                <select value={rewardTargetMemberId} onChange={(e) => setRewardTargetMemberId(e.target.value)} style={inputStyle}>
-                  <option value="">보상 대상 참여자 선택</option>
-                  {members.map((member) => <option key={member.id} value={member.id}>{member.display_name}</option>)}
-                </select>
-                <input type="number" min={0} value={rewardCostPoints} onChange={(e) => setRewardCostPoints(Number(e.target.value))} placeholder="필요 스티커 개수" style={inputStyle} />
-                <button onClick={createReward} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "보상 만들기"}</button>
-              </section>
-            )}
-
-            {rewards.length > 0 && (
-              <section style={sectionStyle}>
-                <h2 style={sectionTitleStyle}>5. 보상 목록</h2>
-                <div style={listStyle}>
-                  {rewards.map((reward) => {
-                    const balance = reward.target_member_id ? balanceByMemberId(reward.target_member_id) : 0;
-                    const canRedeem = reward.status !== "redeemed" && balance >= reward.cost_points;
-                    return (
-                      <div key={reward.id} style={rewardCardStyle}>
-                        <div>
-                          <div style={cardTitleStyle}>{reward.title}</div>
-                          {reward.description && <div style={cardSubTextStyle}>{reward.description}</div>}
-                          <div style={cardSubTextStyle}>대상: {memberNameById(reward.target_member_id)} · 필요 스티커 {reward.cost_points}개 · 현재 {balance}개</div>
-                        </div>
-                        {reward.status === "redeemed" ? <div style={redeemedBoxStyle}>교환 완료</div> : <button onClick={() => redeemReward(reward)} disabled={loading || !canRedeem} style={canRedeem ? rewardButtonStyle : disabledRewardButtonStyle}>교환하기</button>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-          </>
-        )}
-        {message && <div style={messageBoxStyle(message)}>{message}</div>}
-      </div>
-    </main>
-  );
+  function RewardListSection() {
+    return <section style={sectionStyle}><h2 style={sectionTitleStyle}>5. 보상 목록</h2><div style={listStyle}>{rewards.map((reward) => { const balance = reward.target_member_id ? balanceByMemberId(reward.target_member_id) : 0; const canRedeem = reward.status !== "redeemed" && balance >= reward.cost_points; return <div key={reward.id} style={rewardCardStyle}><div><div style={cardTitleStyle}>{reward.title}</div>{reward.description && <div style={cardSubTextStyle}>{reward.description}</div>}<div style={cardSubTextStyle}>대상: {memberNameById(reward.target_member_id)} · 필요 스티커 {reward.cost_points}개 · 현재 {balance}개</div></div>{reward.status === "redeemed" ? <div style={redeemedBoxStyle}>교환 완료</div> : <button onClick={() => redeemReward(reward)} disabled={loading || !canRedeem} style={canRedeem ? rewardButtonStyle : disabledRewardButtonStyle}>교환하기</button>}</div>; })}</div></section>;
+  }
 }
 
-function Shell({ title, text }: { title: string; text: string }) {
-  return (
-    <main style={pageStyle}>
-      <div style={containerStyle}>
-        <h1 style={titleStyle}>{title}</h1>
-        <p style={subTextStyle}>{text}</p>
-      </div>
-    </main>
-  );
-}
-
-function roleLabel(role: string) {
-  if (role === "owner") return "owner";
-  if (role === "manager") return "보호자";
-  return "참여자";
-}
-
-function verificationLabel(type: string) {
-  if (type === "text") return "텍스트";
-  if (type === "photo") return "사진";
-  if (type === "video") return "영상";
-  if (type === "audio") return "음성";
-  if (type === "location") return "위치";
-  return "없음";
-}
-
-function taskStatusLabel(status: string) {
-  if (status === "todo") return "대기";
-  if (status === "submitted") return "제출됨";
-  if (status === "approved") return "승인됨";
-  if (status === "rejected") return "반려됨";
-  return status;
-}
+function Shell({ title, text }: { title: string; text: string }) { return <main style={pageStyle}><div style={containerStyle}><h1 style={titleStyle}>{title}</h1><p style={subTextStyle}>{text}</p></div></main>; }
+function roleLabel(role: string) { if (role === "owner") return "owner"; if (role === "manager") return "보호자"; return "참여자"; }
+function isFileVerification(type: string) { return type === "photo" || type === "video" || type === "audio"; }
+function acceptedFileTypes(type: string) { if (type === "photo") return "image/*"; if (type === "video") return "video/*"; if (type === "audio") return "audio/*"; return ""; }
+function verificationLabel(type: string) { if (type === "text") return "텍스트"; if (type === "photo") return "사진"; if (type === "video") return "영상"; if (type === "audio") return "음성"; if (type === "location") return "위치"; return "없음"; }
+function taskStatusLabel(status: string) { if (status === "todo") return "대기"; if (status === "submitted") return "제출됨"; if (status === "approved") return "승인됨"; if (status === "rejected") return "반려됨"; return status; }
 
 const pageStyle: CSSProperties = { minHeight: "100vh", background: "#f8fafc", padding: "24px", display: "flex", justifyContent: "center", alignItems: "flex-start" };
 const containerStyle: CSSProperties = { width: "100%", maxWidth: "500px", background: "#fff", borderRadius: "24px", padding: "24px", boxShadow: "0 10px 30px rgba(0,0,0,0.08)" };
@@ -1145,6 +349,7 @@ const taskCardStyle: CSSProperties = { padding: "14px", borderRadius: "16px", ba
 const rewardCardStyle: CSSProperties = { padding: "14px", borderRadius: "16px", background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "12px" };
 const taskHeaderStyle: CSSProperties = { display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "flex-start" };
 const twoColumnStyle: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" };
+const fileBoxStyle: CSSProperties = { padding: "12px", borderRadius: "12px", background: "#fff7ed", border: "1px solid #fed7aa", marginBottom: "10px" };
 const secondaryButtonStyle: CSSProperties = { width: "100%", padding: "13px", borderRadius: "12px", border: "1px solid #c7d2fe", background: "#eef2ff", color: "#4338ca", fontWeight: "bold", cursor: "pointer" };
 const submittedActionBoxStyle: CSSProperties = { marginTop: "14px", padding: "12px", borderRadius: "12px", background: "#eff6ff" };
 const submittedTextStyle: CSSProperties = { color: "#1d4ed8", fontSize: "13px", fontWeight: 700 };
@@ -1153,32 +358,9 @@ const rejectedBoxStyle: CSSProperties = { marginTop: "14px", padding: "12px", bo
 const rewardButtonStyle: CSSProperties = { width: "100%", padding: "13px", borderRadius: "12px", border: "none", background: "#f97316", color: "white", fontWeight: "bold", cursor: "pointer" };
 const disabledRewardButtonStyle: CSSProperties = { width: "100%", padding: "13px", borderRadius: "12px", border: "none", background: "#cbd5e1", color: "#64748b", fontWeight: "bold", cursor: "not-allowed" };
 const redeemedBoxStyle: CSSProperties = { padding: "12px", borderRadius: "12px", background: "#ecfdf5", color: "#047857", fontSize: "13px", fontWeight: 800, textAlign: "center" };
-
-function badgeStyle(role: string): CSSProperties {
-  if (role === "owner") return { fontSize: "12px", padding: "4px 8px", borderRadius: "999px", background: "#ede9fe", color: "#6d28d9", fontWeight: 800 };
-  return { fontSize: "12px", padding: "4px 8px", borderRadius: "999px", background: role === "manager" ? "#dbeafe" : "#dcfce7", color: role === "manager" ? "#1d4ed8" : "#15803d", fontWeight: 700 };
-}
-
-function taskStatusBadgeStyle(status: string): CSSProperties {
-  const isTodo = status === "todo";
-  const isSubmitted = status === "submitted";
-  const isApproved = status === "approved";
-  return { height: "fit-content", fontSize: "12px", padding: "4px 8px", borderRadius: "999px", background: isApproved ? "#dcfce7" : isSubmitted ? "#dbeafe" : isTodo ? "#fef3c7" : "#fee2e2", color: isApproved ? "#15803d" : isSubmitted ? "#1d4ed8" : isTodo ? "#92400e" : "#b91c1c", fontWeight: 700, whiteSpace: "nowrap" };
-}
-
-function primaryButtonStyle(loading: boolean): CSSProperties {
-  return { width: "100%", padding: "14px", borderRadius: "12px", border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "white", fontWeight: "bold", cursor: loading ? "not-allowed" : "pointer" };
-}
-
-function approveButtonStyle(loading: boolean): CSSProperties {
-  return { width: "100%", padding: "12px", borderRadius: "12px", border: "none", background: loading ? "#94a3b8" : "#16a34a", color: "white", fontWeight: "bold", cursor: loading ? "not-allowed" : "pointer" };
-}
-
-function rejectButtonStyle(loading: boolean): CSSProperties {
-  return { width: "100%", padding: "12px", borderRadius: "12px", border: "1px solid #fecaca", background: loading ? "#fca5a5" : "#fef2f2", color: "#b91c1c", fontWeight: "bold", cursor: loading ? "not-allowed" : "pointer" };
-}
-
-function messageBoxStyle(message: string): CSSProperties {
-  const ok = message.includes("완료") || message.includes("성공") || message.includes("생성") || message.includes("추가") || message.includes("제출") || message.includes("승인") || message.includes("교환") || message.includes("불러왔습니다") || message.includes("owner");
-  return { marginTop: "16px", padding: "12px", borderRadius: "12px", background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: "14px", lineHeight: 1.5 };
-}
+function badgeStyle(role: string): CSSProperties { if (role === "owner") return { fontSize: "12px", padding: "4px 8px", borderRadius: "999px", background: "#ede9fe", color: "#6d28d9", fontWeight: 800 }; return { fontSize: "12px", padding: "4px 8px", borderRadius: "999px", background: role === "manager" ? "#dbeafe" : "#dcfce7", color: role === "manager" ? "#1d4ed8" : "#15803d", fontWeight: 700 }; }
+function taskStatusBadgeStyle(status: string): CSSProperties { const isTodo = status === "todo"; const isSubmitted = status === "submitted"; const isApproved = status === "approved"; return { height: "fit-content", fontSize: "12px", padding: "4px 8px", borderRadius: "999px", background: isApproved ? "#dcfce7" : isSubmitted ? "#dbeafe" : isTodo ? "#fef3c7" : "#fee2e2", color: isApproved ? "#15803d" : isSubmitted ? "#1d4ed8" : isTodo ? "#92400e" : "#b91c1c", fontWeight: 700, whiteSpace: "nowrap" }; }
+function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: "14px", borderRadius: "12px", border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "white", fontWeight: "bold", cursor: loading ? "not-allowed" : "pointer" }; }
+function approveButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: "12px", borderRadius: "12px", border: "none", background: loading ? "#94a3b8" : "#16a34a", color: "white", fontWeight: "bold", cursor: loading ? "not-allowed" : "pointer" }; }
+function rejectButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: "12px", borderRadius: "12px", border: "1px solid #fecaca", background: loading ? "#fca5a5" : "#fef2f2", color: "#b91c1c", fontWeight: "bold", cursor: loading ? "not-allowed" : "pointer" }; }
+function messageBoxStyle(message: string): CSSProperties { const ok = message.includes("완료") || message.includes("성공") || message.includes("생성") || message.includes("추가") || message.includes("제출") || message.includes("승인") || message.includes("교환") || message.includes("불러왔습니다") || message.includes("owner"); return { marginTop: "16px", padding: "12px", borderRadius: "12px", background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: "14px", lineHeight: 1.5 }; }
