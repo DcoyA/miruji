@@ -4,61 +4,31 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 
-type Profile = {
-  id: string;
-  auth_user_id: string;
-  display_name: string;
-  avatar_url: string | null;
-  onboarding_completed: boolean;
-};
+import {
+  addMonths,
+  buildCalendarDays,
+  endOfMonth,
+  formatKoreanDate,
+  startOfMonth,
+  toDateKey,
+} from "@/lib/date";
 
-type Workspace = {
-  id: string;
-  name: string;
-  description: string | null;
-};
+import {
+  memberNameById,
+  statusLabel,
+  tabTitle,
+  verificationLabel,
+} from "@/lib/labels";
 
-type Member = {
-  id: string;
-  profile_id: string | null;
-  display_name: string;
-  role: "owner" | "manager" | "member";
-  is_virtual: boolean;
-};
-
-type Task = {
-  id: string;
-  workspace_id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  due_date: string | null;
-  assigned_member_id: string | null;
-  verification_type: string;
-  reward_points: number;
-};
-
-type Reward = {
-  id: string;
-  workspace_id: string;
-  title: string;
-  description: string | null;
-  requested_by_member_id: string | null;
-  target_member_id: string | null;
-  cost_points: number;
-  status: string;
-};
-
-type RewardTransaction = {
-  id: string;
-  member_id: string;
-  amount: number;
-  transaction_type: string;
-  source_type: string;
-  source_id: string | null;
-};
-
-type ActiveTab = "calendar" | "missions" | "rewards" | "settings";
+import type {
+  ActiveTab,
+  Member,
+  Profile,
+  Reward,
+  RewardTransaction,
+  Task,
+  Workspace,
+} from "@/types/app";
 
 const memberSelect = "id, profile_id, display_name, role, is_virtual";
 const taskSelect = "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points";
@@ -739,16 +709,6 @@ function BottomNav({ activeTab, onChange }: { activeTab: ActiveTab; onChange: (t
   return <nav style={bottomNavStyle}>{items.map((item) => <button key={item.key} onClick={() => onChange(item.key)} style={activeTab === item.key ? bottomNavActiveStyle : bottomNavButtonStyle}>{item.label}</button>)}</nav>;
 }
 
-function tabTitle(tab: ActiveTab) { if (tab === "missions") return "미션"; if (tab === "rewards") return "보상"; if (tab === "settings") return "설정"; return "캘린더"; }
-function startOfMonth(date: Date) { return new Date(date.getFullYear(), date.getMonth(), 1); }
-function endOfMonth(date: Date) { return new Date(date.getFullYear(), date.getMonth() + 1, 0); }
-function addMonths(date: Date, amount: number) { return new Date(date.getFullYear(), date.getMonth() + amount, 1); }
-function toDateKey(date: Date) { const year = date.getFullYear(); const month = `${date.getMonth() + 1}`.padStart(2, "0"); const day = `${date.getDate()}`.padStart(2, "0"); return `${year}-${month}-${day}`; }
-function buildCalendarDays(currentMonth: Date) { const firstDay = startOfMonth(currentMonth); const startOffset = firstDay.getDay(); const calendarStart = new Date(firstDay.getFullYear(), firstDay.getMonth(), 1 - startOffset); return Array.from({ length: 42 }, (_, index) => new Date(calendarStart.getFullYear(), calendarStart.getMonth(), calendarStart.getDate() + index)); }
-function formatKoreanDate(dateKey: string) { const [, month, day] = dateKey.split("-"); return `${Number(month)}월 ${Number(day)}일`; }
-function memberNameById(members: Member[], id: string | null) { if (!id) return "미지정"; return members.find((member) => member.id === id)?.display_name || "미지정"; }
-function verificationLabel(type: string) { if (type === "text") return "텍스트"; if (type === "photo") return "사진"; if (type === "video") return "영상"; if (type === "audio") return "음성"; return "없음"; }
-function statusLabel(status: string) { if (status === "todo") return "대기"; if (status === "submitted") return "제출됨"; if (status === "approved") return "승인됨"; if (status === "rejected") return "반려됨"; return status; }
 function statusBadgeStyle(status: string): CSSProperties { const colors: Record<string, { bg: string; text: string }> = { todo: { bg: "#fef3c7", text: "#92400e" }, submitted: { bg: "#dbeafe", text: "#1d4ed8" }, approved: { bg: "#dcfce7", text: "#15803d" }, rejected: { bg: "#fee2e2", text: "#b91c1c" } }; const color = colors[status] || colors.todo; return { height: "fit-content", padding: "4px 8px", borderRadius: 999, background: color.bg, color: color.text, fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }; }
 function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer" }; }
 
