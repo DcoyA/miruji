@@ -38,10 +38,32 @@ type Task = {
   reward_points: number;
 };
 
+type Reward = {
+  id: string;
+  workspace_id: string;
+  title: string;
+  description: string | null;
+  requested_by_member_id: string | null;
+  target_member_id: string | null;
+  cost_points: number;
+  status: string;
+};
+
+type RewardTransaction = {
+  id: string;
+  member_id: string;
+  amount: number;
+  transaction_type: string;
+  source_type: string;
+  source_id: string | null;
+};
+
 type ActiveTab = "calendar" | "missions" | "rewards" | "settings";
 
 const memberSelect = "id, profile_id, display_name, role, is_virtual";
 const taskSelect = "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points";
+const rewardSelect = "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status";
+const rewardTxSelect = "id, member_id, amount, transaction_type, source_type, source_id";
 
 export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
@@ -60,6 +82,8 @@ export default function Home() {
 
   const [members, setMembers] = useState<Member[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [rewardTransactions, setRewardTransactions] = useState<RewardTransaction[]>([]);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("calendar");
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
@@ -70,6 +94,11 @@ export default function Home() {
   const [newTaskAssignedMemberId, setNewTaskAssignedMemberId] = useState("");
   const [newTaskVerificationType, setNewTaskVerificationType] = useState("none");
   const [newTaskRewardPoints, setNewTaskRewardPoints] = useState(1);
+
+  const [newRewardTitle, setNewRewardTitle] = useState("");
+  const [newRewardDescription, setNewRewardDescription] = useState("");
+  const [newRewardTargetMemberId, setNewRewardTargetMemberId] = useState("");
+  const [newRewardCostPoints, setNewRewardCostPoints] = useState(1);
 
   useEffect(() => {
     initializeAuth();
@@ -240,6 +269,8 @@ export default function Home() {
     setWorkspace(null);
     setMembers([]);
     setTasks([]);
+    setRewards([]);
+    setRewardTransactions([]);
     setWorkspaceName("");
     setWorkspaceDescription("");
     setNewTaskTitle("");
@@ -247,6 +278,10 @@ export default function Home() {
     setNewTaskAssignedMemberId("");
     setNewTaskVerificationType("none");
     setNewTaskRewardPoints(1);
+    setNewRewardTitle("");
+    setNewRewardDescription("");
+    setNewRewardTargetMemberId("");
+    setNewRewardCostPoints(1);
   }
 
   async function loadWorkspaces(profileId: string) {
@@ -325,9 +360,11 @@ export default function Home() {
     const monthStart = toDateKey(startOfMonth(currentMonth));
     const monthEnd = toDateKey(endOfMonth(currentMonth));
 
-    const [membersResult, tasksResult] = await Promise.all([
+    const [membersResult, tasksResult, rewardsResult, rewardTransactionsResult] = await Promise.all([
       supabase.from("workspace_members").select(memberSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
       supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd).order("due_date", { ascending: true }),
+      supabase.from("rewards").select(rewardSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
+      supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
     ]);
 
     if (membersResult.error) {
@@ -340,8 +377,20 @@ export default function Home() {
       return;
     }
 
+    if (rewardsResult.error) {
+      setMessage(`보상 불러오기 실패: ${rewardsResult.error.message}`);
+      return;
+    }
+
+    if (rewardTransactionsResult.error) {
+      setMessage(`스티커 내역 불러오기 실패: ${rewardTransactionsResult.error.message}`);
+      return;
+    }
+
     setMembers((membersResult.data || []) as Member[]);
     setTasks((tasksResult.data || []) as Task[]);
+    setRewards((rewardsResult.data || []) as Reward[]);
+    setRewardTransactions((rewardTransactionsResult.data || []) as RewardTransaction[]);
   }
 
   async function createTask() {
@@ -399,13 +448,137 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function createReward() {
+    if (!workspace) {
+      setMessage("워크스페이스를 먼저 선택해주세요.");
+      return;
+    }
+
+    if (!newRewardTitle.trim()) {
+      setMessage("보상 이름을 입력해주세요.");
+      return;
+    }
+
+    if (!newRewardTargetMemberId) {
+      setMessage("보상 대상 참여자를 선택해주세요.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const manager = members.find((member) => member.role === "owner" || member.role === "manager") || null;
+
+    const { data, error } = await supabase
+      .from("rewards")
+      .insert({
+        workspace_id: workspace.id,
+        title: newRewardTitle.trim(),
+        description: newRewardDescription.trim() || null,
+        requested_by_member_id: newRewardTargetMemberId,
+        target_member_id: newRewardTargetMemberId,
+        approved_by_member_id: manager?.id || null,
+        cost_points: newRewardCostPoints,
+        status: "approved",
+      })
+      .select(rewardSelect)
+      .single();
+
+    if (error) {
+      setMessage(`보상 생성 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setRewards((prev) => [data as Reward, ...prev]);
+    setNewRewardTitle("");
+    setNewRewardDescription("");
+    setNewRewardCostPoints(1);
+    setMessage("보상 생성 완료");
+    setLoading(false);
+  }
+
+  async function redeemReward(reward: Reward) {
+    if (!workspace) {
+      setMessage("워크스페이스를 먼저 선택해주세요.");
+      return;
+    }
+
+    if (!reward.target_member_id) {
+      setMessage("보상 대상자가 없습니다.");
+      return;
+    }
+
+    if (reward.status === "redeemed") {
+      setMessage("이미 교환한 보상입니다.");
+      return;
+    }
+
+    const balance = balanceByMemberId(reward.target_member_id);
+
+    if (balance < reward.cost_points) {
+      setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`);
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const manager = members.find((member) => member.role === "owner" || member.role === "manager") || null;
+
+    const { data: spendData, error: spendError } = await supabase
+      .from("reward_transactions")
+      .insert({
+        workspace_id: workspace.id,
+        member_id: reward.target_member_id,
+        amount: -reward.cost_points,
+        transaction_type: "spend",
+        source_type: "reward",
+        source_id: reward.id,
+        memo: `${reward.title} 보상 교환`,
+        created_by_member_id: manager?.id || null,
+      })
+      .select(rewardTxSelect)
+      .single();
+
+    if (spendError) {
+      setMessage(`스티커 차감 실패: ${spendError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    const { data: updatedReward, error: rewardError } = await supabase
+      .from("rewards")
+      .update({ status: "redeemed", redeemed_at: new Date().toISOString() })
+      .eq("id", reward.id)
+      .select(rewardSelect)
+      .single();
+
+    if (rewardError) {
+      setMessage(`보상 상태 변경 실패: ${rewardError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setRewardTransactions((prev) => [...prev, spendData as RewardTransaction]);
+    setRewards((prev) => prev.map((item) => item.id === reward.id ? (updatedReward as Reward) : item));
+    setMessage(`보상 교환 완료: ${reward.title}`);
+    setLoading(false);
+  }
+
+  function balanceByMemberId(memberId: string) {
+    return rewardTransactions
+      .filter((item) => item.member_id === memberId)
+      .reduce((sum, item) => sum + item.amount, 0);
+  }
+
+  const selectedTasks = useMemo(() => tasks.filter((task) => task.due_date === selectedDate), [tasks, selectedDate]);
+  const monthTaskCount = tasks.length;
+  const pendingCount = tasks.filter((task) => task.status === "submitted").length;
+  const approvedCount = tasks.filter((task) => task.status === "approved").length;
+
   if (authLoading) {
-    return (
-      <Shell>
-        <h1 style={titleStyle}>미루지말자</h1>
-        <p style={subTextStyle}>로그인 상태를 확인하는 중입니다...</p>
-      </Shell>
-    );
+    return <Shell><h1 style={titleStyle}>미루지말자</h1><p style={subTextStyle}>로그인 상태를 확인하는 중입니다...</p></Shell>;
   }
 
   if (!profile) {
@@ -431,18 +604,12 @@ export default function Home() {
     <main style={pageStyle}>
       <div style={phoneStyle}>
         <header style={topBarStyle}>
-          <div>
-            <div style={eyebrowStyle}>미루지말자</div>
-            <h1 style={headerTitleStyle}>{tabTitle(activeTab)}</h1>
-          </div>
+          <div><div style={eyebrowStyle}>미루지말자</div><h1 style={headerTitleStyle}>{tabTitle(activeTab)}</h1></div>
           <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>로그아웃</button>
         </header>
 
         <section style={accountBoxStyle}>
-          <div>
-            <div style={smallLabelStyle}>로그인 중</div>
-            <strong>{profile.display_name}</strong>
-          </div>
+          <div><div style={smallLabelStyle}>로그인 중</div><strong>{profile.display_name}</strong></div>
           <a href="/dev" style={devLinkStyle}>개발화면</a>
         </section>
 
@@ -469,16 +636,7 @@ export default function Home() {
         {workspace && activeTab === "calendar" && (
           <>
             <SummaryStrip monthTaskCount={monthTaskCount} pendingCount={pendingCount} approvedCount={approvedCount} />
-            <CalendarToolbar
-              currentMonth={currentMonth}
-              onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))}
-              onNext={() => setCurrentMonth(addMonths(currentMonth, 1))}
-              onToday={() => {
-                const today = new Date();
-                setCurrentMonth(startOfMonth(today));
-                setSelectedDate(toDateKey(today));
-              }}
-            />
+            <CalendarToolbar currentMonth={currentMonth} onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))} onNext={() => setCurrentMonth(addMonths(currentMonth, 1))} onToday={() => { const today = new Date(); setCurrentMonth(startOfMonth(today)); setSelectedDate(toDateKey(today)); }} />
             <CalendarGrid currentMonth={currentMonth} selectedDate={selectedDate} tasks={tasks} onSelectDate={setSelectedDate} />
             <DayTaskList selectedDate={selectedDate} tasks={selectedTasks} members={members} />
           </>
@@ -504,26 +662,28 @@ export default function Home() {
           />
         )}
 
-        {workspace && activeTab === "rewards" && <PlaceholderTab title="보상" text="다음 단계에서 보상 목록/교환 UI를 이 탭으로 옮깁니다." />}
-        {workspace && activeTab === "settings" && <PlaceholderTab title="설정" text="다음 단계에서 프로필 수정, 초대코드, 워크스페이스 설정을 붙입니다." />}
-
-        {workspaces.length > 0 && activeTab === "settings" && (
-          <section style={secondarySectionStyle}>
-            <h2 style={sectionTitleStyle}>새 워크스페이스</h2>
-            <CreateWorkspaceCard
-              name={workspaceName}
-              description={workspaceDescription}
-              loading={loading}
-              onNameChange={setWorkspaceName}
-              onDescriptionChange={setWorkspaceDescription}
-              onCreate={createWorkspace}
-              compact
-            />
-          </section>
+        {workspace && activeTab === "rewards" && (
+          <RewardTab
+            members={members}
+            rewards={rewards}
+            title={newRewardTitle}
+            description={newRewardDescription}
+            targetMemberId={newRewardTargetMemberId}
+            costPoints={newRewardCostPoints}
+            loading={loading}
+            balanceByMemberId={balanceByMemberId}
+            onTitleChange={setNewRewardTitle}
+            onDescriptionChange={setNewRewardDescription}
+            onTargetMemberIdChange={setNewRewardTargetMemberId}
+            onCostPointsChange={setNewRewardCostPoints}
+            onCreate={createReward}
+            onRedeem={redeemReward}
+          />
         )}
 
-        {message && <div style={messageBoxStyle(message)}>{message}</div>}
+        {workspace && activeTab === "settings" && <SettingsTab workspaces={workspaces} workspace={workspace} members={members} />}
 
+        {message && <div style={messageBoxStyle(message)}>{message}</div>}
         <BottomNav activeTab={activeTab} onChange={setActiveTab} />
       </div>
     </main>
@@ -567,12 +727,16 @@ function MissionTab({ selectedDate, members, tasks, title, description, assigned
   return <><section style={createBoxStyle}><h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션 추가</h2><input value={title} onChange={(event) => onTitleChange(event.target.value)} placeholder="예) 피아노 100번 치기" style={inputStyle} /><textarea value={description} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><select value={assignedMemberId} onChange={(event) => onAssignedMemberIdChange(event.target.value)} style={inputStyle}><option value="">미션 받을 참여자 선택</option>{members.map((member) => <option key={member.id} value={member.id}>{member.display_name}</option>)}</select><select value={verificationType} onChange={(event) => onVerificationTypeChange(event.target.value)} style={inputStyle}><option value="none">인증 없음</option><option value="text">텍스트 인증</option><option value="photo">사진 인증</option><option value="video">영상 인증</option><option value="audio">음성 인증</option></select><input type="number" min={0} value={rewardPoints} onChange={(event) => onRewardPointsChange(Number(event.target.value))} placeholder="스티커 개수" style={inputStyle} /><button onClick={onCreate} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "미션 만들기"}</button></section><section style={dayTaskSectionStyle}><h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션 목록</h2>{tasks.length === 0 ? <div style={emptyStateStyle}>이 날짜에 등록된 미션이 없습니다.</div> : <TaskList tasks={tasks} members={members} />}</section></>;
 }
 
+function RewardTab({ members, rewards, title, description, targetMemberId, costPoints, loading, balanceByMemberId, onTitleChange, onDescriptionChange, onTargetMemberIdChange, onCostPointsChange, onCreate, onRedeem }: { members: Member[]; rewards: Reward[]; title: string; description: string; targetMemberId: string; costPoints: number; loading: boolean; balanceByMemberId: (memberId: string) => number; onTitleChange: (value: string) => void; onDescriptionChange: (value: string) => void; onTargetMemberIdChange: (value: string) => void; onCostPointsChange: (value: number) => void; onCreate: () => void; onRedeem: (reward: Reward) => void; }) {
+  return <><section style={createBoxStyle}><h2 style={sectionTitleStyle}>보상 만들기</h2><p style={subTextStyle}>모은 스티커로 교환할 수 있는 보상을 등록하세요.</p><input value={title} onChange={(event) => onTitleChange(event.target.value)} placeholder="예) 게임 30분, 떡볶이 먹기" style={inputStyle} /><textarea value={description} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><select value={targetMemberId} onChange={(event) => onTargetMemberIdChange(event.target.value)} style={inputStyle}><option value="">보상 대상 참여자 선택</option>{members.map((member) => <option key={member.id} value={member.id}>{member.display_name} · 스티커 {balanceByMemberId(member.id)}개</option>)}</select><input type="number" min={0} value={costPoints} onChange={(event) => onCostPointsChange(Number(event.target.value))} placeholder="필요 스티커 개수" style={inputStyle} /><button onClick={onCreate} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "보상 만들기"}</button></section><section style={dayTaskSectionStyle}><h2 style={sectionTitleStyle}>보상 목록</h2>{rewards.length === 0 ? <div style={emptyStateStyle}>등록된 보상이 없습니다.</div> : <div style={taskListStyle}>{rewards.map((reward) => { const balance = reward.target_member_id ? balanceByMemberId(reward.target_member_id) : 0; const canRedeem = reward.status !== "redeemed" && balance >= reward.cost_points; return <div key={reward.id} style={rewardCardStyle}><div><div style={taskTitleStyle}>{reward.title}</div>{reward.description && <div style={taskSubTextStyle}>{reward.description}</div>}<div style={taskSubTextStyle}>대상: {memberNameById(members, reward.target_member_id)} · 필요 {reward.cost_points}개 · 현재 {balance}개</div></div>{reward.status === "redeemed" ? <span style={statusBadgeStyle("approved")}>교환 완료</span> : <button onClick={() => onRedeem(reward)} disabled={loading || !canRedeem} style={canRedeem ? rewardButtonStyle : disabledRewardButtonStyle}>교환하기</button>}</div>; })}</div>}</section></>;
+}
+
 function TaskList({ tasks, members }: { tasks: Task[]; members: Member[]; }) {
   return <div style={taskListStyle}>{tasks.map((task) => <div key={task.id} style={taskCardStyle}><div><div style={taskTitleStyle}>{task.title}</div><div style={taskSubTextStyle}>대상: {memberNameById(members, task.assigned_member_id)}</div><div style={taskSubTextStyle}>인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개</div></div><span style={statusBadgeStyle(task.status)}>{statusLabel(task.status)}</span></div>)}</div>;
 }
 
-function PlaceholderTab({ title, text }: { title: string; text: string; }) {
-  return <section style={createBoxStyle}><h2 style={sectionTitleStyle}>{title}</h2><p style={subTextStyle}>{text}</p></section>;
+function SettingsTab({ workspaces, workspace, members }: { workspaces: Workspace[]; workspace: Workspace; members: Member[]; }) {
+  return <section style={createBoxStyle}><h2 style={sectionTitleStyle}>설정</h2><p style={subTextStyle}>프로필 수정, 초대코드, 워크스페이스 설정은 다음 단계에서 붙입니다.</p><div style={settingLineStyle}>현재 워크스페이스: <strong>{workspace.name}</strong></div><div style={settingLineStyle}>워크스페이스 수: {workspaces.length}</div><div style={settingLineStyle}>참여자 수: {members.length}</div></section>;
 }
 
 function BottomNav({ activeTab, onChange }: { activeTab: ActiveTab; onChange: (tab: ActiveTab) => void; }) {
@@ -633,10 +797,13 @@ const dayTaskSectionStyle: CSSProperties = { marginBottom: 80 };
 const emptyStateStyle: CSSProperties = { padding: 18, borderRadius: 18, background: "#f8fafc", color: "#64748b", textAlign: "center" };
 const taskListStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 10 };
 const taskCardStyle: CSSProperties = { padding: 14, borderRadius: 18, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", gap: 12 };
+const rewardCardStyle: CSSProperties = { padding: 14, borderRadius: 18, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: 12 };
 const taskTitleStyle: CSSProperties = { fontWeight: 900, fontSize: 16 };
 const taskSubTextStyle: CSSProperties = { marginTop: 5, color: "#64748b", fontSize: 13 };
-const messageBoxStyle = (message: string): CSSProperties => { const ok = message.includes("완료") || message.includes("성공") || message.includes("불러오기"); return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 }; };
-const secondarySectionStyle: CSSProperties = { borderTop: "1px solid #e2e8f0", paddingTop: 18, marginTop: 18 };
+const rewardButtonStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#f97316", color: "#fff", fontWeight: 800, cursor: "pointer" };
+const disabledRewardButtonStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#cbd5e1", color: "#64748b", fontWeight: 800, cursor: "not-allowed" };
+const settingLineStyle: CSSProperties = { padding: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, marginTop: 8, color: "#334155" };
+const messageBoxStyle = (message: string): CSSProperties => { const ok = message.includes("완료") || message.includes("성공") || message.includes("불러오기") || message.includes("교환"); return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 }; };
 const bottomNavStyle: CSSProperties = { position: "sticky", bottom: 0, transform: "translateY(10px)", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, background: "#fff", padding: "10px 0 0", borderTop: "1px solid #e2e8f0" };
 const bottomNavButtonStyle: CSSProperties = { border: "none", background: "#f8fafc", borderRadius: 14, padding: "10px 4px", color: "#64748b", fontWeight: 800 };
 const bottomNavActiveStyle: CSSProperties = { ...bottomNavButtonStyle, background: "#eef2ff", color: "#4f46e5" };
