@@ -134,10 +134,9 @@ export default function Home() {
     const fallbackName = userData.user?.email?.split("@")[0] || "사용자";
 
     const { data, error } = await supabase
-      .from("profiles")
-      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
-      .eq("auth_user_id", authUserId)
-      .maybeSingle();
+      .from("workspaces")
+      .select("id, name, description")
+      .order("created_at", { ascending: false });
 
     if (error) {
       setMessage(`프로필 불러오기 실패: ${error.message}`);
@@ -870,7 +869,7 @@ export default function Home() {
             />
           )}
   
-          {workspace && activeTab === "settings" && (
+          {activeTab === "settings" && (
             <SettingsTab
               workspaces={workspaces}
               workspace={workspace}
