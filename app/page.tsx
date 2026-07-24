@@ -1,23 +1,23 @@
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 
+import Shell from "@/components/Shell";
+import AppHeader from "@/components/AppHeader";
 import AuthPanel from "@/components/AuthPanel";
 import BottomNav from "@/components/BottomNav";
 import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
-import CreateWorkspaceCard from "@/components/CreateWorkspaceCard";
-import Shell from "@/components/Shell";
-import AppHeader from "@/components/AppHeader";
 
 import CalendarGrid from "@/features/calendar/CalendarGrid";
 import CalendarToolbar from "@/features/calendar/CalendarToolbar";
 import DayTaskList from "@/features/calendar/DayTaskList";
+import SummaryStrip from "@/features/calendar/SummaryStrip";
 import MissionTab from "@/features/missions/MissionTab";
 import RewardTab from "@/features/rewards/RewardTab";
 import SettingsTab from "@/features/settings/SettingsTab";
-import SummaryStrip from "@/features/calendar/SummaryStrip";
 
 import { addMonths, endOfMonth, startOfMonth, toDateKey } from "@/lib/date";
 import { tabTitle } from "@/lib/labels";
@@ -39,6 +39,14 @@ const rewardSelect =
   "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status";
 const rewardTxSelect =
   "id, member_id, amount, transaction_type, source_type, source_id";
+
+type MemberRole = "manager" | "member";
+
+type InviteAcceptResult = {
+  workspace_id?: string;
+  member_id?: string;
+  status?: string;
+};
 
 export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
@@ -76,7 +84,7 @@ export default function Home() {
   const [newRewardCostPoints, setNewRewardCostPoints] = useState(1);
 
   const [newMemberName, setNewMemberName] = useState("");
-  const [newMemberRole, setNewMemberRole] = useState<"manager" | "member">("member");
+  const [newMemberRole, setNewMemberRole] = useState<MemberRole>("member");
   const [inviteCodes, setInviteCodes] = useState<Record<string, string>>({});
   const [joinInviteCode, setJoinInviteCode] = useState("");
 
@@ -92,7 +100,7 @@ export default function Home() {
       }
 
       const loadedProfile = await loadProfile(session.user.id);
-      if (loadedProfile) await loadWorkspaces(loadedProfile.id);
+      if (loadedProfile) await loadWorkspaces();
       setAuthLoading(false);
     });
 
@@ -125,7 +133,7 @@ export default function Home() {
     }
 
     const loadedProfile = await loadProfile(data.user.id);
-    if (loadedProfile) await loadWorkspaces(loadedProfile.id);
+    if (loadedProfile) await loadWorkspaces();
     setAuthLoading(false);
   }
 
@@ -134,9 +142,10 @@ export default function Home() {
     const fallbackName = userData.user?.email?.split("@")[0] || "사용자";
 
     const { data, error } = await supabase
-      .from("workspaces")
-      .select("id, name, description")
-      .order("created_at", { ascending: false });
+      .from("profiles")
+      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
+      .eq("auth_user_id", authUserId)
+      .maybeSingle();
 
     if (error) {
       setMessage(`프로필 불러오기 실패: ${error.message}`);
@@ -223,7 +232,7 @@ export default function Home() {
 
     const loadedProfile = await loadProfile(data.user.id);
     if (loadedProfile) {
-      await loadWorkspaces(loadedProfile.id);
+      await loadWorkspaces();
       setMessage("로그인 성공");
     }
     setLoading(false);
@@ -286,11 +295,10 @@ export default function Home() {
     setJoinInviteCode("");
   }
 
-  async function loadWorkspaces(profileId: string) {
+  async function loadWorkspaces() {
     const { data, error } = await supabase
       .from("workspaces")
       .select("id, name, description")
-      .eq("created_by", profileId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -300,10 +308,10 @@ export default function Home() {
 
     const list = (data || []) as Workspace[];
     setWorkspaces(list);
-
-    if (list.length > 0) {
-      setWorkspace((current) => current || list[0]);
-    }
+    setWorkspace((current) => {
+      if (current && list.some((item) => item.id === current.id)) return current;
+      return list[0] || null;
+    });
   }
 
   async function createWorkspace() {
@@ -358,6 +366,7 @@ export default function Home() {
     setWorkspace(newWorkspace);
     setWorkspaceName("");
     setWorkspaceDescription("");
+    setActiveTab("settings");
     setMessage(`워크스페이스 생성 완료: ${newWorkspace.name}`);
     setLoading(false);
   }
@@ -367,15 +376,15 @@ export default function Home() {
       setMessage("워크스페이스를 먼저 선택해주세요.");
       return;
     }
-  
+
     if (!newMemberName.trim()) {
       setMessage("참여자 이름을 입력해주세요.");
       return;
     }
-  
+
     setLoading(true);
     setMessage("");
-  
+
     const { data, error } = await supabase
       .from("workspace_members")
       .insert({
@@ -388,44 +397,43 @@ export default function Home() {
       })
       .select(memberSelect)
       .single();
-  
+
     if (error) {
       setMessage(`참여자 추가 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     setMembers((prev) => [...prev, data as Member]);
     setNewMemberName("");
     setNewMemberRole("member");
     setMessage(`참여자 추가 완료: ${data.display_name}`);
     setLoading(false);
   }
-  
+
   function makeInviteCode() {
     return Math.random().toString(36).slice(2, 8).toUpperCase();
   }
-  
+
   async function createInviteForMember(member: Member) {
     if (!workspace) {
       setMessage("워크스페이스를 먼저 선택해주세요.");
       return;
     }
-  
+
     if (!member.is_virtual) {
       setMessage("이미 계정과 연결된 참여자입니다.");
       return;
     }
-  
+
     setLoading(true);
     setMessage("");
-  
+
     const manager = members.find(
       (item) => item.role === "owner" || item.role === "manager"
     );
-  
     const inviteCode = makeInviteCode();
-  
+
     const { error } = await supabase.from("workspace_invites").insert({
       workspace_id: workspace.id,
       target_member_id: member.id,
@@ -435,65 +443,62 @@ export default function Home() {
       created_by_member_id: manager?.id || null,
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     });
-  
+
     if (error) {
       setMessage(`초대코드 생성 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     setInviteCodes((prev) => ({
       ...prev,
       [member.id]: inviteCode,
     }));
-  
     setMessage(`초대코드 생성 완료: ${inviteCode}`);
     setLoading(false);
   }
-  
+
   async function acceptInviteCode() {
     if (!joinInviteCode.trim()) {
       setMessage("초대코드를 입력해주세요.");
       return;
     }
-  
+
     setLoading(true);
     setMessage("");
-  
+
     const { data, error } = await supabase.rpc("accept_workspace_invite", {
       input_code: joinInviteCode.trim().toUpperCase(),
     });
-  
+
     if (error) {
       setMessage(`초대코드 참여 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     setJoinInviteCode("");
     setMessage("워크스페이스 참여 완료");
-  
-    if (profile) {
-      await loadWorkspaces(profile.id);
-  
-      const joinedWorkspaceId = data?.workspace_id as string | undefined;
-  
-      if (joinedWorkspaceId) {
-        const { data: joinedWorkspace } = await supabase
-          .from("workspaces")
-          .select("id, name, description")
-          .eq("id", joinedWorkspaceId)
-          .single();
-  
-        if (joinedWorkspace) {
-          setWorkspace(joinedWorkspace as Workspace);
-        }
-      }
+
+    const result = data as InviteAcceptResult | null;
+    const joinedWorkspaceId = result?.workspace_id;
+
+    await loadWorkspaces();
+
+    if (joinedWorkspaceId) {
+      const { data: joinedWorkspace } = await supabase
+        .from("workspaces")
+        .select("id, name, description")
+        .eq("id", joinedWorkspaceId)
+        .single();
+
+      if (joinedWorkspace) setWorkspace(joinedWorkspace as Workspace);
     }
-  
+
+    setActiveTab("calendar");
     setLoading(false);
   }
-  
+
   async function loadWorkspaceData(workspaceId: string) {
     const monthStart = toDateKey(startOfMonth(currentMonth));
     const monthEnd = toDateKey(endOfMonth(currentMonth));
@@ -765,180 +770,142 @@ export default function Home() {
 
   return (
     <Shell>
-      <main style={pageStyle}>
-        <div style={phoneStyle}>
-          <AppHeader
-            title={tabTitle(activeTab)}
-            loading={loading}
-            onSignOut={signOut}
-          />
-  
-          <section style={accountBoxStyle}>
-            <div>
-              <div style={smallLabelStyle}>로그인 중</div>
-              <strong>{profile.display_name}</strong>
-            </div>
-            <a href="/dev" style={devLinkStyle}>
-              개발화면
-            </a>
-          </section>
-  
-          {workspaces.length > 0 ? (
-            <WorkspaceSwitcher
-              workspaces={workspaces}
-              currentWorkspaceId={workspace?.id ?? ""}
-              onSelect={(id) => {
-                const next = workspaces.find((item) => item.id === id) || null;
-                setWorkspace(next);
-              }}
-            />
-          ) : (
-            <CreateWorkspaceCard
-              name={workspaceName}
-              description={workspaceDescription}
-              loading={loading}
-              onNameChange={setWorkspaceName}
-              onDescriptionChange={setWorkspaceDescription}
-              onCreate={createWorkspace}
-            />
-          )}
-  
-          {workspace && activeTab === "calendar" && (
-            <>
-              <SummaryStrip
-                monthTaskCount={monthTaskCount}
-                pendingCount={pendingCount}
-                approvedCount={approvedCount}
-              />
-              <CalendarToolbar
-                currentMonth={currentMonth}
-                onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))}
-                onNext={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                onToday={() => {
-                  const today = new Date();
-                  setCurrentMonth(startOfMonth(today));
-                  setSelectedDate(toDateKey(today));
-                }}
-              />
-              <CalendarGrid
-                currentMonth={currentMonth}
-                selectedDate={selectedDate}
-                tasks={tasks}
-                onSelectDate={setSelectedDate}
-              />
-              <DayTaskList selectedDate={selectedDate} tasks={selectedTasks} members={members} />
-            </>
-          )}
-  
-          {workspace && activeTab === "missions" && (
-            <MissionTab
-              selectedDate={selectedDate}
-              members={members}
-              tasks={selectedTasks}
-              title={newTaskTitle}
-              description={newTaskDescription}
-              assignedMemberId={newTaskAssignedMemberId}
-              verificationType={newTaskVerificationType}
-              rewardPoints={newTaskRewardPoints}
-              loading={loading}
-              onTitleChange={setNewTaskTitle}
-              onDescriptionChange={setNewTaskDescription}
-              onAssignedMemberIdChange={setNewTaskAssignedMemberId}
-              onVerificationTypeChange={setNewTaskVerificationType}
-              onRewardPointsChange={setNewTaskRewardPoints}
-              onCreate={createTask}
-            />
-          )}
-  
-          {workspace && activeTab === "rewards" && (
-            <RewardTab
-              members={members}
-              rewards={rewards}
-              title={newRewardTitle}
-              description={newRewardDescription}
-              targetMemberId={newRewardTargetMemberId}
-              costPoints={newRewardCostPoints}
-              loading={loading}
-              balanceByMemberId={balanceByMemberId}
-              onTitleChange={setNewRewardTitle}
-              onDescriptionChange={setNewRewardDescription}
-              onTargetMemberIdChange={setNewRewardTargetMemberId}
-              onCostPointsChange={setNewRewardCostPoints}
-              onCreate={createReward}
-              onRedeem={redeemReward}
-            />
-          )}
-  
-          {activeTab === "settings" && (
-            <SettingsTab
-              workspaces={workspaces}
-              workspace={workspace}
-              members={members}
-              workspaceName={workspaceName}
-              workspaceDescription={workspaceDescription}
-              loading={loading}
-              onWorkspaceNameChange={setWorkspaceName}
-              onWorkspaceDescriptionChange={setWorkspaceDescription}
-              onCreateWorkspace={createWorkspace}
-              newMemberName={newMemberName}
-              newMemberRole={newMemberRole}
-              onNewMemberNameChange={setNewMemberName}
-              onNewMemberRoleChange={setNewMemberRole}
-              onAddMember={addMember}
-              inviteCodes={inviteCodes}
-              onCreateInvite={createInviteForMember}
-              joinInviteCode={joinInviteCode}
-              onJoinInviteCodeChange={setJoinInviteCode}
-              onAcceptInvite={acceptInviteCode}
-            />
-          )}
-  
-          {message && <div style={messageBoxStyle(message)}>{message}</div>}
-          <BottomNav activeTab={activeTab} onChange={setActiveTab} />
+      <AppHeader title={tabTitle(activeTab)} loading={loading} onSignOut={signOut} />
+
+      <section style={accountBoxStyle}>
+        <div>
+          <div style={smallLabelStyle}>로그인 중</div>
+          <strong>{profile.display_name}</strong>
         </div>
-      </main>
+        <a href="/dev" style={devLinkStyle}>
+          개발화면
+        </a>
+      </section>
+
+      {workspaces.length > 0 && (
+        <WorkspaceSwitcher
+          workspaces={workspaces}
+          currentWorkspaceId={workspace?.id ?? ""}
+          onSelect={(id) => {
+            const next = workspaces.find((item) => item.id === id) || null;
+            setWorkspace(next);
+          }}
+        />
+      )}
+
+      {workspace && activeTab === "calendar" && (
+        <>
+          <SummaryStrip
+            monthTaskCount={monthTaskCount}
+            pendingCount={pendingCount}
+            approvedCount={approvedCount}
+          />
+          <CalendarToolbar
+            currentMonth={currentMonth}
+            onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))}
+            onNext={() => setCurrentMonth(addMonths(currentMonth, 1))}
+            onToday={() => {
+              const today = new Date();
+              setCurrentMonth(startOfMonth(today));
+              setSelectedDate(toDateKey(today));
+            }}
+          />
+          <CalendarGrid
+            currentMonth={currentMonth}
+            selectedDate={selectedDate}
+            tasks={tasks}
+            onSelectDate={setSelectedDate}
+          />
+          <DayTaskList selectedDate={selectedDate} tasks={selectedTasks} members={members} />
+        </>
+      )}
+
+      {workspace && activeTab === "missions" && (
+        <MissionTab
+          selectedDate={selectedDate}
+          members={members}
+          tasks={selectedTasks}
+          title={newTaskTitle}
+          description={newTaskDescription}
+          assignedMemberId={newTaskAssignedMemberId}
+          verificationType={newTaskVerificationType}
+          rewardPoints={newTaskRewardPoints}
+          loading={loading}
+          onTitleChange={setNewTaskTitle}
+          onDescriptionChange={setNewTaskDescription}
+          onAssignedMemberIdChange={setNewTaskAssignedMemberId}
+          onVerificationTypeChange={setNewTaskVerificationType}
+          onRewardPointsChange={setNewTaskRewardPoints}
+          onCreate={createTask}
+        />
+      )}
+
+      {workspace && activeTab === "rewards" && (
+        <RewardTab
+          members={members}
+          rewards={rewards}
+          title={newRewardTitle}
+          description={newRewardDescription}
+          targetMemberId={newRewardTargetMemberId}
+          costPoints={newRewardCostPoints}
+          loading={loading}
+          balanceByMemberId={balanceByMemberId}
+          onTitleChange={setNewRewardTitle}
+          onDescriptionChange={setNewRewardDescription}
+          onTargetMemberIdChange={setNewRewardTargetMemberId}
+          onCostPointsChange={setNewRewardCostPoints}
+          onCreate={createReward}
+          onRedeem={redeemReward}
+        />
+      )}
+
+      {activeTab === "settings" && (
+        <SettingsTab
+          workspaces={workspaces}
+          workspace={workspace}
+          members={members}
+          workspaceName={workspaceName}
+          workspaceDescription={workspaceDescription}
+          loading={loading}
+          onWorkspaceNameChange={setWorkspaceName}
+          onWorkspaceDescriptionChange={setWorkspaceDescription}
+          onCreateWorkspace={createWorkspace}
+          newMemberName={newMemberName}
+          newMemberRole={newMemberRole}
+          onNewMemberNameChange={setNewMemberName}
+          onNewMemberRoleChange={setNewMemberRole}
+          onAddMember={addMember}
+          inviteCodes={inviteCodes}
+          onCreateInvite={createInviteForMember}
+          joinInviteCode={joinInviteCode}
+          onJoinInviteCodeChange={setJoinInviteCode}
+          onAcceptInvite={acceptInviteCode}
+        />
+      )}
+
+      {!workspace && activeTab !== "settings" && (
+        <NoWorkspacePrompt onGoSettings={() => setActiveTab("settings")} />
+      )}
+
+      {message && <div style={messageBoxStyle(message)}>{message}</div>}
+      <BottomNav activeTab={activeTab} onChange={setActiveTab} />
     </Shell>
   );
 }
 
-const pageStyle: CSSProperties = {
-  minHeight: "100vh",
-  background: "#e2f3f1",
-  padding: 16,
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "flex-start",
-};
-
-const phoneStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 480,
-  minHeight: "calc(100vh - 32px)",
-  background: "#fff",
-  borderRadius: 28,
-  padding: 22,
-  boxShadow: "0 20px 60px rgba(15,23,42,0.12)",
-};
-
-const topBarStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 16,
-};
-
-const eyebrowStyle: CSSProperties = {
-  color: "#4f46e5",
-  fontSize: 13,
-  fontWeight: 800,
-};
-
-const headerTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 30,
-  letterSpacing: "-0.04em",
-};
+function NoWorkspacePrompt({ onGoSettings }: { onGoSettings: () => void }) {
+  return (
+    <section style={emptyWorkspaceBoxStyle}>
+      <h2 style={emptyWorkspaceTitleStyle}>워크스페이스가 필요합니다</h2>
+      <p style={emptyWorkspaceTextStyle}>
+        캘린더, 미션, 보상 기능을 사용하려면 먼저 워크스페이스에 참여하거나 새 워크스페이스를 만들어야 합니다.
+      </p>
+      <button onClick={onGoSettings} style={emptyWorkspaceButtonStyle}>
+        설정에서 시작하기
+      </button>
+    </section>
+  );
+}
 
 const titleStyle: CSSProperties = {
   margin: "0 0 8px",
@@ -950,16 +917,6 @@ const subTextStyle: CSSProperties = {
   color: "#64748b",
   lineHeight: 1.6,
   marginBottom: 20,
-};
-
-const logoutButtonStyle: CSSProperties = {
-  border: "1px solid #fecaca",
-  background: "#fef2f2",
-  color: "#b91c1c",
-  borderRadius: 14,
-  padding: "10px 12px",
-  fontWeight: 800,
-  cursor: "pointer",
 };
 
 const accountBoxStyle: CSSProperties = {
@@ -986,6 +943,37 @@ const devLinkStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 800,
   textDecoration: "none",
+};
+
+const emptyWorkspaceBoxStyle: CSSProperties = {
+  padding: 18,
+  borderRadius: 20,
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+  marginTop: 18,
+};
+
+const emptyWorkspaceTitleStyle: CSSProperties = {
+  margin: "0 0 8px",
+  fontSize: 20,
+  fontWeight: 900,
+};
+
+const emptyWorkspaceTextStyle: CSSProperties = {
+  color: "#64748b",
+  lineHeight: 1.6,
+  marginBottom: 14,
+};
+
+const emptyWorkspaceButtonStyle: CSSProperties = {
+  width: "100%",
+  padding: 14,
+  borderRadius: 14,
+  border: "none",
+  background: "#4f46e5",
+  color: "#fff",
+  fontWeight: 800,
+  cursor: "pointer",
 };
 
 const messageBoxStyle = (message: string): CSSProperties => {
