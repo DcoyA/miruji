@@ -75,6 +75,11 @@ export default function Home() {
   const [newRewardTargetMemberId, setNewRewardTargetMemberId] = useState("");
   const [newRewardCostPoints, setNewRewardCostPoints] = useState(1);
 
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState<"manager" | "member">("member");
+  const [inviteCodes, setInviteCodes] = useState<Record<string, string>>({});
+  const [joinInviteCode, setJoinInviteCode] = useState("");
+
   useEffect(() => {
     initializeAuth();
 
@@ -276,6 +281,10 @@ export default function Home() {
     setNewRewardDescription("");
     setNewRewardTargetMemberId("");
     setNewRewardCostPoints(1);
+    setNewMemberName("");
+    setNewMemberRole("member");
+    setInviteCodes({});
+    setJoinInviteCode("");
   }
 
   async function loadWorkspaces(profileId: string) {
@@ -354,6 +363,138 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function addMember() {
+    if (!workspace) {
+      setMessage("워크스페이스를 먼저 선택해주세요.");
+      return;
+    }
+  
+    if (!newMemberName.trim()) {
+      setMessage("참여자 이름을 입력해주세요.");
+      return;
+    }
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { data, error } = await supabase
+      .from("workspace_members")
+      .insert({
+        workspace_id: workspace.id,
+        display_name: newMemberName.trim(),
+        role: newMemberRole,
+        status: "active",
+        is_virtual: true,
+        created_by: profile?.id || null,
+      })
+      .select(memberSelect)
+      .single();
+  
+    if (error) {
+      setMessage(`참여자 추가 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setMembers((prev) => [...prev, data as Member]);
+    setNewMemberName("");
+    setNewMemberRole("member");
+    setMessage(`참여자 추가 완료: ${data.display_name}`);
+    setLoading(false);
+  }
+  
+  function makeInviteCode() {
+    return Math.random().toString(36).slice(2, 8).toUpperCase();
+  }
+  
+  async function createInviteForMember(member: Member) {
+    if (!workspace) {
+      setMessage("워크스페이스를 먼저 선택해주세요.");
+      return;
+    }
+  
+    if (!member.is_virtual) {
+      setMessage("이미 계정과 연결된 참여자입니다.");
+      return;
+    }
+  
+    setLoading(true);
+    setMessage("");
+  
+    const manager = members.find(
+      (item) => item.role === "owner" || item.role === "manager"
+    );
+  
+    const inviteCode = makeInviteCode();
+  
+    const { error } = await supabase.from("workspace_invites").insert({
+      workspace_id: workspace.id,
+      target_member_id: member.id,
+      invite_code: inviteCode,
+      role: member.role,
+      status: "pending",
+      created_by_member_id: manager?.id || null,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+  
+    if (error) {
+      setMessage(`초대코드 생성 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setInviteCodes((prev) => ({
+      ...prev,
+      [member.id]: inviteCode,
+    }));
+  
+    setMessage(`초대코드 생성 완료: ${inviteCode}`);
+    setLoading(false);
+  }
+  
+  async function acceptInviteCode() {
+    if (!joinInviteCode.trim()) {
+      setMessage("초대코드를 입력해주세요.");
+      return;
+    }
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { data, error } = await supabase.rpc("accept_workspace_invite", {
+      input_code: joinInviteCode.trim().toUpperCase(),
+    });
+  
+    if (error) {
+      setMessage(`초대코드 참여 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setJoinInviteCode("");
+    setMessage("워크스페이스 참여 완료");
+  
+    if (profile) {
+      await loadWorkspaces(profile.id);
+  
+      const joinedWorkspaceId = data?.workspace_id as string | undefined;
+  
+      if (joinedWorkspaceId) {
+        const { data: joinedWorkspace } = await supabase
+          .from("workspaces")
+          .select("id, name, description")
+          .eq("id", joinedWorkspaceId)
+          .single();
+  
+        if (joinedWorkspace) {
+          setWorkspace(joinedWorkspace as Workspace);
+        }
+      }
+    }
+  
+    setLoading(false);
+  }
+  
   async function loadWorkspaceData(workspaceId: string) {
     const monthStart = toDateKey(startOfMonth(currentMonth));
     const monthEnd = toDateKey(endOfMonth(currentMonth));
@@ -740,6 +881,16 @@ export default function Home() {
               onWorkspaceNameChange={setWorkspaceName}
               onWorkspaceDescriptionChange={setWorkspaceDescription}
               onCreateWorkspace={createWorkspace}
+              newMemberName={newMemberName}
+              newMemberRole={newMemberRole}
+              onNewMemberNameChange={setNewMemberName}
+              onNewMemberRoleChange={setNewMemberRole}
+              onAddMember={addMember}
+              inviteCodes={inviteCodes}
+              onCreateInvite={createInviteForMember}
+              joinInviteCode={joinInviteCode}
+              onJoinInviteCodeChange={setJoinInviteCode}
+              onAcceptInvite={acceptInviteCode}
             />
           )}
   
