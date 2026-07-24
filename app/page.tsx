@@ -15,6 +15,7 @@ import DayTaskList from "@/features/calendar/DayTaskList";
 import MissionTab from "@/features/missions/MissionTab";
 import RewardTab from "@/features/rewards/RewardTab";
 import SettingsTab from "@/features/settings/SettingsTab";
+import SummaryStrip from "@/features/calendar/SummaryStrip";
 
 import { addMonths, endOfMonth, startOfMonth, toDateKey } from "@/lib/date";
 import { tabTitle } from "@/lib/labels";
@@ -758,33 +759,6 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SummaryStrip({
-  monthTaskCount,
-  pendingCount,
-  approvedCount,
-}: {
-  monthTaskCount: number;
-  pendingCount: number;
-  approvedCount: number;
-}) {
-  return (
-    <section style={summaryGridStyle}>
-      <div style={summaryCardStyle}>
-        <div style={summaryNumberStyle}>{monthTaskCount}</div>
-        <div style={summaryLabelStyle}>이번 달 미션</div>
-      </div>
-      <div style={summaryCardStyle}>
-        <div style={summaryNumberStyle}>{pendingCount}</div>
-        <div style={summaryLabelStyle}>승인 대기</div>
-      </div>
-      <div style={summaryCardStyle}>
-        <div style={summaryNumberStyle}>{approvedCount}</div>
-        <div style={summaryLabelStyle}>승인 완료</div>
-      </div>
-    </section>
-  );
-}
-
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
   background: "#e2f3f1",
@@ -870,34 +844,6 @@ const devLinkStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 800,
   textDecoration: "none",
-};
-
-const summaryGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3, 1fr)",
-  gap: 8,
-  marginBottom: 14,
-};
-
-const summaryCardStyle: CSSProperties = {
-  padding: 12,
-  borderRadius: 16,
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  textAlign: "center",
-};
-
-const summaryNumberStyle: CSSProperties = {
-  fontSize: 20,
-  fontWeight: 900,
-  color: "#4f46e5",
-};
-
-const summaryLabelStyle: CSSProperties = {
-  marginTop: 4,
-  fontSize: 11,
-  color: "#64748b",
-  fontWeight: 800,
 };
 
 const messageBoxStyle = (message: string): CSSProperties => {
