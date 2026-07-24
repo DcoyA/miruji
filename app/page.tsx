@@ -751,45 +751,6 @@ export default function Home() {
   );
 }
 
-const pageStyle: CSSProperties = {
-  minHeight: "100vh",
-  background: "#e2f3f1",
-  padding: 16,
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "flex-start",
-};
-
-const phoneStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 480,
-  minHeight: "calc(100vh - 32px)",
-  background: "#fff",
-  borderRadius: 28,
-  padding: 22,
-  boxShadow: "0 20px 60px rgba(15,23,42,0.12)",
-};
-
-const topBarStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 16,
-};
-
-const eyebrowStyle: CSSProperties = {
-  color: "#4f46e5",
-  fontSize: 13,
-  fontWeight: 800,
-};
-
-const headerTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 30,
-  letterSpacing: "-0.04em",
-};
-
 const titleStyle: CSSProperties = {
   margin: "0 0 8px",
   fontSize: 30,
