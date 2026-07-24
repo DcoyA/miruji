@@ -815,3 +815,7 @@ const taskSubTextStyle: CSSProperties = {
   color: "#64748b",
   fontSize: 13,
 };
+
+const dayTaskSectionStyle: CSSProperties = {
+  marginBottom: 80,
+};
