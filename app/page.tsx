@@ -31,18 +31,15 @@ type Task = {
   workspace_id: string;
   title: string;
   description: string | null;
-  status: "todo" | "submitted" | "approved" | "rejected" | string;
+  status: string;
   due_date: string | null;
   assigned_member_id: string | null;
   verification_type: string;
   reward_points: number;
 };
 
-const taskSelect =
-  "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points";
-
-const memberSelect =
-  "id, profile_id, display_name, role, is_virtual";
+const memberSelect = "id, profile_id, display_name, role, is_virtual";
+const taskSelect = "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points";
 
 export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
@@ -52,7 +49,6 @@ export default function Home() {
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
-
   const [profile, setProfile] = useState<Profile | null>(null);
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -71,7 +67,7 @@ export default function Home() {
 
     const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
-        resetState();
+        resetAppState();
         setProfile(null);
         setAuthLoading(false);
         return;
@@ -84,20 +80,19 @@ export default function Home() {
       setAuthLoading(false);
     });
 
-    return () => {
-      data.subscription.unsubscribe();
-    };
+    return () => data.subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (workspace) {
+    if (workspace?.id) {
       loadWorkspaceData(workspace.id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace?.id, currentMonth.getFullYear(), currentMonth.getMonth()]);
 
   async function initializeAuth() {
     setAuthLoading(true);
-
     const { data } = await supabase.auth.getUser();
 
     if (!data.user) {
@@ -107,11 +102,9 @@ export default function Home() {
     }
 
     const loadedProfile = await loadProfile(data.user.id);
-
     if (loadedProfile) {
       await loadWorkspaces(loadedProfile.id);
     }
-
     setAuthLoading(false);
   }
 
@@ -131,13 +124,12 @@ export default function Home() {
     }
 
     if (data) {
-      const loadedProfile = {
+      const loaded = {
         ...(data as Profile),
         display_name: data.display_name || fallbackName,
       };
-
-      setProfile(loadedProfile);
-      return loadedProfile;
+      setProfile(loaded);
+      return loaded;
     }
 
     const { data: created, error: createError } = await supabase
@@ -172,11 +164,7 @@ export default function Home() {
     const { error } = await supabase.auth.signUp({
       email: authEmail.trim(),
       password: authPassword.trim(),
-      options: {
-        data: {
-          display_name: authEmail.split("@")[0],
-        },
-      },
+      options: { data: { display_name: authEmail.split("@")[0] } },
     });
 
     if (error) {
@@ -215,7 +203,6 @@ export default function Home() {
     }
 
     const loadedProfile = await loadProfile(data.user.id);
-
     if (loadedProfile) {
       await loadWorkspaces(loadedProfile.id);
       setMessage("로그인 성공");
@@ -238,17 +225,13 @@ export default function Home() {
 
     if (typeof window !== "undefined") {
       Object.keys(window.localStorage).forEach((key) => {
-        if (
-          key.startsWith("sb-") ||
-          key.includes("supabase") ||
-          key.includes("auth-token")
-        ) {
+        if (key.startsWith("sb-") || key.includes("supabase") || key.includes("auth-token")) {
           window.localStorage.removeItem(key);
         }
       });
     }
 
-    resetState();
+    resetAppState();
     setProfile(null);
     setAuthEmail("");
     setAuthPassword("");
@@ -257,7 +240,7 @@ export default function Home() {
     setMessage("로그아웃 완료");
   }
 
-  function resetState() {
+  function resetAppState() {
     setWorkspaces([]);
     setWorkspace(null);
     setMembers([]);
@@ -281,8 +264,8 @@ export default function Home() {
     const list = (data || []) as Workspace[];
     setWorkspaces(list);
 
-    if (!workspace && list.length > 0) {
-      setWorkspace(list[0]);
+    if (list.length > 0) {
+      setWorkspace((current) => current || list[0]);
     }
   }
 
@@ -336,13 +319,11 @@ export default function Home() {
     }
 
     const newWorkspace = createdWorkspace as Workspace;
-
     setWorkspaces((prev) => [newWorkspace, ...prev]);
     setWorkspace(newWorkspace);
     setWorkspaceName("");
     setWorkspaceDescription("");
     setMessage(`워크스페이스 생성 완료: ${newWorkspace.name}`);
-
     setLoading(false);
   }
 
@@ -356,7 +337,6 @@ export default function Home() {
         .select(memberSelect)
         .eq("workspace_id", workspaceId)
         .order("created_at", { ascending: true }),
-
       supabase
         .from("tasks")
         .select(taskSelect)
@@ -420,7 +400,6 @@ export default function Home() {
             <div style={eyebrowStyle}>미루지말자</div>
             <h1 style={headerTitleStyle}>캘린더</h1>
           </div>
-
           <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>
             로그아웃
           </button>
@@ -431,15 +410,15 @@ export default function Home() {
             <div style={smallLabelStyle}>로그인 중</div>
             <strong>{profile.display_name}</strong>
           </div>
-        
-          <a href="/dev
+          <a href="/dev" style={devLinkStyle}>
+            개발화면
           </a>
         </section>
 
         {workspaces.length > 0 ? (
           <WorkspaceSwitcher
             workspaces={workspaces}
-            currentWorkspaceId={workspace?.id || ""}
+            currentWorkspaceId={workspace?.id ?? ""}
             onSelect={(id) => {
               const next = workspaces.find((item) => item.id === id) || null;
               setWorkspace(next);
@@ -476,11 +455,7 @@ export default function Home() {
               onSelectDate={setSelectedDate}
             />
 
-            <DayTaskList
-              selectedDate={selectedDate}
-              tasks={selectedTasks}
-              members={members}
-            />
+            <DayTaskList selectedDate={selectedDate} tasks={selectedTasks} members={members} />
           </>
         )}
 
@@ -549,34 +524,16 @@ function AuthPanel({
       <p style={subTextStyle}>부모와 자녀가 함께 쓰는 미션형 클라우드 다이어리</p>
 
       <div style={tabGridStyle}>
-        <button
-          onClick={() => onModeChange("signin")}
-          style={mode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}
-        >
+        <button onClick={() => onModeChange("signin")} style={mode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}>
           로그인
         </button>
-        <button
-          onClick={() => onModeChange("signup")}
-          style={mode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}
-        >
+        <button onClick={() => onModeChange("signup")} style={mode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}>
           회원가입
         </button>
       </div>
 
-      <input
-        value={email}
-        onChange={(event) => onEmailChange(event.target.value)}
-        placeholder="이메일"
-        style={inputStyle}
-      />
-
-      <input
-        value={password}
-        onChange={(event) => onPasswordChange(event.target.value)}
-        placeholder="비밀번호"
-        type="password"
-        style={inputStyle}
-      />
+      <input value={email} onChange={(event) => onEmailChange(event.target.value)} placeholder="이메일" style={inputStyle} />
+      <input value={password} onChange={(event) => onPasswordChange(event.target.value)} placeholder="비밀번호" type="password" style={inputStyle} />
 
       {mode === "signin" ? (
         <button onClick={onSignIn} disabled={loading} style={primaryButtonStyle(loading)}>
@@ -605,14 +562,10 @@ function WorkspaceSwitcher({
   return (
     <section style={workspaceSwitcherStyle}>
       <label style={smallLabelStyle}>워크스페이스</label>
-      <select
-        value={currentWorkspaceId}
-        onChange={(event) => onSelect(event.target.value)}
-        style={selectStyle}
-      >
-        {workspaces.map((workspace) => (
-          <option key={workspace.id} value={workspace.id}>
-            {workspace.name}
+      <select value={currentWorkspaceId} onChange={(event) => onSelect(event.target.value)} style={selectStyle}>
+        {workspaces.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.name}
           </option>
         ))}
       </select>
@@ -640,22 +593,8 @@ function CreateWorkspaceCard({
   return (
     <section style={compact ? compactCreateBoxStyle : createBoxStyle}>
       {!compact && <h2 style={sectionTitleStyle}>첫 워크스페이스 만들기</h2>}
-
-      <input
-        value={name}
-        onChange={(event) => onNameChange(event.target.value)}
-        placeholder="예) 우리집"
-        style={inputStyle}
-      />
-
-      <textarea
-        value={description}
-        onChange={(event) => onDescriptionChange(event.target.value)}
-        placeholder="설명 (선택)"
-        rows={3}
-        style={{ ...inputStyle, resize: "vertical" }}
-      />
-
+      <input value={name} onChange={(event) => onNameChange(event.target.value)} placeholder="예) 우리집" style={inputStyle} />
+      <textarea value={description} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
       <button onClick={onCreate} disabled={loading} style={primaryButtonStyle(loading)}>
         {loading ? "생성 중..." : "워크스페이스 만들기"}
       </button>
@@ -676,21 +615,10 @@ function CalendarToolbar({
 }) {
   return (
     <section style={calendarToolbarStyle}>
-      <button onClick={onPrev} style={monthButtonStyle}>
-        ‹
-      </button>
-
-      <div style={monthTitleStyle}>
-        {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월
-      </div>
-
-      <button onClick={onNext} style={monthButtonStyle}>
-        ›
-      </button>
-
-      <button onClick={onToday} style={todayButtonStyle}>
-        오늘
-      </button>
+      <button onClick={onPrev} style={monthButtonStyle}>‹</button>
+      <div style={monthTitleStyle}>{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</div>
+      <button onClick={onNext} style={monthButtonStyle}>›</button>
+      <button onClick={onToday} style={todayButtonStyle}>오늘</button>
     </section>
   );
 }
@@ -712,12 +640,9 @@ function CalendarGrid({
     <section style={calendarBoxStyle}>
       <div style={weekHeaderGridStyle}>
         {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
-          <div key={day} style={weekHeaderStyle}>
-            {day}
-          </div>
+          <div key={day} style={weekHeaderStyle}>{day}</div>
         ))}
       </div>
-
       <div style={calendarGridStyle}>
         {days.map((day) => {
           const dateKey = toDateKey(day);
@@ -739,7 +664,6 @@ function CalendarGrid({
               }}
             >
               <div style={dayNumberStyle}>{day.getDate()}</div>
-
               {dayTasks.length > 0 && (
                 <div style={dayMetaStyle}>
                   <span>{dayTasks.length}</span>
@@ -755,19 +679,10 @@ function CalendarGrid({
   );
 }
 
-function DayTaskList({
-  selectedDate,
-  tasks,
-  members,
-}: {
-  selectedDate: string;
-  tasks: Task[];
-  members: Member[];
-}) {
+function DayTaskList({ selectedDate, tasks, members }: { selectedDate: string; tasks: Task[]; members: Member[] }) {
   return (
     <section style={dayTaskSectionStyle}>
       <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션</h2>
-
       {tasks.length === 0 ? (
         <div style={emptyStateStyle}>이 날짜에 등록된 미션이 없습니다.</div>
       ) : (
@@ -776,17 +691,10 @@ function DayTaskList({
             <div key={task.id} style={taskCardStyle}>
               <div>
                 <div style={taskTitleStyle}>{task.title}</div>
-                <div style={taskSubTextStyle}>
-                  대상: {memberNameById(members, task.assigned_member_id)}
-                </div>
-                <div style={taskSubTextStyle}>
-                  인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개
-                </div>
+                <div style={taskSubTextStyle}>대상: {memberNameById(members, task.assigned_member_id)}</div>
+                <div style={taskSubTextStyle}>인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개</div>
               </div>
-
-              <span style={statusBadgeStyle(task.status)}>
-                {statusLabel(task.status)}
-              </span>
+              <span style={statusBadgeStyle(task.status)}>{statusLabel(task.status)}</span>
             </div>
           ))}
         </div>
@@ -795,434 +703,57 @@ function DayTaskList({
   );
 }
 
-function startOfMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function endOfMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
-}
-
-function addMonths(date: Date, amount: number) {
-  return new Date(date.getFullYear(), date.getMonth() + amount, 1);
-}
-
-function toDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function buildCalendarDays(currentMonth: Date) {
-  const firstDay = startOfMonth(currentMonth);
-  const startOffset = firstDay.getDay();
-  const calendarStart = new Date(
-    firstDay.getFullYear(),
-    firstDay.getMonth(),
-    1 - startOffset
-  );
-
-  return Array.from({ length: 42 }, (_, index) => {
-    return new Date(
-      calendarStart.getFullYear(),
-      calendarStart.getMonth(),
-      calendarStart.getDate() + index
-    );
-  });
-}
-
-function formatKoreanDate(dateKey: string) {
-  const [year, month, day] = dateKey.split("-");
-  return `${Number(month)}월 ${Number(day)}일`;
-}
-
-function memberNameById(members: Member[], id: string | null) {
-  if (!id) return "미지정";
-  return members.find((member) => member.id === id)?.display_name || "미지정";
-}
-
-function verificationLabel(type: string) {
-  if (type === "text") return "텍스트";
-  if (type === "photo") return "사진";
-  if (type === "video") return "영상";
-  if (type === "audio") return "음성";
-  return "없음";
-}
-
-function statusLabel(status: string) {
-  if (status === "todo") return "대기";
-  if (status === "submitted") return "제출됨";
-  if (status === "approved") return "승인됨";
-  if (status === "rejected") return "반려됨";
-  return status;
-}
-
-function statusBadgeStyle(status: string): CSSProperties {
-  const colors: Record<string, { bg: string; text: string }> = {
-    todo: { bg: "#fef3c7", text: "#92400e" },
-    submitted: { bg: "#dbeafe", text: "#1d4ed8" },
-    approved: { bg: "#dcfce7", text: "#15803d" },
-    rejected: { bg: "#fee2e2", text: "#b91c1c" },
-  };
-
-  const color = colors[status] || colors.todo;
-
-  return {
-    height: "fit-content",
-    padding: "4px 8px",
-    borderRadius: 999,
-    background: color.bg,
-    color: color.text,
-    fontSize: 12,
-    fontWeight: 800,
-    whiteSpace: "nowrap",
-  };
-}
-
-function primaryButtonStyle(loading: boolean): CSSProperties {
-  return {
-    width: "100%",
-    padding: 14,
-    borderRadius: 14,
-    border: "none",
-    background: loading ? "#94a3b8" : "#4f46e5",
-    color: "#fff",
-    fontWeight: 800,
-    cursor: loading ? "not-allowed" : "pointer",
-  };
-}
-
-const pageStyle: CSSProperties = {
-  minHeight: "100vh",
-  background: "#e2f3f1",
-  padding: 16,
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "flex-start",
-};
-
-const phoneStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 480,
-  minHeight: "calc(100vh - 32px)",
-  background: "#fff",
-  borderRadius: 28,
-  padding: 22,
-  boxShadow: "0 20px 60px rgba(15,23,42,0.12)",
-};
-
-const topBarStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 16,
-};
-
-const eyebrowStyle: CSSProperties = {
-  color: "#4f46e5",
-  fontSize: 13,
-  fontWeight: 800,
-};
-
-const headerTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 30,
-  letterSpacing: "-0.04em",
-};
-
-const titleStyle: CSSProperties = {
-  margin: "0 0 8px",
-  fontSize: 30,
-  letterSpacing: "-0.04em",
-};
-
-const subTextStyle: CSSProperties = {
-  color: "#64748b",
-  lineHeight: 1.6,
-  marginBottom: 20,
-};
-
-const tabGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 8,
-  marginBottom: 16,
-};
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  padding: 14,
-  borderRadius: 14,
-  border: "1px solid #dbeafe",
-  marginBottom: 12,
-  outline: "none",
-  fontSize: 15,
-};
-
-const secondaryButtonStyle: CSSProperties = {
-  width: "100%",
-  padding: 13,
-  borderRadius: 14,
-  border: "1px solid #c7d2fe",
-  background: "#eef2ff",
-  color: "#4338ca",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const logoutButtonStyle: CSSProperties = {
-  border: "1px solid #fecaca",
-  background: "#fef2f2",
-  color: "#b91c1c",
-  borderRadius: 14,
-  padding: "10px 12px",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const accountBoxStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  background: "#ecfdf5",
-  border: "1px solid #bbf7d0",
-  borderRadius: 18,
-  padding: 14,
-  marginBottom: 16,
-};
-
-const smallLabelStyle: CSSProperties = {
-  display: "block",
-  color: "#047857",
-  fontSize: 12,
-  fontWeight: 800,
-  marginBottom: 4,
-};
-
-const devLinkStyle: CSSProperties = {
-  color: "#4f46e5",
-  fontSize: 13,
-  fontWeight: 800,
-  textDecoration: "none",
-};
-
-const workspaceSwitcherStyle: CSSProperties = {
-  marginBottom: 18,
-};
-
-const selectStyle: CSSProperties = {
-  width: "100%",
-  padding: 14,
-  borderRadius: 14,
-  border: "1px solid #dbeafe",
-  background: "#fff",
-  fontWeight: 700,
-};
-
-const createBoxStyle: CSSProperties = {
-  padding: 16,
-  borderRadius: 20,
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  marginBottom: 18,
-};
-
-const compactCreateBoxStyle: CSSProperties = {
-  marginTop: 12,
-};
-
-const calendarToolbarStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "44px 1fr 44px 64px",
-  gap: 8,
-  alignItems: "center",
-  marginBottom: 12,
-};
-
-const monthButtonStyle: CSSProperties = {
-  height: 44,
-  border: "1px solid #e2e8f0",
-  borderRadius: 14,
-  background: "#fff",
-  fontSize: 24,
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const monthTitleStyle: CSSProperties = {
-  textAlign: "center",
-  fontWeight: 900,
-  fontSize: 18,
-};
-
-const todayButtonStyle: CSSProperties = {
-  height: 44,
-  border: "none",
-  borderRadius: 14,
-  background: "#4f46e5",
-  color: "#fff",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const calendarBoxStyle: CSSProperties = {
-  border: "1px solid #e2e8f0",
-  borderRadius: 20,
-  padding: 12,
-  marginBottom: 18,
-};
-
-const weekHeaderGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(7, 1fr)",
-  marginBottom: 8,
-};
-
-const weekHeaderStyle: CSSProperties = {
-  textAlign: "center",
-  color: "#94a3b8",
-  fontSize: 12,
-  fontWeight: 800,
-};
-
-const calendarGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(7, 1fr)",
-  gap: 6,
-};
-
-const calendarDayStyle: CSSProperties = {
-  minHeight: 54,
-  border: "1px solid #e2e8f0",
-  borderRadius: 14,
-  background: "#fff",
-  padding: 6,
-  textAlign: "left",
-  cursor: "pointer",
-};
-
-const dayNumberStyle: CSSProperties = {
-  fontWeight: 800,
-  fontSize: 13,
-};
-
-const dayMetaStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-  marginTop: 8,
-  fontSize: 11,
-  color: "#64748b",
-  fontWeight: 800,
-};
-
-const pendingDotStyle: CSSProperties = {
-  width: 6,
-  height: 6,
-  borderRadius: 999,
-  background: "#3b82f6",
-};
-
-const approvedDotStyle: CSSProperties = {
-  width: 6,
-  height: 6,
-  borderRadius: 999,
-  background: "#22c55e",
-};
-
-const sectionTitleStyle: CSSProperties = {
-  margin: "0 0 10px",
-  fontSize: 20,
-  letterSpacing: "-0.03em",
-};
-
-const dayTaskSectionStyle: CSSProperties = {
-  marginBottom: 80,
-};
-
-const emptyStateStyle: CSSProperties = {
-  padding: 18,
-  borderRadius: 18,
-  background: "#f8fafc",
-  color: "#64748b",
-  textAlign: "center",
-};
-
-const taskListStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
-};
-
-const taskCardStyle: CSSProperties = {
-  padding: 14,
-  borderRadius: 18,
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 12,
-};
-
-const taskTitleStyle: CSSProperties = {
-  fontWeight: 900,
-  fontSize: 16,
-};
-
-const taskSubTextStyle: CSSProperties = {
-  marginTop: 5,
-  color: "#64748b",
-  fontSize: 13,
-};
-
-const messageBoxStyle = (message: string): CSSProperties => {
-  const ok =
-    message.includes("완료") ||
-    message.includes("성공") ||
-    message.includes("불러오기");
-
-  return {
-    marginTop: 14,
-    padding: 12,
-    borderRadius: 14,
-    background: ok ? "#ecfdf5" : "#fef2f2",
-    color: ok ? "#047857" : "#b91c1c",
-    fontSize: 14,
-    lineHeight: 1.5,
-  };
-};
-
-const secondarySectionStyle: CSSProperties = {
-  borderTop: "1px solid #e2e8f0",
-  paddingTop: 18,
-  marginTop: 18,
-};
-
-const bottomNavStyle: CSSProperties = {
-  position: "sticky",
-  bottom: 0,
-  transform: "translateY(10px)",
-  display: "grid",
-  gridTemplateColumns: "repeat(4, 1fr)",
-  gap: 8,
-  background: "#fff",
-  padding: "10px 0 0",
-  borderTop: "1px solid #e2e8f0",
-};
-
-const bottomNavButtonStyle: CSSProperties = {
-  border: "none",
-  background: "#f8fafc",
-  borderRadius: 14,
-  padding: "10px 4px",
-  color: "#64748b",
-  fontWeight: 800,
-};
-
-const bottomNavActiveStyle: CSSProperties = {
-  ...bottomNavButtonStyle,
-  background: "#eef2ff",
-  color: "#4f46e5",
-};
+function startOfMonth(date: Date) { return new Date(date.getFullYear(), date.getMonth(), 1); }
+function endOfMonth(date: Date) { return new Date(date.getFullYear(), date.getMonth() + 1, 0); }
+function addMonths(date: Date, amount: number) { return new Date(date.getFullYear(), date.getMonth() + amount, 1); }
+function toDateKey(date: Date) { const year = date.getFullYear(); const month = `${date.getMonth() + 1}`.padStart(2, "0"); const day = `${date.getDate()}`.padStart(2, "0"); return `${year}-${month}-${day}`; }
+function buildCalendarDays(currentMonth: Date) { const firstDay = startOfMonth(currentMonth); const startOffset = firstDay.getDay(); const calendarStart = new Date(firstDay.getFullYear(), firstDay.getMonth(), 1 - startOffset); return Array.from({ length: 42 }, (_, index) => new Date(calendarStart.getFullYear(), calendarStart.getMonth(), calendarStart.getDate() + index)); }
+function formatKoreanDate(dateKey: string) { const [, month, day] = dateKey.split("-"); return `${Number(month)}월 ${Number(day)}일`; }
+function memberNameById(members: Member[], id: string | null) { if (!id) return "미지정"; return members.find((member) => member.id === id)?.display_name || "미지정"; }
+function verificationLabel(type: string) { if (type === "text") return "텍스트"; if (type === "photo") return "사진"; if (type === "video") return "영상"; if (type === "audio") return "음성"; return "없음"; }
+function statusLabel(status: string) { if (status === "todo") return "대기"; if (status === "submitted") return "제출됨"; if (status === "approved") return "승인됨"; if (status === "rejected") return "반려됨"; return status; }
+function statusBadgeStyle(status: string): CSSProperties { const colors: Record<string, { bg: string; text: string }> = { todo: { bg: "#fef3c7", text: "#92400e" }, submitted: { bg: "#dbeafe", text: "#1d4ed8" }, approved: { bg: "#dcfce7", text: "#15803d" }, rejected: { bg: "#fee2e2", text: "#b91c1c" } }; const color = colors[status] || colors.todo; return { height: "fit-content", padding: "4px 8px", borderRadius: 999, background: color.bg, color: color.text, fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }; }
+function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer" }; }
+const pageStyle: CSSProperties = { minHeight: "100vh", background: "#e2f3f1", padding: 16, display: "flex", justifyContent: "center", alignItems: "flex-start" };
+const phoneStyle: CSSProperties = { width: "100%", maxWidth: 480, minHeight: "calc(100vh - 32px)", background: "#fff", borderRadius: 28, padding: 22, boxShadow: "0 20px 60px rgba(15,23,42,0.12)" };
+const topBarStyle: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16 };
+const eyebrowStyle: CSSProperties = { color: "#4f46e5", fontSize: 13, fontWeight: 800 };
+const headerTitleStyle: CSSProperties = { margin: 0, fontSize: 30, letterSpacing: "-0.04em" };
+const titleStyle: CSSProperties = { margin: "0 0 8px", fontSize: 30, letterSpacing: "-0.04em" };
+const subTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 20 };
+const tabGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 };
+const inputStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #dbeafe", marginBottom: 12, outline: "none", fontSize: 15 };
+const secondaryButtonStyle: CSSProperties = { width: "100%", padding: 13, borderRadius: 14, border: "1px solid #c7d2fe", background: "#eef2ff", color: "#4338ca", fontWeight: 800, cursor: "pointer" };
+const logoutButtonStyle: CSSProperties = { border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: 14, padding: "10px 12px", fontWeight: 800, cursor: "pointer" };
+const accountBoxStyle: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 18, padding: 14, marginBottom: 16 };
+const smallLabelStyle: CSSProperties = { display: "block", color: "#047857", fontSize: 12, fontWeight: 800, marginBottom: 4 };
+const devLinkStyle: CSSProperties = { color: "#4f46e5", fontSize: 13, fontWeight: 800, textDecoration: "none" };
+const workspaceSwitcherStyle: CSSProperties = { marginBottom: 18 };
+const selectStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #dbeafe", background: "#fff", fontWeight: 700 };
+const createBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18 };
+const compactCreateBoxStyle: CSSProperties = { marginTop: 12 };
+const calendarToolbarStyle: CSSProperties = { display: "grid", gridTemplateColumns: "44px 1fr 44px 64px", gap: 8, alignItems: "center", marginBottom: 12 };
+const monthButtonStyle: CSSProperties = { height: 44, border: "1px solid #e2e8f0", borderRadius: 14, background: "#fff", fontSize: 24, fontWeight: 800, cursor: "pointer" };
+const monthTitleStyle: CSSProperties = { textAlign: "center", fontWeight: 900, fontSize: 18 };
+const todayButtonStyle: CSSProperties = { height: 44, border: "none", borderRadius: 14, background: "#4f46e5", color: "#fff", fontWeight: 800, cursor: "pointer" };
+const calendarBoxStyle: CSSProperties = { border: "1px solid #e2e8f0", borderRadius: 20, padding: 12, marginBottom: 18 };
+const weekHeaderGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 8 };
+const weekHeaderStyle: CSSProperties = { textAlign: "center", color: "#94a3b8", fontSize: 12, fontWeight: 800 };
+const calendarGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 };
+const calendarDayStyle: CSSProperties = { minHeight: 54, border: "1px solid #e2e8f0", borderRadius: 14, background: "#fff", padding: 6, textAlign: "left", cursor: "pointer" };
+const dayNumberStyle: CSSProperties = { fontWeight: 800, fontSize: 13 };
+const dayMetaStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 4, marginTop: 8, fontSize: 11, color: "#64748b", fontWeight: 800 };
+const pendingDotStyle: CSSProperties = { width: 6, height: 6, borderRadius: 999, background: "#3b82f6" };
+const approvedDotStyle: CSSProperties = { width: 6, height: 6, borderRadius: 999, background: "#22c55e" };
+const sectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 20, letterSpacing: "-0.03em" };
+const dayTaskSectionStyle: CSSProperties = { marginBottom: 80 };
+const emptyStateStyle: CSSProperties = { padding: 18, borderRadius: 18, background: "#f8fafc", color: "#64748b", textAlign: "center" };
+const taskListStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 10 };
+const taskCardStyle: CSSProperties = { padding: 14, borderRadius: 18, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", gap: 12 };
+const taskTitleStyle: CSSProperties = { fontWeight: 900, fontSize: 16 };
+const taskSubTextStyle: CSSProperties = { marginTop: 5, color: "#64748b", fontSize: 13 };
+const messageBoxStyle = (message: string): CSSProperties => { const ok = message.includes("완료") || message.includes("성공") || message.includes("불러오기"); return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 }; };
+const secondarySectionStyle: CSSProperties = { borderTop: "1px solid #e2e8f0", paddingTop: 18, marginTop: 18 };
+const bottomNavStyle: CSSProperties = { position: "sticky", bottom: 0, transform: "translateY(10px)", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, background: "#fff", padding: "10px 0 0", borderTop: "1px solid #e2e8f0" };
+const bottomNavButtonStyle: CSSProperties = { border: "none", background: "#f8fafc", borderRadius: 14, padding: "10px 4px", color: "#64748b", fontWeight: 800 };
+const bottomNavActiveStyle: CSSProperties = { ...bottomNavButtonStyle, background: "#eef2ff", color: "#4f46e5" };
