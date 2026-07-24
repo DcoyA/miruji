@@ -8,11 +8,13 @@ type Profile = { id: string; auth_user_id: string; display_name: string; avatar_
 type Workspace = { id: string; name: string; description: string | null };
 type Member = { id: string; profile_id?: string | null; display_name: string; role: "owner" | "manager" | "member"; is_virtual: boolean };
 type Task = { id: string; workspace_id: string; title: string; description: string | null; task_type: string; status: string; due_date: string | null; assigned_member_id: string | null; verification_type: string; verification_required: boolean; reward_points: number };
+type Submission = { id: string; task_id: string; workspace_id: string; submitted_by_member_id: string | null; submission_text: string | null; image_url: string | null; video_url: string | null; audio_url: string | null; status: string; submitted_at: string | null };
 type Reward = { id: string; workspace_id: string; title: string; description: string | null; requested_by_member_id: string | null; target_member_id: string | null; cost_points: number; status: string };
 type RewardTransaction = { id: string; member_id: string; amount: number; transaction_type: string; source_type: string; source_id: string | null };
 
 const memberSelect = "id, profile_id, display_name, role, is_virtual";
 const taskSelect = "id, workspace_id, title, description, task_type, status, due_date, assigned_member_id, verification_type, verification_required, reward_points";
+const submissionSelect = "id, task_id, workspace_id, submitted_by_member_id, submission_text, image_url, video_url, audio_url, status, submitted_at";
 const rewardSelect = "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status";
 const rewardTxSelect = "id, member_id, amount, transaction_type, source_type, source_id";
 
@@ -38,6 +40,8 @@ export default function Home() {
   const [memberRole, setMemberRole] = useState<"manager" | "member">("member");
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissionPreviews, setSubmissionPreviews] = useState<Record<string, string>>({});
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskAssignedMemberId, setTaskAssignedMemberId] = useState("");
@@ -72,7 +76,7 @@ export default function Home() {
   }, []);
 
   function resetAppState() {
-    setWorkspace(null); setWorkspaces([]); setMembers([]); setTasks([]); setRewards([]); setRewardTransactions([]);
+    setWorkspace(null); setWorkspaces([]); setMembers([]); setTasks([]); setSubmissions([]); setSubmissionPreviews({}); setRewards([]); setRewardTransactions([]);
     setActiveSubmitTaskId(null); setSubmissionText(""); setSubmissionFile(null); setShowCreateWorkspace(false);
   }
 
@@ -135,20 +139,43 @@ export default function Home() {
 
   async function selectWorkspace(selected: Workspace) {
     setLoading(true); setMessage("");
-    const [membersResult, tasksResult, rewardsResult, rewardTransactionsResult] = await Promise.all([
+    const [membersResult, tasksResult, submissionsResult, rewardsResult, rewardTransactionsResult] = await Promise.all([
       supabase.from("workspace_members").select(memberSelect).eq("workspace_id", selected.id).order("created_at", { ascending: true }),
       supabase.from("tasks").select(taskSelect).eq("workspace_id", selected.id).order("created_at", { ascending: false }),
+      supabase.from("task_submissions").select(submissionSelect).eq("workspace_id", selected.id).order("submitted_at", { ascending: false }),
       supabase.from("rewards").select(rewardSelect).eq("workspace_id", selected.id).order("created_at", { ascending: false }),
       supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", selected.id).order("created_at", { ascending: true }),
     ]);
     if (membersResult.error) { setMessage(`참여자 불러오기 실패: ${membersResult.error.message}`); setLoading(false); return; }
     if (tasksResult.error) { setMessage(`미션 불러오기 실패: ${tasksResult.error.message}`); setLoading(false); return; }
+    if (submissionsResult.error) { setMessage(`인증 내역 불러오기 실패: ${submissionsResult.error.message}`); setLoading(false); return; }
     if (rewardsResult.error) { setMessage(`보상 불러오기 실패: ${rewardsResult.error.message}`); setLoading(false); return; }
     if (rewardTransactionsResult.error) { setMessage(`스티커 내역 불러오기 실패: ${rewardTransactionsResult.error.message}`); setLoading(false); return; }
-    setWorkspace(selected); setMembers((membersResult.data || []) as Member[]); setTasks((tasksResult.data || []) as Task[]); setRewards((rewardsResult.data || []) as Reward[]); setRewardTransactions((rewardTransactionsResult.data || []) as RewardTransaction[]); setShowCreateWorkspace(false); setMessage(`${selected.name} 데이터를 불러왔습니다.`); setLoading(false);
+    const loadedSubmissions = (submissionsResult.data || []) as Submission[];
+    setWorkspace(selected); setMembers((membersResult.data || []) as Member[]); setTasks((tasksResult.data || []) as Task[]); setSubmissions(loadedSubmissions); setRewards((rewardsResult.data || []) as Reward[]); setRewardTransactions((rewardTransactionsResult.data || []) as RewardTransaction[]); setShowCreateWorkspace(false);
+    await createSignedPreviews(loadedSubmissions);
+    setMessage(`${selected.name} 데이터를 불러왔습니다.`); setLoading(false);
   }
 
-  function goBackToWorkspaceList() { setWorkspace(null); setMembers([]); setTasks([]); setRewards([]); setRewardTransactions([]); setActiveSubmitTaskId(null); setSubmissionText(""); setSubmissionFile(null); setMessage(""); loadWorkspaces(currentProfile?.id); }
+  async function createSignedPreviews(items: Submission[]) {
+    const next: Record<string, string> = {};
+    for (const item of items) {
+      const path = item.image_url || item.video_url || item.audio_url;
+      if (!path) continue;
+      const { data, error } = await supabase.storage.from("task-evidence").createSignedUrl(path, 60 * 60);
+      if (!error && data?.signedUrl) next[item.id] = data.signedUrl;
+    }
+    setSubmissionPreviews(next);
+  }
+
+  async function createSignedPreviewForSubmission(item: Submission) {
+    const path = item.image_url || item.video_url || item.audio_url;
+    if (!path) return;
+    const { data, error } = await supabase.storage.from("task-evidence").createSignedUrl(path, 60 * 60);
+    if (!error && data?.signedUrl) setSubmissionPreviews((prev) => ({ ...prev, [item.id]: data.signedUrl }));
+  }
+
+  function goBackToWorkspaceList() { setWorkspace(null); setMembers([]); setTasks([]); setSubmissions([]); setSubmissionPreviews({}); setRewards([]); setRewardTransactions([]); setActiveSubmitTaskId(null); setSubmissionText(""); setSubmissionFile(null); setMessage(""); loadWorkspaces(currentProfile?.id); }
 
   async function createWorkspace() {
     if (!currentProfile) { setMessage("로그인이 필요합니다."); return; }
@@ -159,7 +186,7 @@ export default function Home() {
     const { data: ownerMember, error: ownerError } = await supabase.from("workspace_members").insert({ workspace_id: workspaceData.id, profile_id: currentProfile.id, display_name: currentProfile.display_name || "사용자", role: "owner", status: "active", is_virtual: false, created_by: currentProfile.id, joined_at: new Date().toISOString() }).select(memberSelect).single();
     if (ownerError) { setMessage(`워크스페이스 생성은 완료됐지만 owner 등록 실패: ${ownerError.message}`); setLoading(false); return; }
     const createdWorkspace = workspaceData as Workspace;
-    setWorkspaces((prev) => [createdWorkspace, ...prev]); setWorkspace(createdWorkspace); setMembers([ownerMember as Member]); setTasks([]); setRewards([]); setRewardTransactions([]); setWorkspaceName(""); setWorkspaceDescription(""); setShowCreateWorkspace(false); setMessage(`워크스페이스 생성 완료: ${createdWorkspace.name} · owner 자동 등록`); setLoading(false);
+    setWorkspaces((prev) => [createdWorkspace, ...prev]); setWorkspace(createdWorkspace); setMembers([ownerMember as Member]); setTasks([]); setSubmissions([]); setSubmissionPreviews({}); setRewards([]); setRewardTransactions([]); setWorkspaceName(""); setWorkspaceDescription(""); setShowCreateWorkspace(false); setMessage(`워크스페이스 생성 완료: ${createdWorkspace.name} · owner 자동 등록`); setLoading(false);
   }
 
   async function addMember() {
@@ -197,10 +224,13 @@ export default function Home() {
       if (task.verification_type === "video") videoUrl = filePath;
       if (task.verification_type === "audio") audioUrl = filePath;
     }
-    const { error: submissionError } = await supabase.from("task_submissions").insert({ task_id: task.id, workspace_id: workspace.id, submitted_by_member_id: task.assigned_member_id, submission_text: submissionText.trim() || null, image_url: imageUrl, video_url: videoUrl, audio_url: audioUrl, status: "submitted" });
+    const { data: submissionData, error: submissionError } = await supabase.from("task_submissions").insert({ task_id: task.id, workspace_id: workspace.id, submitted_by_member_id: task.assigned_member_id, submission_text: submissionText.trim() || null, image_url: imageUrl, video_url: videoUrl, audio_url: audioUrl, status: "submitted" }).select(submissionSelect).single();
     if (submissionError) { setMessage(`인증 제출 실패: ${submissionError.message}`); setLoading(false); return; }
     const { data: updatedTask, error: taskUpdateError } = await supabase.from("tasks").update({ status: "submitted" }).eq("id", task.id).select(taskSelect).single();
     if (taskUpdateError) { setMessage(`미션 상태 변경 실패: ${taskUpdateError.message}`); setLoading(false); return; }
+    const createdSubmission = submissionData as Submission;
+    setSubmissions((prev) => [createdSubmission, ...prev]);
+    await createSignedPreviewForSubmission(createdSubmission);
     setTasks((prev) => prev.map((item) => (item.id === task.id ? (updatedTask as Task) : item))); setSubmissionText(""); setSubmissionFile(null); setActiveSubmitTaskId(null); setMessage(`인증 제출 완료: ${task.title}`); setLoading(false);
   }
 
@@ -262,59 +292,41 @@ export default function Home() {
   function currentMemberId() { return ownerMember()?.id || managerMember()?.id || null; }
   function memberNameById(id: string | null) { if (!id) return "미지정"; return members.find((member) => member.id === id)?.display_name || "미지정"; }
   function balanceByMemberId(memberId: string) { return rewardTransactions.filter((item) => item.member_id === memberId).reduce((sum, item) => sum + item.amount, 0); }
+  function submissionsForTask(taskId: string) { return submissions.filter((item) => item.task_id === taskId); }
 
   if (authLoading) return <Shell title="미루지말자" text="로그인 상태를 확인하는 중입니다..." />;
-
-  if (!currentProfile) {
-    return (
-      <main style={pageStyle}><div style={containerStyle}>
-        <h1 style={titleStyle}>미루지말자</h1><p style={subTextStyle}>부모와 자녀가 함께 쓰는 미션형 클라우드 다이어리</p>
-        <div style={tabGridStyle}><button onClick={() => setAuthMode("signin")} style={authMode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}>로그인</button><button onClick={() => setAuthMode("signup")} style={authMode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}>회원가입</button></div>
-        <input value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="이메일" style={inputStyle} />
-        <input value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="비밀번호" type="password" style={inputStyle} />
-        {authMode === "signin" ? <button onClick={signIn} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "로그인 중..." : "로그인"}</button> : <button onClick={signUp} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "가입 중..." : "회원가입"}</button>}
-        {message && <div style={messageBoxStyle(message)}>{message}</div>}
-      </div></main>
-    );
-  }
-
+  if (!currentProfile) return <AuthScreen />;
   if (initialLoading) return <Shell title="미루지말자" text="데이터를 불러오는 중입니다..." />;
 
   return (
     <main style={pageStyle}><div style={containerStyle}>
       <div style={accountHeaderStyle}><div><div style={accountLabelStyle}>로그인 중</div><div style={accountNameStyle}>{currentProfile?.display_name || "사용자"}</div></div><button onClick={signOut} disabled={loading} style={logoutButtonStyle}>{loading ? "처리 중..." : "로그아웃"}</button></div>
-
-      {!workspace ? <>
-        <h1 style={titleStyle}>미루지말자</h1><p style={subTextStyle}>기존 워크스페이스를 선택하거나 새 공간을 만들어보세요</p>
-        {workspaces.length > 0 && !showCreateWorkspace && <section><h2 style={sectionTitleStyle}>내 워크스페이스</h2><div style={listStyle}>{workspaces.map((item) => <button key={item.id} onClick={() => selectWorkspace(item)} disabled={loading} style={workspaceSelectButtonStyle}><div style={{ textAlign: "left" }}><div style={cardTitleStyle}>{item.name}</div>{item.description && <div style={cardSubTextStyle}>{item.description}</div>}</div><span style={openTextStyle}>열기</span></button>)}</div><button onClick={() => setShowCreateWorkspace(true)} style={{ ...secondaryButtonStyle, marginTop: "16px" }}>새 워크스페이스 만들기</button></section>}
-        {(workspaces.length === 0 || showCreateWorkspace) && <section style={workspaces.length > 0 ? sectionStyle : undefined}><h2 style={sectionTitleStyle}>새 워크스페이스 생성</h2><p style={subTextStyle}>워크스페이스 생성 시 현재 로그인 계정이 owner로 자동 등록됩니다.</p><input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} placeholder="예) 우리집" style={inputStyle} /><textarea value={workspaceDescription} onChange={(e) => setWorkspaceDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><button onClick={createWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "워크스페이스 만들기"}</button>{workspaces.length > 0 && <button onClick={() => setShowCreateWorkspace(false)} disabled={loading} style={{ ...secondaryButtonStyle, marginTop: "10px" }}>기존 목록으로 돌아가기</button>}</section>}
-      </> : <>
-        <div style={workspaceBoxStyle}><div style={labelStyle}>현재 워크스페이스</div><div style={{ fontSize: 22, fontWeight: 800 }}>{workspace.name}</div>{workspace.description && <div style={cardSubTextStyle}>{workspace.description}</div>}<button onClick={goBackToWorkspaceList} disabled={loading} style={{ ...secondaryButtonStyle, marginTop: "12px" }}>워크스페이스 목록으로</button></div>
-        <section style={sectionStyle}><h2 style={sectionTitleStyle}>1. 참여자 추가</h2><p style={subTextStyle}>실명 대신 앱에서 부를 이름만 입력하세요</p><input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="예) 엄마, 첫째, 토끼" style={inputStyle} /><select value={memberRole} onChange={(e) => setMemberRole(e.target.value as "manager" | "member")} style={inputStyle}><option value="manager">보호자/관리자</option><option value="member">참여자/자녀</option></select><button onClick={addMember} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "추가 중..." : "참여자 추가"}</button>{members.length > 0 && <div style={listStyle}>{members.map((member) => <div key={member.id} style={memberCardStyle}><div><span style={memberNameStyle}>{member.display_name}</span><div style={cardSubTextStyle}>스티커 {balanceByMemberId(member.id)}개</div></div><span style={badgeStyle(member.role)}>{roleLabel(member.role)}</span></div>)}</div>}</section>
-        {members.length > 0 && <TaskCreateSection />}
-        {tasks.length > 0 && <TaskListSection />}
-        {members.length > 0 && <RewardCreateSection />}
-        {rewards.length > 0 && <RewardListSection />}
-      </>}
+      {!workspace ? <WorkspaceList /> : <WorkspaceDetail />}
       {message && <div style={messageBoxStyle(message)}>{message}</div>}
     </div></main>
   );
 
-  function TaskCreateSection() {
-    return <section style={sectionStyle}><h2 style={sectionTitleStyle}>2. 미션 만들기</h2><p style={subTextStyle}>참여자에게 오늘 할 미션을 부여하세요</p><input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="예) 피아노 100번 치기" style={inputStyle} /><textarea value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><select value={taskAssignedMemberId} onChange={(e) => setTaskAssignedMemberId(e.target.value)} style={inputStyle}><option value="">미션 받을 참여자 선택</option>{members.map((member) => <option key={member.id} value={member.id}>{member.display_name}</option>)}</select><select value={taskType} onChange={(e) => setTaskType(e.target.value)} style={inputStyle}><option value="habit">습관</option><option value="study">학습</option><option value="chore">집안일</option><option value="health">건강</option><option value="promise">약속</option><option value="custom">기타</option></select><select value={verificationType} onChange={(e) => setVerificationType(e.target.value)} style={inputStyle}><option value="none">인증 없음</option><option value="text">텍스트 인증</option><option value="photo">사진 인증</option><option value="video">영상 인증</option><option value="audio">음성 인증</option></select><input type="number" min={0} value={rewardPoints} onChange={(e) => setRewardPoints(Number(e.target.value))} placeholder="스티커 개수" style={inputStyle} /><button onClick={createTask} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "미션 만들기"}</button></section>;
-  }
+  function AuthScreen() { return <main style={pageStyle}><div style={containerStyle}><h1 style={titleStyle}>미루지말자</h1><p style={subTextStyle}>부모와 자녀가 함께 쓰는 미션형 클라우드 다이어리</p><div style={tabGridStyle}><button onClick={() => setAuthMode("signin")} style={authMode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}>로그인</button><button onClick={() => setAuthMode("signup")} style={authMode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}>회원가입</button></div><input value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="이메일" style={inputStyle} /><input value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="비밀번호" type="password" style={inputStyle} />{authMode === "signin" ? <button onClick={signIn} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "로그인 중..." : "로그인"}</button> : <button onClick={signUp} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "가입 중..." : "회원가입"}</button>}{message && <div style={messageBoxStyle(message)}>{message}</div>}</div></main>; }
 
-  function TaskListSection() {
-    return <section style={sectionStyle}><h2 style={sectionTitleStyle}>3. 오늘의 미션</h2><div style={listStyle}>{tasks.map((task) => <div key={task.id} style={taskCardStyle}><div style={{ flex: 1 }}><div style={taskHeaderStyle}><div><div style={cardTitleStyle}>{task.title}</div><div style={cardSubTextStyle}>대상: {memberNameById(task.assigned_member_id)}</div><div style={cardSubTextStyle}>인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개</div></div><span style={taskStatusBadgeStyle(task.status)}>{taskStatusLabel(task.status)}</span></div>{task.status === "todo" && <div style={{ marginTop: "14px" }}>{activeSubmitTaskId === task.id ? <><textarea value={submissionText} onChange={(e) => setSubmissionText(e.target.value)} placeholder={task.verification_type === "none" ? "완료 메모를 남겨보세요. 선택사항입니다." : "인증 내용을 입력하세요. 예) 오늘 30분 연습했어요."} rows={3} style={{ ...inputStyle, marginBottom: "10px", resize: "vertical" }} />{isFileVerification(task.verification_type) && <div style={fileBoxStyle}><div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{verificationLabel(task.verification_type)} 파일 첨부</div><input type="file" accept={acceptedFileTypes(task.verification_type)} onChange={(e) => setSubmissionFile(e.target.files?.[0] || null)} style={{ width: "100%" }} />{submissionFile && <div style={{ marginTop: 8, color: "#64748b", fontSize: 12 }}>선택됨: {submissionFile.name}</div>}</div>}<div style={twoColumnStyle}><button onClick={() => submitTask(task)} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "제출 중..." : "제출하기"}</button><button onClick={() => { setActiveSubmitTaskId(null); setSubmissionText(""); setSubmissionFile(null); }} disabled={loading} style={secondaryButtonStyle}>취소</button></div></> : <button onClick={() => { setActiveSubmitTaskId(task.id); setSubmissionText(""); setSubmissionFile(null); }} disabled={loading} style={secondaryButtonStyle}>완료/인증 제출</button>}</div>}{task.status === "submitted" && <div style={submittedActionBoxStyle}><div style={submittedTextStyle}>인증 제출 완료 · 보호자 승인 대기</div><div style={{ ...twoColumnStyle, marginTop: "10px" }}><button onClick={() => approveTask(task)} disabled={loading} style={approveButtonStyle(loading)}>승인</button><button onClick={() => rejectTask(task)} disabled={loading} style={rejectButtonStyle(loading)}>반려</button></div></div>}{task.status === "approved" && <div style={approvedBoxStyle}>승인 완료 · 스티커 {task.reward_points}개 지급됨</div>}{task.status === "rejected" && <div style={rejectedBoxStyle}>반려됨 · 다시 제출이 필요합니다</div>}</div></div>)}</div></section>;
-  }
+  function WorkspaceList() { return <><h1 style={titleStyle}>미루지말자</h1><p style={subTextStyle}>기존 워크스페이스를 선택하거나 새 공간을 만들어보세요</p>{workspaces.length > 0 && !showCreateWorkspace && <section><h2 style={sectionTitleStyle}>내 워크스페이스</h2><div style={listStyle}>{workspaces.map((item) => <button key={item.id} onClick={() => selectWorkspace(item)} disabled={loading} style={workspaceSelectButtonStyle}><div style={{ textAlign: "left" }}><div style={cardTitleStyle}>{item.name}</div>{item.description && <div style={cardSubTextStyle}>{item.description}</div>}</div><span style={openTextStyle}>열기</span></button>)}</div><button onClick={() => setShowCreateWorkspace(true)} style={{ ...secondaryButtonStyle, marginTop: "16px" }}>새 워크스페이스 만들기</button></section>}{(workspaces.length === 0 || showCreateWorkspace) && <section style={workspaces.length > 0 ? sectionStyle : undefined}><h2 style={sectionTitleStyle}>새 워크스페이스 생성</h2><p style={subTextStyle}>워크스페이스 생성 시 현재 로그인 계정이 owner로 자동 등록됩니다.</p><input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} placeholder="예) 우리집" style={inputStyle} /><textarea value={workspaceDescription} onChange={(e) => setWorkspaceDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><button onClick={createWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "워크스페이스 만들기"}</button>{workspaces.length > 0 && <button onClick={() => setShowCreateWorkspace(false)} disabled={loading} style={{ ...secondaryButtonStyle, marginTop: "10px" }}>기존 목록으로 돌아가기</button>}</section>}</>; }
 
-  function RewardCreateSection() {
-    return <section style={sectionStyle}><h2 style={sectionTitleStyle}>4. 보상 만들기</h2><p style={subTextStyle}>모은 스티커로 교환할 수 있는 보상을 등록하세요</p><input value={rewardTitle} onChange={(e) => setRewardTitle(e.target.value)} placeholder="예) 게임 30분, 떡볶이 먹기" style={inputStyle} /><textarea value={rewardDescription} onChange={(e) => setRewardDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><select value={rewardTargetMemberId} onChange={(e) => setRewardTargetMemberId(e.target.value)} style={inputStyle}><option value="">보상 대상 참여자 선택</option>{members.map((member) => <option key={member.id} value={member.id}>{member.display_name}</option>)}</select><input type="number" min={0} value={rewardCostPoints} onChange={(e) => setRewardCostPoints(Number(e.target.value))} placeholder="필요 스티커 개수" style={inputStyle} /><button onClick={createReward} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "보상 만들기"}</button></section>;
-  }
+  function WorkspaceDetail() { return <><div style={workspaceBoxStyle}><div style={labelStyle}>현재 워크스페이스</div><div style={{ fontSize: 22, fontWeight: 800 }}>{workspace?.name}</div>{workspace?.description && <div style={cardSubTextStyle}>{workspace.description}</div>}<button onClick={goBackToWorkspaceList} disabled={loading} style={{ ...secondaryButtonStyle, marginTop: "12px" }}>워크스페이스 목록으로</button></div><MemberSection />{members.length > 0 && <TaskCreateSection />}{tasks.length > 0 && <TaskListSection />}{members.length > 0 && <RewardCreateSection />}{rewards.length > 0 && <RewardListSection />}</>; }
 
-  function RewardListSection() {
-    return <section style={sectionStyle}><h2 style={sectionTitleStyle}>5. 보상 목록</h2><div style={listStyle}>{rewards.map((reward) => { const balance = reward.target_member_id ? balanceByMemberId(reward.target_member_id) : 0; const canRedeem = reward.status !== "redeemed" && balance >= reward.cost_points; return <div key={reward.id} style={rewardCardStyle}><div><div style={cardTitleStyle}>{reward.title}</div>{reward.description && <div style={cardSubTextStyle}>{reward.description}</div>}<div style={cardSubTextStyle}>대상: {memberNameById(reward.target_member_id)} · 필요 스티커 {reward.cost_points}개 · 현재 {balance}개</div></div>{reward.status === "redeemed" ? <div style={redeemedBoxStyle}>교환 완료</div> : <button onClick={() => redeemReward(reward)} disabled={loading || !canRedeem} style={canRedeem ? rewardButtonStyle : disabledRewardButtonStyle}>교환하기</button>}</div>; })}</div></section>;
-  }
+  function MemberSection() { return <section style={sectionStyle}><h2 style={sectionTitleStyle}>1. 참여자 추가</h2><p style={subTextStyle}>실명 대신 앱에서 부를 이름만 입력하세요</p><input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="예) 엄마, 첫째, 토끼" style={inputStyle} /><select value={memberRole} onChange={(e) => setMemberRole(e.target.value as "manager" | "member")} style={inputStyle}><option value="manager">보호자/관리자</option><option value="member">참여자/자녀</option></select><button onClick={addMember} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "추가 중..." : "참여자 추가"}</button>{members.length > 0 && <div style={listStyle}>{members.map((member) => <div key={member.id} style={memberCardStyle}><div><span style={memberNameStyle}>{member.display_name}</span><div style={cardSubTextStyle}>스티커 {balanceByMemberId(member.id)}개</div></div><span style={badgeStyle(member.role)}>{roleLabel(member.role)}</span></div>)}</div>}</section>; }
+
+  function TaskCreateSection() { return <section style={sectionStyle}><h2 style={sectionTitleStyle}>2. 미션 만들기</h2><p style={subTextStyle}>참여자에게 오늘 할 미션을 부여하세요</p><input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="예) 피아노 100번 치기" style={inputStyle} /><textarea value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><select value={taskAssignedMemberId} onChange={(e) => setTaskAssignedMemberId(e.target.value)} style={inputStyle}><option value="">미션 받을 참여자 선택</option>{members.map((member) => <option key={member.id} value={member.id}>{member.display_name}</option>)}</select><select value={taskType} onChange={(e) => setTaskType(e.target.value)} style={inputStyle}><option value="habit">습관</option><option value="study">학습</option><option value="chore">집안일</option><option value="health">건강</option><option value="promise">약속</option><option value="custom">기타</option></select><select value={verificationType} onChange={(e) => setVerificationType(e.target.value)} style={inputStyle}><option value="none">인증 없음</option><option value="text">텍스트 인증</option><option value="photo">사진 인증</option><option value="video">영상 인증</option><option value="audio">음성 인증</option></select><input type="number" min={0} value={rewardPoints} onChange={(e) => setRewardPoints(Number(e.target.value))} placeholder="스티커 개수" style={inputStyle} /><button onClick={createTask} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "미션 만들기"}</button></section>; }
+
+  function TaskListSection() { return <section style={sectionStyle}><h2 style={sectionTitleStyle}>3. 오늘의 미션</h2><div style={listStyle}>{tasks.map((task) => <div key={task.id} style={taskCardStyle}><div style={{ flex: 1 }}><div style={taskHeaderStyle}><div><div style={cardTitleStyle}>{task.title}</div><div style={cardSubTextStyle}>대상: {memberNameById(task.assigned_member_id)}</div><div style={cardSubTextStyle}>인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개</div></div><span style={taskStatusBadgeStyle(task.status)}>{taskStatusLabel(task.status)}</span></div>{task.status === "todo" && <SubmitBox task={task} />}{task.status === "submitted" && <ApprovalBox task={task} />}{task.status === "approved" && <div style={approvedBoxStyle}>승인 완료 · 스티커 {task.reward_points}개 지급됨</div>}{task.status === "rejected" && <div style={rejectedBoxStyle}>반려됨 · 다시 제출이 필요합니다</div>}<SubmissionHistory taskId={task.id} /></div></div>)}</div></section>; }
+
+  function SubmitBox({ task }: { task: Task }) { return <div style={{ marginTop: "14px" }}>{activeSubmitTaskId === task.id ? <><textarea value={submissionText} onChange={(e) => setSubmissionText(e.target.value)} placeholder={task.verification_type === "none" ? "완료 메모를 남겨보세요. 선택사항입니다." : "인증 내용을 입력하세요. 예) 오늘 30분 연습했어요."} rows={3} style={{ ...inputStyle, marginBottom: "10px", resize: "vertical" }} />{isFileVerification(task.verification_type) && <div style={fileBoxStyle}><div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{verificationLabel(task.verification_type)} 파일 첨부</div><input type="file" accept={acceptedFileTypes(task.verification_type)} onChange={(e) => setSubmissionFile(e.target.files?.[0] || null)} style={{ width: "100%" }} />{submissionFile && <div style={{ marginTop: 8, color: "#64748b", fontSize: 12 }}>선택됨: {submissionFile.name}</div>}</div>}<div style={twoColumnStyle}><button onClick={() => submitTask(task)} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "제출 중..." : "제출하기"}</button><button onClick={() => { setActiveSubmitTaskId(null); setSubmissionText(""); setSubmissionFile(null); }} disabled={loading} style={secondaryButtonStyle}>취소</button></div></> : <button onClick={() => { setActiveSubmitTaskId(task.id); setSubmissionText(""); setSubmissionFile(null); }} disabled={loading} style={secondaryButtonStyle}>완료/인증 제출</button>}</div>; }
+
+  function ApprovalBox({ task }: { task: Task }) { return <div style={submittedActionBoxStyle}><div style={submittedTextStyle}>인증 제출 완료 · 보호자 승인 대기</div><div style={{ ...twoColumnStyle, marginTop: "10px" }}><button onClick={() => approveTask(task)} disabled={loading} style={approveButtonStyle(loading)}>승인</button><button onClick={() => rejectTask(task)} disabled={loading} style={rejectButtonStyle(loading)}>반려</button></div></div>; }
+
+  function SubmissionHistory({ taskId }: { taskId: string }) { const items = submissionsForTask(taskId); if (items.length === 0) return null; return <div style={historyBoxStyle}><div style={historyTitleStyle}>인증 제출 내역</div>{items.map((item) => <div key={item.id} style={historyItemStyle}>{item.submission_text && <div style={historyTextStyle}>{item.submission_text}</div>}{item.image_url && submissionPreviews[item.id] && <img src={submissionPreviews[item.id]} alt="인증 이미지" style={previewImageStyle} />}{item.video_url && submissionPreviews[item.id] && <video controls src={submissionPreviews[item.id]} style={previewMediaStyle} />}{item.audio_url && submissionPreviews[item.id] && <audio controls src={submissionPreviews[item.id]} style={{ width: "100%" }} />}{(item.image_url || item.video_url || item.audio_url) && !submissionPreviews[item.id] && <div style={cardSubTextStyle}>미리보기 URL을 생성하지 못했습니다. 파일 path: {item.image_url || item.video_url || item.audio_url}</div>}<div style={historyMetaStyle}>상태: {item.status} · {formatDate(item.submitted_at)}</div></div>)}</div>; }
+
+  function RewardCreateSection() { return <section style={sectionStyle}><h2 style={sectionTitleStyle}>4. 보상 만들기</h2><p style={subTextStyle}>모은 스티커로 교환할 수 있는 보상을 등록하세요</p><input value={rewardTitle} onChange={(e) => setRewardTitle(e.target.value)} placeholder="예) 게임 30분, 떡볶이 먹기" style={inputStyle} /><textarea value={rewardDescription} onChange={(e) => setRewardDescription(e.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><select value={rewardTargetMemberId} onChange={(e) => setRewardTargetMemberId(e.target.value)} style={inputStyle}><option value="">보상 대상 참여자 선택</option>{members.map((member) => <option key={member.id} value={member.id}>{member.display_name}</option>)}</select><input type="number" min={0} value={rewardCostPoints} onChange={(e) => setRewardCostPoints(Number(e.target.value))} placeholder="필요 스티커 개수" style={inputStyle} /><button onClick={createReward} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "보상 만들기"}</button></section>; }
+
+  function RewardListSection() { return <section style={sectionStyle}><h2 style={sectionTitleStyle}>5. 보상 목록</h2><div style={listStyle}>{rewards.map((reward) => { const balance = reward.target_member_id ? balanceByMemberId(reward.target_member_id) : 0; const canRedeem = reward.status !== "redeemed" && balance >= reward.cost_points; return <div key={reward.id} style={rewardCardStyle}><div><div style={cardTitleStyle}>{reward.title}</div>{reward.description && <div style={cardSubTextStyle}>{reward.description}</div>}<div style={cardSubTextStyle}>대상: {memberNameById(reward.target_member_id)} · 필요 스티커 {reward.cost_points}개 · 현재 {balance}개</div></div>{reward.status === "redeemed" ? <div style={redeemedBoxStyle}>교환 완료</div> : <button onClick={() => redeemReward(reward)} disabled={loading || !canRedeem} style={canRedeem ? rewardButtonStyle : disabledRewardButtonStyle}>교환하기</button>}</div>; })}</div></section>; }
 }
 
 function Shell({ title, text }: { title: string; text: string }) { return <main style={pageStyle}><div style={containerStyle}><h1 style={titleStyle}>{title}</h1><p style={subTextStyle}>{text}</p></div></main>; }
@@ -323,6 +335,7 @@ function isFileVerification(type: string) { return type === "photo" || type === 
 function acceptedFileTypes(type: string) { if (type === "photo") return "image/*"; if (type === "video") return "video/*"; if (type === "audio") return "audio/*"; return ""; }
 function verificationLabel(type: string) { if (type === "text") return "텍스트"; if (type === "photo") return "사진"; if (type === "video") return "영상"; if (type === "audio") return "음성"; if (type === "location") return "위치"; return "없음"; }
 function taskStatusLabel(status: string) { if (status === "todo") return "대기"; if (status === "submitted") return "제출됨"; if (status === "approved") return "승인됨"; if (status === "rejected") return "반려됨"; return status; }
+function formatDate(value: string | null) { if (!value) return "시간 없음"; return new Date(value).toLocaleString("ko-KR"); }
 
 const pageStyle: CSSProperties = { minHeight: "100vh", background: "#f8fafc", padding: "24px", display: "flex", justifyContent: "center", alignItems: "flex-start" };
 const containerStyle: CSSProperties = { width: "100%", maxWidth: "500px", background: "#fff", borderRadius: "24px", padding: "24px", boxShadow: "0 10px 30px rgba(0,0,0,0.08)" };
@@ -358,6 +371,13 @@ const rejectedBoxStyle: CSSProperties = { marginTop: "14px", padding: "12px", bo
 const rewardButtonStyle: CSSProperties = { width: "100%", padding: "13px", borderRadius: "12px", border: "none", background: "#f97316", color: "white", fontWeight: "bold", cursor: "pointer" };
 const disabledRewardButtonStyle: CSSProperties = { width: "100%", padding: "13px", borderRadius: "12px", border: "none", background: "#cbd5e1", color: "#64748b", fontWeight: "bold", cursor: "not-allowed" };
 const redeemedBoxStyle: CSSProperties = { padding: "12px", borderRadius: "12px", background: "#ecfdf5", color: "#047857", fontSize: "13px", fontWeight: 800, textAlign: "center" };
+const historyBoxStyle: CSSProperties = { marginTop: "14px", padding: "12px", borderRadius: "14px", background: "#f8fafc", border: "1px dashed #cbd5e1" };
+const historyTitleStyle: CSSProperties = { fontSize: 13, fontWeight: 800, color: "#334155", marginBottom: 10 };
+const historyItemStyle: CSSProperties = { padding: "10px", borderRadius: "12px", background: "#fff", border: "1px solid #e2e8f0", marginTop: 8 };
+const historyTextStyle: CSSProperties = { color: "#334155", fontSize: 14, lineHeight: 1.5, marginBottom: 8 };
+const historyMetaStyle: CSSProperties = { marginTop: 8, color: "#94a3b8", fontSize: 12 };
+const previewImageStyle: CSSProperties = { width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 12, border: "1px solid #e2e8f0" };
+const previewMediaStyle: CSSProperties = { width: "100%", borderRadius: 12, border: "1px solid #e2e8f0" };
 function badgeStyle(role: string): CSSProperties { if (role === "owner") return { fontSize: "12px", padding: "4px 8px", borderRadius: "999px", background: "#ede9fe", color: "#6d28d9", fontWeight: 800 }; return { fontSize: "12px", padding: "4px 8px", borderRadius: "999px", background: role === "manager" ? "#dbeafe" : "#dcfce7", color: role === "manager" ? "#1d4ed8" : "#15803d", fontWeight: 700 }; }
 function taskStatusBadgeStyle(status: string): CSSProperties { const isTodo = status === "todo"; const isSubmitted = status === "submitted"; const isApproved = status === "approved"; return { height: "fit-content", fontSize: "12px", padding: "4px 8px", borderRadius: "999px", background: isApproved ? "#dcfce7" : isSubmitted ? "#dbeafe" : isTodo ? "#fef3c7" : "#fee2e2", color: isApproved ? "#15803d" : isSubmitted ? "#1d4ed8" : isTodo ? "#92400e" : "#b91c1c", fontWeight: 700, whiteSpace: "nowrap" }; }
 function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: "14px", borderRadius: "12px", border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "white", fontWeight: "bold", cursor: loading ? "not-allowed" : "pointer" }; }
