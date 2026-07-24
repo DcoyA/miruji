@@ -8,6 +8,8 @@ import AuthPanel from "@/components/AuthPanel";
 import BottomNav from "@/components/BottomNav";
 import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 import CreateWorkspaceCard from "@/components/CreateWorkspaceCard";
+import Shell from "@/components/Shell";
+import AppHeader from "@/components/AppHeader";
 
 import CalendarGrid from "@/features/calendar/CalendarGrid";
 import CalendarToolbar from "@/features/calendar/CalendarToolbar";
@@ -622,140 +624,130 @@ export default function Home() {
   }
 
   return (
-    <main style={pageStyle}>
-      <div style={phoneStyle}>
-        <header style={topBarStyle}>
-          <div>
-            <div style={eyebrowStyle}>미루지말자</div>
-            <h1 style={headerTitleStyle}>{tabTitle(activeTab)}</h1>
-          </div>
-          <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>
-            로그아웃
-          </button>
-        </header>
-
-        <section style={accountBoxStyle}>
-          <div>
-            <div style={smallLabelStyle}>로그인 중</div>
-            <strong>{profile.display_name}</strong>
-          </div>
-          <a href="/dev" style={devLinkStyle}>
-            개발화면
-          </a>
-        </section>
-
-        {workspaces.length > 0 ? (
-          <WorkspaceSwitcher
-            workspaces={workspaces}
-            currentWorkspaceId={workspace?.id ?? ""}
-            onSelect={(id) => {
-              const next = workspaces.find((item) => item.id === id) || null;
-              setWorkspace(next);
-            }}
-          />
-        ) : (
-          <CreateWorkspaceCard
-            name={workspaceName}
-            description={workspaceDescription}
+    <Shell>
+      <main style={pageStyle}>
+        <div style={phoneStyle}>
+          <AppHeader
+            title={tabTitle(activeTab)}
             loading={loading}
-            onNameChange={setWorkspaceName}
-            onDescriptionChange={setWorkspaceDescription}
-            onCreate={createWorkspace}
+            onSignOut={signOut}
           />
-        )}
-
-        {workspace && activeTab === "calendar" && (
-          <>
-            <SummaryStrip
-              monthTaskCount={monthTaskCount}
-              pendingCount={pendingCount}
-              approvedCount={approvedCount}
-            />
-            <CalendarToolbar
-              currentMonth={currentMonth}
-              onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))}
-              onNext={() => setCurrentMonth(addMonths(currentMonth, 1))}
-              onToday={() => {
-                const today = new Date();
-                setCurrentMonth(startOfMonth(today));
-                setSelectedDate(toDateKey(today));
+  
+          <section style={accountBoxStyle}>
+            <div>
+              <div style={smallLabelStyle}>로그인 중</div>
+              <strong>{profile.display_name}</strong>
+            </div>
+            <a href="/dev" style={devLinkStyle}>
+              개발화면
+            </a>
+          </section>
+  
+          {workspaces.length > 0 ? (
+            <WorkspaceSwitcher
+              workspaces={workspaces}
+              currentWorkspaceId={workspace?.id ?? ""}
+              onSelect={(id) => {
+                const next = workspaces.find((item) => item.id === id) || null;
+                setWorkspace(next);
               }}
             />
-            <CalendarGrid
-              currentMonth={currentMonth}
-              selectedDate={selectedDate}
-              tasks={tasks}
-              onSelectDate={setSelectedDate}
+          ) : (
+            <CreateWorkspaceCard
+              name={workspaceName}
+              description={workspaceDescription}
+              loading={loading}
+              onNameChange={setWorkspaceName}
+              onDescriptionChange={setWorkspaceDescription}
+              onCreate={createWorkspace}
             />
-            <DayTaskList selectedDate={selectedDate} tasks={selectedTasks} members={members} />
-          </>
-        )}
-
-        {workspace && activeTab === "missions" && (
-          <MissionTab
-            selectedDate={selectedDate}
-            members={members}
-            tasks={selectedTasks}
-            title={newTaskTitle}
-            description={newTaskDescription}
-            assignedMemberId={newTaskAssignedMemberId}
-            verificationType={newTaskVerificationType}
-            rewardPoints={newTaskRewardPoints}
-            loading={loading}
-            onTitleChange={setNewTaskTitle}
-            onDescriptionChange={setNewTaskDescription}
-            onAssignedMemberIdChange={setNewTaskAssignedMemberId}
-            onVerificationTypeChange={setNewTaskVerificationType}
-            onRewardPointsChange={setNewTaskRewardPoints}
-            onCreate={createTask}
-          />
-        )}
-
-        {workspace && activeTab === "rewards" && (
-          <RewardTab
-            members={members}
-            rewards={rewards}
-            title={newRewardTitle}
-            description={newRewardDescription}
-            targetMemberId={newRewardTargetMemberId}
-            costPoints={newRewardCostPoints}
-            loading={loading}
-            balanceByMemberId={balanceByMemberId}
-            onTitleChange={setNewRewardTitle}
-            onDescriptionChange={setNewRewardDescription}
-            onTargetMemberIdChange={setNewRewardTargetMemberId}
-            onCostPointsChange={setNewRewardCostPoints}
-            onCreate={createReward}
-            onRedeem={redeemReward}
-          />
-        )}
-
-        {workspace && activeTab === "settings" && (
-          <SettingsTab
-            workspaces={workspaces}
-            workspace={workspace}
-            members={members}
-            workspaceName={workspaceName}
-            workspaceDescription={workspaceDescription}
-            loading={loading}
-            onWorkspaceNameChange={setWorkspaceName}
-            onWorkspaceDescriptionChange={setWorkspaceDescription}
-            onCreateWorkspace={createWorkspace}
-          />
-        )}
-
-        {message && <div style={messageBoxStyle(message)}>{message}</div>}
-        <BottomNav activeTab={activeTab} onChange={setActiveTab} />
-      </div>
-    </main>
-  );
-}
-
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <main style={pageStyle}>
-      <div style={phoneStyle}>{children}</div>
-    </main>
+          )}
+  
+          {workspace && activeTab === "calendar" && (
+            <>
+              <SummaryStrip
+                monthTaskCount={monthTaskCount}
+                pendingCount={pendingCount}
+                approvedCount={approvedCount}
+              />
+              <CalendarToolbar
+                currentMonth={currentMonth}
+                onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))}
+                onNext={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                onToday={() => {
+                  const today = new Date();
+                  setCurrentMonth(startOfMonth(today));
+                  setSelectedDate(toDateKey(today));
+                }}
+              />
+              <CalendarGrid
+                currentMonth={currentMonth}
+                selectedDate={selectedDate}
+                tasks={tasks}
+                onSelectDate={setSelectedDate}
+              />
+              <DayTaskList selectedDate={selectedDate} tasks={selectedTasks} members={members} />
+            </>
+          )}
+  
+          {workspace && activeTab === "missions" && (
+            <MissionTab
+              selectedDate={selectedDate}
+              members={members}
+              tasks={selectedTasks}
+              title={newTaskTitle}
+              description={newTaskDescription}
+              assignedMemberId={newTaskAssignedMemberId}
+              verificationType={newTaskVerificationType}
+              rewardPoints={newTaskRewardPoints}
+              loading={loading}
+              onTitleChange={setNewTaskTitle}
+              onDescriptionChange={setNewTaskDescription}
+              onAssignedMemberIdChange={setNewTaskAssignedMemberId}
+              onVerificationTypeChange={setNewTaskVerificationType}
+              onRewardPointsChange={setNewTaskRewardPoints}
+              onCreate={createTask}
+            />
+          )}
+  
+          {workspace && activeTab === "rewards" && (
+            <RewardTab
+              members={members}
+              rewards={rewards}
+              title={newRewardTitle}
+              description={newRewardDescription}
+              targetMemberId={newRewardTargetMemberId}
+              costPoints={newRewardCostPoints}
+              loading={loading}
+              balanceByMemberId={balanceByMemberId}
+              onTitleChange={setNewRewardTitle}
+              onDescriptionChange={setNewRewardDescription}
+              onTargetMemberIdChange={setNewRewardTargetMemberId}
+              onCostPointsChange={setNewRewardCostPoints}
+              onCreate={createReward}
+              onRedeem={redeemReward}
+            />
+          )}
+  
+          {workspace && activeTab === "settings" && (
+            <SettingsTab
+              workspaces={workspaces}
+              workspace={workspace}
+              members={members}
+              workspaceName={workspaceName}
+              workspaceDescription={workspaceDescription}
+              loading={loading}
+              onWorkspaceNameChange={setWorkspaceName}
+              onWorkspaceDescriptionChange={setWorkspaceDescription}
+              onCreateWorkspace={createWorkspace}
+            />
+          )}
+  
+          {message && <div style={messageBoxStyle(message)}>{message}</div>}
+          <BottomNav activeTab={activeTab} onChange={setActiveTab} />
+        </div>
+      </main>
+    </Shell>
   );
 }
 
