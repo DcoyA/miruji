@@ -572,11 +572,6 @@ export default function Home() {
       .reduce((sum, item) => sum + item.amount, 0);
   }
 
-  const selectedTasks = useMemo(() => tasks.filter((task) => task.due_date === selectedDate), [tasks, selectedDate]);
-  const monthTaskCount = tasks.length;
-  const pendingCount = tasks.filter((task) => task.status === "submitted").length;
-  const approvedCount = tasks.filter((task) => task.status === "approved").length;
-
   if (authLoading) {
     return <Shell><h1 style={titleStyle}>미루지말자</h1><p style={subTextStyle}>로그인 상태를 확인하는 중입니다...</p></Shell>;
   }
