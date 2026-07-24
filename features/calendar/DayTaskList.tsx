@@ -40,7 +40,6 @@ export default function DayTaskList({
     fontWeight: 800,
     whiteSpace: "nowrap",
   };
-}
 
 const dayTaskSectionStyle: CSSProperties = {
   marginBottom: 80,
