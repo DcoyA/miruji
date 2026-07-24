@@ -650,7 +650,19 @@ export default function Home() {
           />
         )}
 
-        {workspace && activeTab === "settings" && <SettingsTab workspaces={workspaces} workspace={workspace} members={members} />}
+        {workspace && activeTab === "settings" && (
+          <SettingsTab
+            workspaces={workspaces}
+            workspace={workspace}
+            members={members}
+            workspaceName={workspaceName}
+            workspaceDescription={workspaceDescription}
+            loading={loading}
+            onWorkspaceNameChange={setWorkspaceName}
+            onWorkspaceDescriptionChange={setWorkspaceDescription}
+            onCreateWorkspace={createWorkspace}
+          />
+        )}
 
         {message && <div style={messageBoxStyle(message)}>{message}</div>}
         <BottomNav activeTab={activeTab} onChange={setActiveTab} />
@@ -692,8 +704,81 @@ function TaskList({ tasks, members }: { tasks: Task[]; members: Member[]; }) {
   return <div style={taskListStyle}>{tasks.map((task) => <div key={task.id} style={taskCardStyle}><div><div style={taskTitleStyle}>{task.title}</div><div style={taskSubTextStyle}>대상: {memberNameById(members, task.assigned_member_id)}</div><div style={taskSubTextStyle}>인증: {verificationLabel(task.verification_type)} · 스티커 {task.reward_points}개</div></div><span style={statusBadgeStyle(task.status)}>{statusLabel(task.status)}</span></div>)}</div>;
 }
 
-function SettingsTab({ workspaces, workspace, members }: { workspaces: Workspace[]; workspace: Workspace; members: Member[]; }) {
-  return <section style={createBoxStyle}><h2 style={sectionTitleStyle}>설정</h2><p style={subTextStyle}>프로필 수정, 초대코드, 워크스페이스 설정은 다음 단계에서 붙입니다.</p><div style={settingLineStyle}>현재 워크스페이스: <strong>{workspace.name}</strong></div><div style={settingLineStyle}>워크스페이스 수: {workspaces.length}</div><div style={settingLineStyle}>참여자 수: {members.length}</div></section>;
+function SettingsTab({
+  workspaces,
+  workspace,
+  members,
+  workspaceName,
+  workspaceDescription,
+  loading,
+  onWorkspaceNameChange,
+  onWorkspaceDescriptionChange,
+  onCreateWorkspace,
+}: {
+  workspaces: Workspace[];
+  workspace: Workspace;
+  members: Member[];
+  workspaceName: string;
+  workspaceDescription: string;
+  loading: boolean;
+  onWorkspaceNameChange: (value: string) => void;
+  onWorkspaceDescriptionChange: (value: string) => void;
+  onCreateWorkspace: () => void;
+}) {
+  return (
+    <>
+      <section style={createBoxStyle}>
+        <h2 style={sectionTitleStyle}>설정</h2>
+
+        <p style={subTextStyle}>
+          프로필 수정, 초대코드, 워크스페이스 설정은 다음 단계에서 붙입니다.
+        </p>
+
+        <div style={settingLineStyle}>
+          현재 워크스페이스: <strong>{workspace.name}</strong>
+        </div>
+
+        <div style={settingLineStyle}>
+          워크스페이스 수: {workspaces.length}
+        </div>
+
+        <div style={settingLineStyle}>
+          참여자 수: {members.length}
+        </div>
+      </section>
+
+      <section style={createBoxStyle}>
+        <h2 style={sectionTitleStyle}>새 워크스페이스 만들기</h2>
+
+        <p style={subTextStyle}>
+          가족, 팀, 클래스처럼 별도 공간이 필요하면 새 워크스페이스를 만들 수 있습니다.
+        </p>
+
+        <input
+          value={workspaceName}
+          onChange={(event) => onWorkspaceNameChange(event.target.value)}
+          placeholder="예) 우리집, 주말 프로젝트, 1학년 3반"
+          style={inputStyle}
+        />
+
+        <textarea
+          value={workspaceDescription}
+          onChange={(event) => onWorkspaceDescriptionChange(event.target.value)}
+          placeholder="설명 (선택)"
+          rows={3}
+          style={{ ...inputStyle, resize: "vertical" }}
+        />
+
+        <button
+          onClick={onCreateWorkspace}
+          disabled={loading}
+          style={primaryButtonStyle(loading)}
+        >
+          {loading ? "생성 중..." : "워크스페이스 만들기"}
+        </button>
+      </section>
+    </>
+  );
 }
 
 function statusBadgeStyle(status: string): CSSProperties { const colors: Record<string, { bg: string; text: string }> = { todo: { bg: "#fef3c7", text: "#92400e" }, submitted: { bg: "#dbeafe", text: "#1d4ed8" }, approved: { bg: "#dcfce7", text: "#15803d" }, rejected: { bg: "#fee2e2", text: "#b91c1c" } }; const color = colors[status] || colors.todo; return { height: "fit-content", padding: "4px 8px", borderRadius: 999, background: color.bg, color: color.text, fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }; }
