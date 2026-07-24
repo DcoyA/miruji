@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 import AuthPanel from "@/components/AuthPanel";
+import BottomNav from "@/components/BottomNav";
 
 import {
   addMonths,
@@ -701,11 +702,6 @@ function SettingsTab({ workspaces, workspace, members }: { workspaces: Workspace
   return <section style={createBoxStyle}><h2 style={sectionTitleStyle}>설정</h2><p style={subTextStyle}>프로필 수정, 초대코드, 워크스페이스 설정은 다음 단계에서 붙입니다.</p><div style={settingLineStyle}>현재 워크스페이스: <strong>{workspace.name}</strong></div><div style={settingLineStyle}>워크스페이스 수: {workspaces.length}</div><div style={settingLineStyle}>참여자 수: {members.length}</div></section>;
 }
 
-function BottomNav({ activeTab, onChange }: { activeTab: ActiveTab; onChange: (tab: ActiveTab) => void; }) {
-  const items: { key: ActiveTab; label: string }[] = [{ key: "calendar", label: "캘린더" }, { key: "missions", label: "미션" }, { key: "rewards", label: "보상" }, { key: "settings", label: "설정" }];
-  return <nav style={bottomNavStyle}>{items.map((item) => <button key={item.key} onClick={() => onChange(item.key)} style={activeTab === item.key ? bottomNavActiveStyle : bottomNavButtonStyle}>{item.label}</button>)}</nav>;
-}
-
 function statusBadgeStyle(status: string): CSSProperties { const colors: Record<string, { bg: string; text: string }> = { todo: { bg: "#fef3c7", text: "#92400e" }, submitted: { bg: "#dbeafe", text: "#1d4ed8" }, approved: { bg: "#dcfce7", text: "#15803d" }, rejected: { bg: "#fee2e2", text: "#b91c1c" } }; const color = colors[status] || colors.todo; return { height: "fit-content", padding: "4px 8px", borderRadius: 999, background: color.bg, color: color.text, fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }; }
 function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer" }; }
 
@@ -756,6 +752,3 @@ const rewardButtonStyle: CSSProperties = { width: "100%", padding: 12, borderRad
 const disabledRewardButtonStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#cbd5e1", color: "#64748b", fontWeight: 800, cursor: "not-allowed" };
 const settingLineStyle: CSSProperties = { padding: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, marginTop: 8, color: "#334155" };
 const messageBoxStyle = (message: string): CSSProperties => { const ok = message.includes("완료") || message.includes("성공") || message.includes("불러오기") || message.includes("교환"); return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 }; };
-const bottomNavStyle: CSSProperties = { position: "sticky", bottom: 0, transform: "translateY(10px)", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, background: "#fff", padding: "10px 0 0", borderTop: "1px solid #e2e8f0" };
-const bottomNavButtonStyle: CSSProperties = { border: "none", background: "#f8fafc", borderRadius: 14, padding: "10px 4px", color: "#64748b", fontWeight: 800 };
-const bottomNavActiveStyle: CSSProperties = { ...bottomNavButtonStyle, background: "#eef2ff", color: "#4f46e5" };
