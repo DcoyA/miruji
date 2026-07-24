@@ -9,6 +9,7 @@ import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 import CreateWorkspaceCard from "@/components/CreateWorkspaceCard";
 import CalendarGrid from "@/features/calendar/CalendarGrid";
 import CalendarToolbar from "@/features/calendar/CalendarToolbar";
+import DayTaskList from "@/features/calendar/DayTaskList";
 
 import {
   addMonths,
@@ -678,10 +679,6 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 function SummaryStrip({ monthTaskCount, pendingCount, approvedCount }: { monthTaskCount: number; pendingCount: number; approvedCount: number; }) {
   return <section style={summaryGridStyle}><div style={summaryCardStyle}><div style={summaryNumberStyle}>{monthTaskCount}</div><div style={summaryLabelStyle}>이번 달 미션</div></div><div style={summaryCardStyle}><div style={summaryNumberStyle}>{pendingCount}</div><div style={summaryLabelStyle}>승인 대기</div></div><div style={summaryCardStyle}><div style={summaryNumberStyle}>{approvedCount}</div><div style={summaryLabelStyle}>승인 완료</div></div></section>;
-}
-
-function DayTaskList({ selectedDate, tasks, members }: { selectedDate: string; tasks: Task[]; members: Member[]; }) {
-  return <section style={dayTaskSectionStyle}><h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션</h2>{tasks.length === 0 ? <div style={emptyStateStyle}>이 날짜에 등록된 미션이 없습니다.</div> : <TaskList tasks={tasks} members={members} />}</section>;
 }
 
 function MissionTab({ selectedDate, members, tasks, title, description, assignedMemberId, verificationType, rewardPoints, loading, onTitleChange, onDescriptionChange, onAssignedMemberIdChange, onVerificationTypeChange, onRewardPointsChange, onCreate }: { selectedDate: string; members: Member[]; tasks: Task[]; title: string; description: string; assignedMemberId: string; verificationType: string; rewardPoints: number; loading: boolean; onTitleChange: (value: string) => void; onDescriptionChange: (value: string) => void; onAssignedMemberIdChange: (value: string) => void; onVerificationTypeChange: (value: string) => void; onRewardPointsChange: (value: number) => void; onCreate: () => void; }) {
