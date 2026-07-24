@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 import AuthPanel from "@/components/AuthPanel";
 import BottomNav from "@/components/BottomNav";
+import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 
 import {
   addMonths,
@@ -661,10 +662,6 @@ function Shell({ children }: { children: React.ReactNode }) {
   return <main style={pageStyle}><div style={phoneStyle}>{children}</div></main>;
 }
 
-function WorkspaceSwitcher({ workspaces, currentWorkspaceId, onSelect }: { workspaces: Workspace[]; currentWorkspaceId: string; onSelect: (id: string) => void; }) {
-  return <section style={workspaceSwitcherStyle}><label style={smallLabelStyle}>워크스페이스</label><select value={currentWorkspaceId} onChange={(event) => onSelect(event.target.value)} style={selectStyle}>{workspaces.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></section>;
-}
-
 function CreateWorkspaceCard({ name, description, loading, compact, onNameChange, onDescriptionChange, onCreate }: { name: string; description: string; loading: boolean; compact?: boolean; onNameChange: (value: string) => void; onDescriptionChange: (value: string) => void; onCreate: () => void; }) {
   return <section style={compact ? compactCreateBoxStyle : createBoxStyle}>{!compact && <h2 style={sectionTitleStyle}>첫 워크스페이스 만들기</h2>}<input value={name} onChange={(event) => onNameChange(event.target.value)} placeholder="예) 우리집" style={inputStyle} /><textarea value={description} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} /><button onClick={onCreate} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "워크스페이스 만들기"}</button></section>;
 }
@@ -719,8 +716,6 @@ const logoutButtonStyle: CSSProperties = { border: "1px solid #fecaca", backgrou
 const accountBoxStyle: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 18, padding: 14, marginBottom: 16 };
 const smallLabelStyle: CSSProperties = { display: "block", color: "#047857", fontSize: 12, fontWeight: 800, marginBottom: 4 };
 const devLinkStyle: CSSProperties = { color: "#4f46e5", fontSize: 13, fontWeight: 800, textDecoration: "none" };
-const workspaceSwitcherStyle: CSSProperties = { marginBottom: 18 };
-const selectStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #dbeafe", background: "#fff", fontWeight: 700 };
 const createBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18 };
 const compactCreateBoxStyle: CSSProperties = { marginTop: 12 };
 const summaryGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 14 };
