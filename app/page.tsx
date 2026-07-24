@@ -16,13 +16,7 @@ import MissionTab from "@/features/missions/MissionTab";
 import RewardTab from "@/features/rewards/RewardTab";
 import SettingsTab from "@/features/settings/SettingsTab";
 
-import {
-  addMonths,
-  endOfMonth,
-  startOfMonth,
-  toDateKey,
-} from "@/lib/date";
-
+import { addMonths, endOfMonth, startOfMonth, toDateKey } from "@/lib/date";
 import { tabTitle } from "@/lib/labels";
 
 import type {
@@ -36,9 +30,12 @@ import type {
 } from "@/types/app";
 
 const memberSelect = "id, profile_id, display_name, role, is_virtual";
-const taskSelect = "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points";
-const rewardSelect = "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status";
-const rewardTxSelect = "id, member_id, amount, transaction_type, source_type, source_id";
+const taskSelect =
+  "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points";
+const rewardSelect =
+  "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status";
+const rewardTxSelect =
+  "id, member_id, amount, transaction_type, source_type, source_id";
 
 export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
@@ -100,13 +97,17 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace?.id, currentMonth.getFullYear(), currentMonth.getMonth()]);
 
-  const selectedTasks = useMemo(() => tasks.filter((task) => task.due_date === selectedDate), [tasks, selectedDate]);
+  const selectedTasks = useMemo(() => {
+    return tasks.filter((task) => task.due_date === selectedDate);
+  }, [tasks, selectedDate]);
+
   const monthTaskCount = tasks.length;
   const pendingCount = tasks.filter((task) => task.status === "submitted").length;
   const approvedCount = tasks.filter((task) => task.status === "approved").length;
 
   async function initializeAuth() {
     setAuthLoading(true);
+
     const { data } = await supabase.auth.getUser();
 
     if (!data.user) {
@@ -136,14 +137,21 @@ export default function Home() {
     }
 
     if (data) {
-      const loaded = { ...(data as Profile), display_name: data.display_name || fallbackName };
+      const loaded = {
+        ...(data as Profile),
+        display_name: data.display_name || fallbackName,
+      };
       setProfile(loaded);
       return loaded;
     }
 
     const { data: created, error: createError } = await supabase
       .from("profiles")
-      .insert({ auth_user_id: authUserId, display_name: fallbackName, onboarding_completed: false })
+      .insert({
+        auth_user_id: authUserId,
+        display_name: fallbackName,
+        onboarding_completed: false,
+      })
       .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
       .single();
 
@@ -172,7 +180,11 @@ export default function Home() {
       options: { data: { display_name: authEmail.split("@")[0] } },
     });
 
-    setMessage(error ? `회원가입 실패: ${error.message}` : "회원가입 완료. 인증 메일 확인 후 로그인해주세요.");
+    setMessage(
+      error
+        ? `회원가입 실패: ${error.message}`
+        : "회원가입 완료. 인증 메일 확인 후 로그인해주세요."
+    );
     setLoading(false);
   }
 
@@ -224,7 +236,11 @@ export default function Home() {
 
     if (typeof window !== "undefined") {
       Object.keys(window.localStorage).forEach((key) => {
-        if (key.startsWith("sb-") || key.includes("supabase") || key.includes("auth-token")) {
+        if (
+          key.startsWith("sb-") ||
+          key.includes("supabase") ||
+          key.includes("auth-token")
+        ) {
           window.localStorage.removeItem(key);
         }
       });
@@ -274,7 +290,9 @@ export default function Home() {
     const list = (data || []) as Workspace[];
     setWorkspaces(list);
 
-    if (list.length > 0) setWorkspace((current) => current || list[0]);
+    if (list.length > 0) {
+      setWorkspace((current) => current || list[0]);
+    }
   }
 
   async function createWorkspace() {
@@ -293,7 +311,11 @@ export default function Home() {
 
     const { data: createdWorkspace, error: workspaceError } = await supabase
       .from("workspaces")
-      .insert({ name: workspaceName.trim(), description: workspaceDescription.trim() || null, created_by: profile.id })
+      .insert({
+        name: workspaceName.trim(),
+        description: workspaceDescription.trim() || null,
+        created_by: profile.id,
+      })
       .select("id, name, description")
       .single();
 
@@ -303,18 +325,16 @@ export default function Home() {
       return;
     }
 
-    const { error: ownerError } = await supabase
-      .from("workspace_members")
-      .insert({
-        workspace_id: createdWorkspace.id,
-        profile_id: profile.id,
-        display_name: profile.display_name || "사용자",
-        role: "owner",
-        status: "active",
-        is_virtual: false,
-        created_by: profile.id,
-        joined_at: new Date().toISOString(),
-      });
+    const { error: ownerError } = await supabase.from("workspace_members").insert({
+      workspace_id: createdWorkspace.id,
+      profile_id: profile.id,
+      display_name: profile.display_name || "사용자",
+      role: "owner",
+      status: "active",
+      is_virtual: false,
+      created_by: profile.id,
+      joined_at: new Date().toISOString(),
+    });
 
     if (ownerError) {
       setMessage(`owner 등록 실패: ${ownerError.message}`);
@@ -335,12 +355,31 @@ export default function Home() {
     const monthStart = toDateKey(startOfMonth(currentMonth));
     const monthEnd = toDateKey(endOfMonth(currentMonth));
 
-    const [membersResult, tasksResult, rewardsResult, rewardTransactionsResult] = await Promise.all([
-      supabase.from("workspace_members").select(memberSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
-      supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd).order("due_date", { ascending: true }),
-      supabase.from("rewards").select(rewardSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
-      supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
-    ]);
+    const [membersResult, tasksResult, rewardsResult, rewardTransactionsResult] =
+      await Promise.all([
+        supabase
+          .from("workspace_members")
+          .select(memberSelect)
+          .eq("workspace_id", workspaceId)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("tasks")
+          .select(taskSelect)
+          .eq("workspace_id", workspaceId)
+          .gte("due_date", monthStart)
+          .lte("due_date", monthEnd)
+          .order("due_date", { ascending: true }),
+        supabase
+          .from("rewards")
+          .select(rewardSelect)
+          .eq("workspace_id", workspaceId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("reward_transactions")
+          .select(rewardTxSelect)
+          .eq("workspace_id", workspaceId)
+          .order("created_at", { ascending: true }),
+      ]);
 
     if (membersResult.error) {
       setMessage(`참여자 불러오기 실패: ${membersResult.error.message}`);
@@ -387,7 +426,9 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const creatorMemberId = members.find((member) => member.role === "owner" || member.role === "manager")?.id || null;
+    const creatorMemberId =
+      members.find((member) => member.role === "owner" || member.role === "manager")?.id ||
+      null;
 
     const { data, error } = await supabase
       .from("tasks")
@@ -442,7 +483,8 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const manager = members.find((member) => member.role === "owner" || member.role === "manager") || null;
+    const manager =
+      members.find((member) => member.role === "owner" || member.role === "manager") || null;
 
     const { data, error } = await supabase
       .from("rewards")
@@ -499,7 +541,8 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const manager = members.find((member) => member.role === "owner" || member.role === "manager") || null;
+    const manager =
+      members.find((member) => member.role === "owner" || member.role === "manager") || null;
 
     const { data: spendData, error: spendError } = await supabase
       .from("reward_transactions")
@@ -536,7 +579,9 @@ export default function Home() {
     }
 
     setRewardTransactions((prev) => [...prev, spendData as RewardTransaction]);
-    setRewards((prev) => prev.map((item) => item.id === reward.id ? (updatedReward as Reward) : item));
+    setRewards((prev) =>
+      prev.map((item) => (item.id === reward.id ? (updatedReward as Reward) : item))
+    );
     setMessage(`보상 교환 완료: ${reward.title}`);
     setLoading(false);
   }
@@ -548,7 +593,12 @@ export default function Home() {
   }
 
   if (authLoading) {
-    return <Shell><h1 style={titleStyle}>미루지말자</h1><p style={subTextStyle}>로그인 상태를 확인하는 중입니다...</p></Shell>;
+    return (
+      <Shell>
+        <h1 style={titleStyle}>미루지말자</h1>
+        <p style={subTextStyle}>로그인 상태를 확인하는 중입니다...</p>
+      </Shell>
+    );
   }
 
   if (!profile) {
@@ -574,13 +624,23 @@ export default function Home() {
     <main style={pageStyle}>
       <div style={phoneStyle}>
         <header style={topBarStyle}>
-          <div><div style={eyebrowStyle}>미루지말자</div><h1 style={headerTitleStyle}>{tabTitle(activeTab)}</h1></div>
-          <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>로그아웃</button>
+          <div>
+            <div style={eyebrowStyle}>미루지말자</div>
+            <h1 style={headerTitleStyle}>{tabTitle(activeTab)}</h1>
+          </div>
+          <button onClick={signOut} disabled={loading} style={logoutButtonStyle}>
+            로그아웃
+          </button>
         </header>
 
         <section style={accountBoxStyle}>
-          <div><div style={smallLabelStyle}>로그인 중</div><strong>{profile.display_name}</strong></div>
-          <a href="/dev" style={devLinkStyle}>개발화면</a>
+          <div>
+            <div style={smallLabelStyle}>로그인 중</div>
+            <strong>{profile.display_name}</strong>
+          </div>
+          <a href="/dev" style={devLinkStyle}>
+            개발화면
+          </a>
         </section>
 
         {workspaces.length > 0 ? (
@@ -605,9 +665,27 @@ export default function Home() {
 
         {workspace && activeTab === "calendar" && (
           <>
-            <SummaryStrip monthTaskCount={monthTaskCount} pendingCount={pendingCount} approvedCount={approvedCount} />
-            <CalendarToolbar currentMonth={currentMonth} onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))} onNext={() => setCurrentMonth(addMonths(currentMonth, 1))} onToday={() => { const today = new Date(); setCurrentMonth(startOfMonth(today)); setSelectedDate(toDateKey(today)); }} />
-            <CalendarGrid currentMonth={currentMonth} selectedDate={selectedDate} tasks={tasks} onSelectDate={setSelectedDate} />
+            <SummaryStrip
+              monthTaskCount={monthTaskCount}
+              pendingCount={pendingCount}
+              approvedCount={approvedCount}
+            />
+            <CalendarToolbar
+              currentMonth={currentMonth}
+              onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))}
+              onNext={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              onToday={() => {
+                const today = new Date();
+                setCurrentMonth(startOfMonth(today));
+                setSelectedDate(toDateKey(today));
+              }}
+            />
+            <CalendarGrid
+              currentMonth={currentMonth}
+              selectedDate={selectedDate}
+              tasks={tasks}
+              onSelectDate={setSelectedDate}
+            />
             <DayTaskList selectedDate={selectedDate} tasks={selectedTasks} members={members} />
           </>
         )}
@@ -673,66 +751,169 @@ export default function Home() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <main style={pageStyle}><div style={phoneStyle}>{children}</div></main>;
+  return (
+    <main style={pageStyle}>
+      <div style={phoneStyle}>{children}</div>
+    </main>
+  );
 }
 
-function SummaryStrip({ monthTaskCount, pendingCount, approvedCount }: { monthTaskCount: number; pendingCount: number; approvedCount: number; }) {
-  return <section style={summaryGridStyle}><div style={summaryCardStyle}><div style={summaryNumberStyle}>{monthTaskCount}</div><div style={summaryLabelStyle}>이번 달 미션</div></div><div style={summaryCardStyle}><div style={summaryNumberStyle}>{pendingCount}</div><div style={summaryLabelStyle}>승인 대기</div></div><div style={summaryCardStyle}><div style={summaryNumberStyle}>{approvedCount}</div><div style={summaryLabelStyle}>승인 완료</div></div></section>;
+function SummaryStrip({
+  monthTaskCount,
+  pendingCount,
+  approvedCount,
+}: {
+  monthTaskCount: number;
+  pendingCount: number;
+  approvedCount: number;
+}) {
+  return (
+    <section style={summaryGridStyle}>
+      <div style={summaryCardStyle}>
+        <div style={summaryNumberStyle}>{monthTaskCount}</div>
+        <div style={summaryLabelStyle}>이번 달 미션</div>
+      </div>
+      <div style={summaryCardStyle}>
+        <div style={summaryNumberStyle}>{pendingCount}</div>
+        <div style={summaryLabelStyle}>승인 대기</div>
+      </div>
+      <div style={summaryCardStyle}>
+        <div style={summaryNumberStyle}>{approvedCount}</div>
+        <div style={summaryLabelStyle}>승인 완료</div>
+      </div>
+    </section>
+  );
 }
 
-function statusBadgeStyle(status: string): CSSProperties { const colors: Record<string, { bg: string; text: string }> = { todo: { bg: "#fef3c7", text: "#92400e" }, submitted: { bg: "#dbeafe", text: "#1d4ed8" }, approved: { bg: "#dcfce7", text: "#15803d" }, rejected: { bg: "#fee2e2", text: "#b91c1c" } }; const color = colors[status] || colors.todo; return { height: "fit-content", padding: "4px 8px", borderRadius: 999, background: color.bg, color: color.text, fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }; }
-function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer" }; }
-
-const pageStyle: CSSProperties = { minHeight: "100vh", background: "#e2f3f1", padding: 16, display: "flex", justifyContent: "center", alignItems: "flex-start" };
-const phoneStyle: CSSProperties = { width: "100%", maxWidth: 480, minHeight: "calc(100vh - 32px)", background: "#fff", borderRadius: 28, padding: 22, boxShadow: "0 20px 60px rgba(15,23,42,0.12)" };
-const topBarStyle: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16 };
-const eyebrowStyle: CSSProperties = { color: "#4f46e5", fontSize: 13, fontWeight: 800 };
-const headerTitleStyle: CSSProperties = { margin: 0, fontSize: 30, letterSpacing: "-0.04em" };
-const titleStyle: CSSProperties = { margin: "0 0 8px", fontSize: 30, letterSpacing: "-0.04em" };
-const subTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 20 };
-const tabGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 };
-const inputStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #dbeafe", marginBottom: 12, outline: "none", fontSize: 15 };
-const secondaryButtonStyle: CSSProperties = { width: "100%", padding: 13, borderRadius: 14, border: "1px solid #c7d2fe", background: "#eef2ff", color: "#4338ca", fontWeight: 800, cursor: "pointer" };
-const logoutButtonStyle: CSSProperties = { border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: 14, padding: "10px 12px", fontWeight: 800, cursor: "pointer" };
-const accountBoxStyle: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 18, padding: 14, marginBottom: 16 };
-const smallLabelStyle: CSSProperties = { display: "block", color: "#047857", fontSize: 12, fontWeight: 800, marginBottom: 4 };
-const devLinkStyle: CSSProperties = { color: "#4f46e5", fontSize: 13, fontWeight: 800, textDecoration: "none" };
-const summaryGridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 14 };
-const summaryCardStyle: CSSProperties = { padding: 12, borderRadius: 16, background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center" };
-const summaryNumberStyle: CSSProperties = { fontSize: 20, fontWeight: 900, color: "#4f46e5" };
-const summaryLabelStyle: CSSProperties = { marginTop: 4, fontSize: 11, color: "#64748b", fontWeight: 800 };
-const sectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 20, letterSpacing: "-0.03em" };
-const emptyStateStyle: CSSProperties = { padding: 18, borderRadius: 18, background: "#f8fafc", color: "#64748b", textAlign: "center" };
-const rewardCardStyle: CSSProperties = { padding: 14, borderRadius: 18, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: 12 };
-const rewardButtonStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#f97316", color: "#fff", fontWeight: 800, cursor: "pointer" };
-const disabledRewardButtonStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#cbd5e1", color: "#64748b", fontWeight: 800, cursor: "not-allowed" };
-const settingLineStyle: CSSProperties = { padding: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, marginTop: 8, color: "#334155" };
-const messageBoxStyle = (message: string): CSSProperties => { const ok = message.includes("완료") || message.includes("성공") || message.includes("불러오기") || message.includes("교환"); return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 }; };
-const createBoxStyle: CSSProperties = {
+const pageStyle: CSSProperties = {
+  minHeight: "100vh",
+  background: "#e2f3f1",
   padding: 16,
-  borderRadius: 20,
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "flex-start",
+};
+
+const phoneStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 480,
+  minHeight: "calc(100vh - 32px)",
+  background: "#fff",
+  borderRadius: 28,
+  padding: 22,
+  boxShadow: "0 20px 60px rgba(15,23,42,0.12)",
+};
+
+const topBarStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 16,
+};
+
+const eyebrowStyle: CSSProperties = {
+  color: "#4f46e5",
+  fontSize: 13,
+  fontWeight: 800,
+};
+
+const headerTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 30,
+  letterSpacing: "-0.04em",
+};
+
+const titleStyle: CSSProperties = {
+  margin: "0 0 8px",
+  fontSize: 30,
+  letterSpacing: "-0.04em",
+};
+
+const subTextStyle: CSSProperties = {
+  color: "#64748b",
+  lineHeight: 1.6,
+  marginBottom: 20,
+};
+
+const logoutButtonStyle: CSSProperties = {
+  border: "1px solid #fecaca",
+  background: "#fef2f2",
+  color: "#b91c1c",
+  borderRadius: 14,
+  padding: "10px 12px",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const accountBoxStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  background: "#ecfdf5",
+  border: "1px solid #bbf7d0",
+  borderRadius: 18,
+  padding: 14,
+  marginBottom: 16,
+};
+
+const smallLabelStyle: CSSProperties = {
+  display: "block",
+  color: "#047857",
+  fontSize: 12,
+  fontWeight: 800,
+  marginBottom: 4,
+};
+
+const devLinkStyle: CSSProperties = {
+  color: "#4f46e5",
+  fontSize: 13,
+  fontWeight: 800,
+  textDecoration: "none",
+};
+
+const summaryGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, 1fr)",
+  gap: 8,
+  marginBottom: 14,
+};
+
+const summaryCardStyle: CSSProperties = {
+  padding: 12,
+  borderRadius: 16,
   background: "#f8fafc",
   border: "1px solid #e2e8f0",
-  marginBottom: 18,
+  textAlign: "center",
 };
 
-const taskListStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
-};
-
-const taskTitleStyle: CSSProperties = {
+const summaryNumberStyle: CSSProperties = {
+  fontSize: 20,
   fontWeight: 900,
-  fontSize: 16,
+  color: "#4f46e5",
 };
 
-const taskSubTextStyle: CSSProperties = {
-  marginTop: 5,
+const summaryLabelStyle: CSSProperties = {
+  marginTop: 4,
+  fontSize: 11,
   color: "#64748b",
-  fontSize: 13,
+  fontWeight: 800,
 };
 
-const dayTaskSectionStyle: CSSProperties = {
-  marginBottom: 80,
+const messageBoxStyle = (message: string): CSSProperties => {
+  const ok =
+    message.includes("완료") ||
+    message.includes("성공") ||
+    message.includes("불러오기") ||
+    message.includes("교환");
+
+  return {
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 14,
+    background: ok ? "#ecfdf5" : "#fef2f2",
+    color: ok ? "#047857" : "#b91c1c",
+    fontSize: 14,
+    lineHeight: 1.5,
+  };
 };
