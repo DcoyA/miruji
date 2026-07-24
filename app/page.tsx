@@ -432,7 +432,7 @@ export default function Home() {
             <strong>{profile.display_name}</strong>
           </div>
         
-          <a href= 개발화면
+          <a href="/dev
           </a>
         </section>
 
