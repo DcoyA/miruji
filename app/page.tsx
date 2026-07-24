@@ -803,3 +803,9 @@ const createBoxStyle: CSSProperties = {
   border: "1px solid #e2e8f0",
   marginBottom: 18,
 };
+
+const taskListStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+};
