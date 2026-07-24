@@ -431,7 +431,7 @@ export default function Home() {
             <div style={smallLabelStyle}>로그인 중</div>
             <strong>{profile.display_name}</strong>
           </div>
-
+        
           /dev
             개발화면
           </a>
