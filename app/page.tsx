@@ -116,27 +116,21 @@ export default function Home() {
   const selectedTasks = useMemo(() => {
     return tasks.filter((task) => task.due_date === selectedDate);
   }, [tasks, selectedDate]);
-  
+
   const currentMember = useMemo(() => {
     if (!profile) return null;
-  
-    return (
-      members.find((member) => member.profile_id === profile.id) || null
-    );
+    return members.find((member) => member.profile_id === profile.id) || null;
   }, [members, profile]);
-  
+
   const isManager =
     currentMember?.role === "owner" || currentMember?.role === "manager";
-  
-  const isMember = currentMember?.role === "member";
-  
+
   const monthTaskCount = tasks.length;
   const pendingCount = tasks.filter((task) => task.status === "submitted").length;
   const approvedCount = tasks.filter((task) => task.status === "approved").length;
 
   async function initializeAuth() {
     setAuthLoading(true);
-
     const { data } = await supabase.auth.getUser();
 
     if (!data.user) {
@@ -209,11 +203,7 @@ export default function Home() {
       options: { data: { display_name: authEmail.split("@")[0] } },
     });
 
-    setMessage(
-      error
-        ? `회원가입 실패: ${error.message}`
-        : "회원가입 완료. 인증 메일 확인 후 로그인해주세요."
-    );
+    setMessage(error ? `회원가입 실패: ${error.message}` : "회원가입 완료. 인증 메일 확인 후 로그인해주세요.");
     setLoading(false);
   }
 
@@ -265,11 +255,7 @@ export default function Home() {
 
     if (typeof window !== "undefined") {
       Object.keys(window.localStorage).forEach((key) => {
-        if (
-          key.startsWith("sb-") ||
-          key.includes("supabase") ||
-          key.includes("auth-token")
-        ) {
+        if (key.startsWith("sb-") || key.includes("supabase") || key.includes("auth-token")) {
           window.localStorage.removeItem(key);
         }
       });
@@ -390,6 +376,11 @@ export default function Home() {
       return;
     }
 
+    if (!isManager) {
+      setMessage("참여자 추가 권한이 없습니다.");
+      return;
+    }
+
     if (!newMemberName.trim()) {
       setMessage("참여자 이름을 입력해주세요.");
       return;
@@ -434,6 +425,11 @@ export default function Home() {
       return;
     }
 
+    if (!isManager) {
+      setMessage("초대코드 생성 권한이 없습니다.");
+      return;
+    }
+
     if (!member.is_virtual) {
       setMessage("이미 계정과 연결된 참여자입니다.");
       return;
@@ -442,9 +438,7 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const manager = members.find(
-      (item) => item.role === "owner" || item.role === "manager"
-    );
+    const manager = members.find((item) => item.role === "owner" || item.role === "manager");
     const inviteCode = makeInviteCode();
 
     const { error } = await supabase.from("workspace_invites").insert({
@@ -463,10 +457,7 @@ export default function Home() {
       return;
     }
 
-    setInviteCodes((prev) => ({
-      ...prev,
-      [member.id]: inviteCode,
-    }));
+    setInviteCodes((prev) => ({ ...prev, [member.id]: inviteCode }));
     setMessage(`초대코드 생성 완료: ${inviteCode}`);
     setLoading(false);
   }
@@ -516,31 +507,12 @@ export default function Home() {
     const monthStart = toDateKey(startOfMonth(currentMonth));
     const monthEnd = toDateKey(endOfMonth(currentMonth));
 
-    const [membersResult, tasksResult, rewardsResult, rewardTransactionsResult] =
-      await Promise.all([
-        supabase
-          .from("workspace_members")
-          .select(memberSelect)
-          .eq("workspace_id", workspaceId)
-          .order("created_at", { ascending: true }),
-        supabase
-          .from("tasks")
-          .select(taskSelect)
-          .eq("workspace_id", workspaceId)
-          .gte("due_date", monthStart)
-          .lte("due_date", monthEnd)
-          .order("due_date", { ascending: true }),
-        supabase
-          .from("rewards")
-          .select(rewardSelect)
-          .eq("workspace_id", workspaceId)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("reward_transactions")
-          .select(rewardTxSelect)
-          .eq("workspace_id", workspaceId)
-          .order("created_at", { ascending: true }),
-      ]);
+    const [membersResult, tasksResult, rewardsResult, rewardTransactionsResult] = await Promise.all([
+      supabase.from("workspace_members").select(memberSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
+      supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd).order("due_date", { ascending: true }),
+      supabase.from("rewards").select(rewardSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
+      supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
+    ]);
 
     if (membersResult.error) {
       setMessage(`참여자 불러오기 실패: ${membersResult.error.message}`);
@@ -574,6 +546,11 @@ export default function Home() {
       return;
     }
 
+    if (!isManager) {
+      setMessage("미션 생성 권한이 없습니다.");
+      return;
+    }
+
     if (!newTaskTitle.trim()) {
       setMessage("미션 제목을 입력해주세요.");
       return;
@@ -587,9 +564,7 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const creatorMemberId =
-      members.find((member) => member.role === "owner" || member.role === "manager")?.id ||
-      null;
+    const creatorMemberId = currentMember?.id || members.find((member) => member.role === "owner" || member.role === "manager")?.id || null;
 
     const { data, error } = await supabase
       .from("tasks")
@@ -631,6 +606,11 @@ export default function Home() {
       return;
     }
 
+    if (!isManager) {
+      setMessage("보상 생성 권한이 없습니다.");
+      return;
+    }
+
     if (!newRewardTitle.trim()) {
       setMessage("보상 이름을 입력해주세요.");
       return;
@@ -644,8 +624,7 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const manager =
-      members.find((member) => member.role === "owner" || member.role === "manager") || null;
+    const manager = currentMember || members.find((member) => member.role === "owner" || member.role === "manager") || null;
 
     const { data, error } = await supabase
       .from("rewards")
@@ -687,13 +666,17 @@ export default function Home() {
       return;
     }
 
+    if (!isManager && currentMember?.id !== reward.target_member_id) {
+      setMessage("본인에게 배정된 보상만 교환할 수 있습니다.");
+      return;
+    }
+
     if (reward.status === "redeemed") {
       setMessage("이미 교환한 보상입니다.");
       return;
     }
 
     const balance = balanceByMemberId(reward.target_member_id);
-
     if (balance < reward.cost_points) {
       setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`);
       return;
@@ -702,8 +685,7 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const manager =
-      members.find((member) => member.role === "owner" || member.role === "manager") || null;
+    const manager = currentMember || members.find((member) => member.role === "owner" || member.role === "manager") || null;
 
     const { data: spendData, error: spendError } = await supabase
       .from("reward_transactions")
@@ -740,9 +722,7 @@ export default function Home() {
     }
 
     setRewardTransactions((prev) => [...prev, spendData as RewardTransaction]);
-    setRewards((prev) =>
-      prev.map((item) => (item.id === reward.id ? (updatedReward as Reward) : item))
-    );
+    setRewards((prev) => prev.map((item) => (item.id === reward.id ? (updatedReward as Reward) : item)));
     setMessage(`보상 교환 완료: ${reward.title}`);
     setLoading(false);
   }
@@ -789,10 +769,9 @@ export default function Home() {
         <div>
           <div style={smallLabelStyle}>로그인 중</div>
           <strong>{profile.display_name}</strong>
+          {currentMember && <div style={memberRoleTextStyle}>{currentMember.display_name} · {currentMember.role}</div>}
         </div>
-        <a href="/dev" style={devLinkStyle}>
-          개발화면
-        </a>
+        <a href="/dev" style={devLinkStyle}>개발화면</a>
       </section>
 
       {workspaces.length > 0 && (
@@ -808,11 +787,7 @@ export default function Home() {
 
       {workspace && activeTab === "calendar" && (
         <>
-          <SummaryStrip
-            monthTaskCount={monthTaskCount}
-            pendingCount={pendingCount}
-            approvedCount={approvedCount}
-          />
+          <SummaryStrip monthTaskCount={monthTaskCount} pendingCount={pendingCount} approvedCount={approvedCount} />
           <CalendarToolbar
             currentMonth={currentMonth}
             onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))}
@@ -823,12 +798,7 @@ export default function Home() {
               setSelectedDate(toDateKey(today));
             }}
           />
-          <CalendarGrid
-            currentMonth={currentMonth}
-            selectedDate={selectedDate}
-            tasks={tasks}
-            onSelectDate={setSelectedDate}
-          />
+          <CalendarGrid currentMonth={currentMonth} selectedDate={selectedDate} tasks={tasks} onSelectDate={setSelectedDate} />
           <DayTaskList selectedDate={selectedDate} tasks={selectedTasks} members={members} />
         </>
       )}
@@ -838,6 +808,8 @@ export default function Home() {
           selectedDate={selectedDate}
           members={members}
           tasks={selectedTasks}
+          currentMember={currentMember}
+          isManager={isManager}
           title={newTaskTitle}
           description={newTaskDescription}
           assignedMemberId={newTaskAssignedMemberId}
@@ -850,8 +822,6 @@ export default function Home() {
           onVerificationTypeChange={setNewTaskVerificationType}
           onRewardPointsChange={setNewTaskRewardPoints}
           onCreate={createTask}
-          currentMember={currentMember}
-          isManager={isManager}
         />
       )}
 
@@ -859,6 +829,8 @@ export default function Home() {
         <RewardTab
           members={members}
           rewards={rewards}
+          currentMember={currentMember}
+          isManager={isManager}
           title={newRewardTitle}
           description={newRewardDescription}
           targetMemberId={newRewardTargetMemberId}
@@ -871,8 +843,6 @@ export default function Home() {
           onCostPointsChange={setNewRewardCostPoints}
           onCreate={createReward}
           onRedeem={redeemReward}
-          currentMember={currentMember}
-          isManager={isManager}
         />
       )}
 
@@ -881,6 +851,8 @@ export default function Home() {
           workspaces={workspaces}
           workspace={workspace}
           members={members}
+          currentMember={currentMember}
+          isManager={isManager}
           workspaceName={workspaceName}
           workspaceDescription={workspaceDescription}
           loading={loading}
@@ -897,14 +869,10 @@ export default function Home() {
           joinInviteCode={joinInviteCode}
           onJoinInviteCodeChange={setJoinInviteCode}
           onAcceptInvite={acceptInviteCode}
-          currentMember={currentMember}
-          isManager={isManager}
         />
       )}
 
-      {!workspace && activeTab !== "settings" && (
-        <NoWorkspacePrompt onGoSettings={() => setActiveTab("settings")} />
-      )}
+      {!workspace && activeTab !== "settings" && <NoWorkspacePrompt onGoSettings={() => setActiveTab("settings")} />}
 
       {message && <div style={messageBoxStyle(message)}>{message}</div>}
       <BottomNav activeTab={activeTab} onChange={setActiveTab} />
@@ -919,96 +887,22 @@ function NoWorkspacePrompt({ onGoSettings }: { onGoSettings: () => void }) {
       <p style={emptyWorkspaceTextStyle}>
         캘린더, 미션, 보상 기능을 사용하려면 먼저 워크스페이스에 참여하거나 새 워크스페이스를 만들어야 합니다.
       </p>
-      <button onClick={onGoSettings} style={emptyWorkspaceButtonStyle}>
-        설정에서 시작하기
-      </button>
+      <button onClick={onGoSettings} style={emptyWorkspaceButtonStyle}>설정에서 시작하기</button>
     </section>
   );
 }
 
-const titleStyle: CSSProperties = {
-  margin: "0 0 8px",
-  fontSize: 30,
-  letterSpacing: "-0.04em",
-};
-
-const subTextStyle: CSSProperties = {
-  color: "#64748b",
-  lineHeight: 1.6,
-  marginBottom: 20,
-};
-
-const accountBoxStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  background: "#ecfdf5",
-  border: "1px solid #bbf7d0",
-  borderRadius: 18,
-  padding: 14,
-  marginBottom: 16,
-};
-
-const smallLabelStyle: CSSProperties = {
-  display: "block",
-  color: "#047857",
-  fontSize: 12,
-  fontWeight: 800,
-  marginBottom: 4,
-};
-
-const devLinkStyle: CSSProperties = {
-  color: "#4f46e5",
-  fontSize: 13,
-  fontWeight: 800,
-  textDecoration: "none",
-};
-
-const emptyWorkspaceBoxStyle: CSSProperties = {
-  padding: 18,
-  borderRadius: 20,
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  marginTop: 18,
-};
-
-const emptyWorkspaceTitleStyle: CSSProperties = {
-  margin: "0 0 8px",
-  fontSize: 20,
-  fontWeight: 900,
-};
-
-const emptyWorkspaceTextStyle: CSSProperties = {
-  color: "#64748b",
-  lineHeight: 1.6,
-  marginBottom: 14,
-};
-
-const emptyWorkspaceButtonStyle: CSSProperties = {
-  width: "100%",
-  padding: 14,
-  borderRadius: 14,
-  border: "none",
-  background: "#4f46e5",
-  color: "#fff",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
+const titleStyle: CSSProperties = { margin: "0 0 8px", fontSize: 30, letterSpacing: "-0.04em" };
+const subTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 20 };
+const accountBoxStyle: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 18, padding: 14, marginBottom: 16 };
+const smallLabelStyle: CSSProperties = { display: "block", color: "#047857", fontSize: 12, fontWeight: 800, marginBottom: 4 };
+const memberRoleTextStyle: CSSProperties = { marginTop: 4, color: "#047857", fontSize: 12, fontWeight: 800 };
+const devLinkStyle: CSSProperties = { color: "#4f46e5", fontSize: 13, fontWeight: 800, textDecoration: "none" };
+const emptyWorkspaceBoxStyle: CSSProperties = { padding: 18, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginTop: 18 };
+const emptyWorkspaceTitleStyle: CSSProperties = { margin: "0 0 8px", fontSize: 20, fontWeight: 900 };
+const emptyWorkspaceTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 14 };
+const emptyWorkspaceButtonStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "none", background: "#4f46e5", color: "#fff", fontWeight: 800, cursor: "pointer" };
 const messageBoxStyle = (message: string): CSSProperties => {
-  const ok =
-    message.includes("완료") ||
-    message.includes("성공") ||
-    message.includes("불러오기") ||
-    message.includes("교환");
-
-  return {
-    marginTop: 14,
-    padding: 12,
-    borderRadius: 14,
-    background: ok ? "#ecfdf5" : "#fef2f2",
-    color: ok ? "#047857" : "#b91c1c",
-    fontSize: 14,
-    lineHeight: 1.5,
-  };
+  const ok = message.includes("완료") || message.includes("성공") || message.includes("불러오기") || message.includes("교환");
+  return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 };
 };
