@@ -197,10 +197,14 @@ export default function Home() {
     setLoading(true);
     setMessage("");
 
-    const { error } = await supabase.auth.signUp({
-      email: authEmail.trim(),
-      password: authPassword.trim(),
-      options: { data: { display_name: authEmail.split("@")[0] } },
+    const appUrl = window.location.origin;
+
+    await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${appUrl}/auth/callback`,
+      },
     });
 
     setMessage(error ? `회원가입 실패: ${error.message}` : "회원가입 완료. 인증 메일 확인 후 로그인해주세요.");
