@@ -99,7 +99,8 @@ export default function AuthCallbackPage() {
         )}
 
         {status === "success" && (
-          <a href="/" style={동하기
+          /
+            앱으로 이동하기
           </a>
         )}
 
@@ -111,7 +112,9 @@ export default function AuthCallbackPage() {
               앱으로 돌아가 다시 로그인하거나 회원가입을 시도해주세요.
             </p>
 
-            <a href="/" style={secondaryLinkStyle</a>
+            /
+              앱으로 돌아가기
+            </a>
           </div>
         )}
       </section>
