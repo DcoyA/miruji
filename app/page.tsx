@@ -193,21 +193,33 @@ export default function Home() {
       setMessage("이메일과 비밀번호를 입력해주세요.");
       return;
     }
-
+  
     setLoading(true);
     setMessage("");
-
-    const appUrl = window.location.origin;
-
-    await supabase.auth.signUp({
-      email,
-      password,
+  
+    const appUrl =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "https://miruji-git-main-iamborghini5757-1567s-projects.vercel.app";
+  
+    const { error } = await supabase.auth.signUp({
+      email: authEmail.trim(),
+      password: authPassword.trim(),
       options: {
         emailRedirectTo: `${appUrl}/auth/callback`,
+        data: {
+          display_name: authEmail.split("@")[0],
+          app_name: "미루지말자",
+        },
       },
     });
-
-    setMessage(error ? `회원가입 실패: ${error.message}` : "회원가입 완료. 인증 메일 확인 후 로그인해주세요.");
+  
+    setMessage(
+      error
+        ? `회원가입 실패: ${error.message}`
+        : "회원가입 완료. 미루지말자 인증 메일을 확인해주세요. 메일의 인증 링크를 누르면 인증이 완료됩니다."
+    );
+  
     setLoading(false);
   }
 
