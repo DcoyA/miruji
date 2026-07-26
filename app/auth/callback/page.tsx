@@ -5,12 +5,8 @@ import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 
 export default function AuthCallbackPage() {
-  const [status, setStatus] = useState<"loading" | "success" | "error">(
-    "loading"
-  );
-  const [message, setMessage] = useState(
-    "이메일 인증 정보를 확인하는 중입니다..."
-  );
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [message, setMessage] = useState("이메일 인증 정보를 확인하는 중입니다...");
 
   useEffect(() => {
     completeEmailConfirmation();
@@ -19,24 +15,19 @@ export default function AuthCallbackPage() {
   async function completeEmailConfirmation() {
     try {
       const url = new URL(window.location.href);
-
       const code = url.searchParams.get("code");
       const tokenHash = url.searchParams.get("token_hash");
       const type = url.searchParams.get("type");
 
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
-
         if (error) {
           setStatus("error");
           setMessage(`이메일 인증 처리 실패: ${error.message}`);
           return;
         }
-
         setStatus("success");
-        setMessage(
-          "이메일 인증이 완료되었습니다. 이제 미루지말자 앱을 사용할 수 있습니다."
-        );
+        setMessage("이메일 인증이 완료되었습니다. 이제 미루지말자 앱을 사용할 수 있습니다.");
         return;
       }
 
@@ -45,40 +36,33 @@ export default function AuthCallbackPage() {
           token_hash: tokenHash,
           type: type as "signup" | "email",
         });
-
         if (error) {
           setStatus("error");
           setMessage(`이메일 인증 처리 실패: ${error.message}`);
           return;
         }
-
         setStatus("success");
-        setMessage(
-          "이메일 인증이 완료되었습니다. 이제 미루지말자 앱을 사용할 수 있습니다."
-        );
+        setMessage("이메일 인증이 완료되었습니다. 이제 미루지말자 앱을 사용할 수 있습니다.");
         return;
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user) {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
         setStatus("success");
-        setMessage(
-          "이미 로그인되어 있습니다. 미루지말자 앱으로 이동할 수 있습니다."
-        );
+        setMessage("이미 로그인되어 있습니다. 미루지말자 앱으로 이동할 수 있습니다.");
         return;
       }
 
       setStatus("error");
-      setMessage(
-        "인증 정보를 찾을 수 없습니다. 메일의 인증 링크를 다시 열어주세요."
-      );
+      setMessage("인증 정보를 찾을 수 없습니다. 메일의 인증 링크를 다시 열어주세요.");
     } catch {
       setStatus("error");
       setMessage("인증 처리 중 문제가 발생했습니다. 다시 시도해주세요.");
     }
+  }
+
+  function goHome() {
+    window.location.href = "/";
   }
 
   return (
@@ -99,9 +83,9 @@ export default function AuthCallbackPage() {
         )}
 
         {status === "success" && (
-          /
+          <button type="button" onClick={goHome} style={primaryButtonStyle}>
             앱으로 이동하기
-          </a>
+          </button>
         )}
 
         {status === "error" && (
@@ -111,10 +95,9 @@ export default function AuthCallbackPage() {
               <br />
               앱으로 돌아가 다시 로그인하거나 회원가입을 시도해주세요.
             </p>
-
-            /
+            <button type="button" onClick={goHome} style={secondaryButtonStyle}>
               앱으로 돌아가기
-            </a>
+            </button>
           </div>
         )}
       </section>
@@ -168,16 +151,17 @@ const loadingBoxStyle: CSSProperties = {
   fontWeight: 700,
 };
 
-const primaryLinkStyle: CSSProperties = {
+const primaryButtonStyle: CSSProperties = {
   display: "block",
   width: "100%",
   padding: 14,
   borderRadius: 14,
+  border: "none",
   background: "#4f46e5",
   color: "#fff",
   fontWeight: 900,
   textAlign: "center",
-  textDecoration: "none",
+  cursor: "pointer",
 };
 
 const helpBoxStyle: CSSProperties = {
@@ -188,8 +172,9 @@ const helpBoxStyle: CSSProperties = {
   lineHeight: 1.6,
 };
 
-const secondaryLinkStyle: CSSProperties = {
+const secondaryButtonStyle: CSSProperties = {
   display: "block",
+  width: "100%",
   marginTop: 14,
   padding: 12,
   borderRadius: 12,
@@ -198,5 +183,5 @@ const secondaryLinkStyle: CSSProperties = {
   border: "1px solid #fecaca",
   fontWeight: 900,
   textAlign: "center",
-  textDecoration: "none",
+  cursor: "pointer",
 };
