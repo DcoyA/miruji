@@ -286,6 +286,47 @@ export default function Home() {
     setMessage("로그아웃 완료");
   }
 
+    async function deleteAccount() {
+    const confirmed = window.confirm(
+      "정말 탈퇴하시겠어요? 탈퇴 후에는 계정 정보를 되돌릴 수 없습니다."
+    );
+    if (!confirmed) return;
+
+    setLoading(true);
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+
+    if (!accessToken) {
+      setMessage("로그인 상태를 확인할 수 없습니다.");
+      setLoading(false);
+      return;
+    }
+
+    const response = await fetch("/api/account/delete", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      if (result.error === "SOLE_OWNER") {
+        setMessage(
+          "탈퇴하려면 먼저 다른 구성원에게 관리자 권한을 넘기거나 해당 그룹을 삭제해주세요."
+        );
+      } else {
+        setMessage("탈퇴 처리 중 문제가 발생했습니다. 다시 시도해주세요.");
+      }
+      setLoading(false);
+      return;
+    }
+
+    await supabase.auth.signOut();
+    setMessage("탈퇴가 완료되었습니다.");
+    setLoading(false);
+  }
+
   function resetState() {
     setWorkspaces([]);
     setWorkspace(null);
@@ -885,6 +926,7 @@ export default function Home() {
           joinInviteCode={joinInviteCode}
           onJoinInviteCodeChange={setJoinInviteCode}
           onAcceptInvite={acceptInviteCode}
+          onDeleteAccount={deleteAccount}
         />
       )}
 
