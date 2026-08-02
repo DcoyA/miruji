@@ -24,6 +24,7 @@ type SettingsTabProps = {
   onAddMember: () => void;
   inviteCodes: Record<string, string>;
   onCreateInvite: (member: Member) => void;
+  onEnableAccount: (member: Member) => void;
   joinInviteCode: string;
   onJoinInviteCodeChange: (value: string) => void;
   onAcceptInvite: () => void;
@@ -154,7 +155,19 @@ export default function SettingsTab({
   );
 }
 
-function MemberList({ members, inviteCodes, loading, onCreateInvite }: { members: Member[]; inviteCodes: Record<string, string>; loading: boolean; onCreateInvite: (member: Member) => void; }) {
+function MemberList({
+  members,
+  inviteCodes,
+  loading,
+  onCreateInvite,
+  onEnableAccount,
+}: {
+  members: Member[];
+  inviteCodes: Record<string, string>;
+  loading: boolean;
+  onCreateInvite: (member: Member) => void;
+  onEnableAccount: (member: Member) => void;
+}) {
   return (
     <section style={createBoxStyle}>
       <h2 style={sectionTitleStyle}>참여자 목록</h2>
@@ -174,10 +187,23 @@ function MemberList({ members, inviteCodes, loading, onCreateInvite }: { members
                       : "계정 없이 관리 중"
                     : "계정 연결됨"}
                 </div>
-                {inviteCodes[member.id] && <div style={inviteCodeBoxStyle}>초대코드: <strong>{inviteCodes[member.id]}</strong></div>}
+                {inviteCodes[member.id] && (
+                  <div style={inviteCodeBoxStyle}>
+                    초대코드: <strong>{inviteCodes[member.id]}</strong>
+                  </div>
+                )}
               </div>
+
+              {member.is_virtual && !member.requires_account && (
+                <button onClick={() => onEnableAccount(member)} disabled={loading} style={smallButtonStyle}>
+                  실제 계정으로 전환하기
+                </button>
+              )}
+
               {member.is_virtual && member.requires_account && (
-                <button onClick={() => onCreateInvite(member)} disabled={loading} style={smallButtonStyle}>초대코드 생성</button>
+                <button onClick={() => onCreateInvite(member)} disabled={loading} style={smallButtonStyle}>
+                  초대코드 생성
+                </button>
               )}
             </div>
           ))}
