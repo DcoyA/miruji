@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -32,7 +31,7 @@ import type {
   Workspace,
 } from "@/types/app";
 
-const memberSelect = "id, profile_id, display_name, role, is_virtual";
+const memberSelect = "id, profile_id, display_name, role, is_virtual, requires_account";
 const taskSelect =
   "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points";
 const rewardSelect =
@@ -85,6 +84,7 @@ export default function Home() {
 
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberRole, setNewMemberRole] = useState<MemberRole>("member");
+  const [newMemberHasEmail, setNewMemberHasEmail] = useState(true);
   const [inviteCodes, setInviteCodes] = useState<Record<string, string>>({});
   const [joinInviteCode, setJoinInviteCode] = useState("");
 
@@ -286,7 +286,7 @@ export default function Home() {
     setMessage("로그아웃 완료");
   }
 
-    async function deleteAccount() {
+  async function deleteAccount() {
     const confirmed = window.confirm(
       "정말 탈퇴하시겠어요? 탈퇴 후에는 계정 정보를 되돌릴 수 없습니다."
     );
@@ -347,6 +347,7 @@ export default function Home() {
     setNewRewardCostPoints(1);
     setNewMemberName("");
     setNewMemberRole("member");
+    setNewMemberHasEmail(true);
     setInviteCodes({});
     setJoinInviteCode("");
   }
@@ -407,6 +408,7 @@ export default function Home() {
       role: "owner",
       status: "active",
       is_virtual: false,
+      requires_account: true,
       created_by: profile.id,
       joined_at: new Date().toISOString(),
     });
@@ -454,6 +456,7 @@ export default function Home() {
         role: newMemberRole,
         status: "active",
         is_virtual: true,
+        requires_account: newMemberHasEmail,
         created_by: profile?.id || null,
       })
       .select(memberSelect)
@@ -468,6 +471,7 @@ export default function Home() {
     setMembers((prev) => [...prev, data as Member]);
     setNewMemberName("");
     setNewMemberRole("member");
+    setNewMemberHasEmail(true);
     setMessage(`참여자 추가 완료: ${data.display_name}`);
     setLoading(false);
   }
@@ -489,6 +493,11 @@ export default function Home() {
 
     if (!member.is_virtual) {
       setMessage("이미 계정과 연결된 참여자입니다.");
+      return;
+    }
+
+    if (!member.requires_account) {
+      setMessage("이 참여자는 계정 없이 관리하도록 설정되어 있습니다.");
       return;
     }
 
@@ -918,8 +927,10 @@ export default function Home() {
           onCreateWorkspace={createWorkspace}
           newMemberName={newMemberName}
           newMemberRole={newMemberRole}
+          newMemberHasEmail={newMemberHasEmail}
           onNewMemberNameChange={setNewMemberName}
           onNewMemberRoleChange={setNewMemberRole}
+          onNewMemberHasEmailChange={setNewMemberHasEmail}
           onAddMember={addMember}
           inviteCodes={inviteCodes}
           onCreateInvite={createInviteForMember}
