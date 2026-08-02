@@ -122,7 +122,13 @@ export default function SettingsTab({
             <button onClick={onAddMember} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "추가 중..." : "참여자 추가"}</button>
           </section>
 
-          <MemberList members={members} inviteCodes={inviteCodes} loading={loading} onCreateInvite={onCreateInvite} />
+          <MemberList
+            members={members}
+            inviteCodes={inviteCodes}
+            loading={loading}
+            onCreateInvite={onCreateInvite}
+            onEnableAccount={onEnableAccount}
+          />
         </>
       )}
 
