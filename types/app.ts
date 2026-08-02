@@ -18,6 +18,7 @@ export type Member = {
   display_name: string;
   role: "owner" | "manager" | "member";
   is_virtual: boolean;
+  requires_account: boolean;
 };
 
 export type Task = {
