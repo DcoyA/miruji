@@ -26,6 +26,7 @@ type SettingsTabProps = {
   joinInviteCode: string;
   onJoinInviteCodeChange: (value: string) => void;
   onAcceptInvite: () => void;
+  onDeleteAccount: () => void;
 };
 
 export default function SettingsTab({
@@ -50,6 +51,7 @@ export default function SettingsTab({
   joinInviteCode,
   onJoinInviteCodeChange,
   onAcceptInvite,
+  onDeleteAccount,
 }: SettingsTabProps) {
   const hasWorkspace = Boolean(workspace);
 
@@ -113,6 +115,17 @@ export default function SettingsTab({
           <button onClick={onCreateWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "워크스페이스 만들기"}</button>
         </section>
       )}
+
+      <section style={{ padding: 16, borderRadius: 20, background: "#fef2f2", border: "1px solid #fecaca", marginBottom: 18 }}>
+        <h2 style={sectionTitleStyle}>회원 탈퇴</h2>
+        <p style={subTextStyle}>탈퇴하면 계정과 프로필 정보가 삭제되며 되돌릴 수 없습니다.</p>
+        <button
+          onClick={onDeleteAccount}
+          style={{ width: "100%", padding: 14, borderRadius: 14, border: "none", background: "#b91c1c", color: "#fff", fontWeight: 800, cursor: "pointer" }}
+        >
+          탈퇴하기
+        </button>
+      </section>
     </>
   );
 }
