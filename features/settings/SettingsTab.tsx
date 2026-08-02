@@ -52,6 +52,7 @@ export default function SettingsTab({
   onAddMember,
   inviteCodes,
   onCreateInvite,
+  onEnableAccount,
   joinInviteCode,
   onJoinInviteCodeChange,
   onAcceptInvite,
