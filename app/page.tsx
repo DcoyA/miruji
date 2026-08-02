@@ -528,6 +528,40 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function enableAccountForMember(member: Member) {
+    if (!workspace) {
+      setMessage("워크스페이스가 없습니다.");
+      return;
+    }
+  
+    if (!isManager) {
+      setMessage("보호자/관리자만 가능합니다.");
+      return;
+    }
+  
+    if (!member.is_virtual || member.requires_account) return;
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { data, error } = await supabase
+      .from("workspace_members")
+      .update({ requires_account: true })
+      .eq("id", member.id)
+      .select(memberSelect)
+      .single();
+  
+    if (error) {
+      setMessage(`전환 준비 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
+    setMessage(`${member.display_name} 님을 실제 계정으로 연결할 수 있어요. 초대코드를 생성해주세요.`);
+    setLoading(false);
+  }
+  
   async function acceptInviteCode() {
     if (!joinInviteCode.trim()) {
       setMessage("초대코드를 입력해주세요.");
@@ -934,6 +968,7 @@ export default function Home() {
           onAddMember={addMember}
           inviteCodes={inviteCodes}
           onCreateInvite={createInviteForMember}
+          onEnableAccount={enableAccountForMember}
           joinInviteCode={joinInviteCode}
           onJoinInviteCodeChange={setJoinInviteCode}
           onAcceptInvite={acceptInviteCode}
