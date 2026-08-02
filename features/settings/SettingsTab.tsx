@@ -1,4 +1,3 @@
-
 import type { CSSProperties } from "react";
 import type { Member, Workspace } from "@/types/app";
 
@@ -18,8 +17,10 @@ type SettingsTabProps = {
   onCreateWorkspace: () => void;
   newMemberName: string;
   newMemberRole: MemberRole;
+  newMemberHasEmail: boolean;
   onNewMemberNameChange: (value: string) => void;
   onNewMemberRoleChange: (value: MemberRole) => void;
+  onNewMemberHasEmailChange: (value: boolean) => void;
   onAddMember: () => void;
   inviteCodes: Record<string, string>;
   onCreateInvite: (member: Member) => void;
@@ -43,8 +44,10 @@ export default function SettingsTab({
   onCreateWorkspace,
   newMemberName,
   newMemberRole,
+  newMemberHasEmail,
   onNewMemberNameChange,
   onNewMemberRoleChange,
+  onNewMemberHasEmailChange,
   onAddMember,
   inviteCodes,
   onCreateInvite,
@@ -83,7 +86,33 @@ export default function SettingsTab({
         <>
           <section style={createBoxStyle}>
             <h2 style={sectionTitleStyle}>참여자 추가</h2>
-            <p style={subTextStyle}>먼저 가상 참여자를 만들고, 초대코드로 실제 계정과 연결합니다.</p>
+            <p style={subTextStyle}>이메일 유무에 따라 계정 연결 방식이 달라집니다.</p>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={toggleLabelStyle}>이 참여자는 이메일이 있나요?</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => onNewMemberHasEmailChange(true)}
+                  style={newMemberHasEmail ? emailToggleActiveStyle : emailToggleInactiveStyle}
+                >
+                  네, 있어요
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNewMemberHasEmailChange(false)}
+                  style={!newMemberHasEmail ? emailToggleActiveStyle : emailToggleInactiveStyle}
+                >
+                  아니요, 없어요
+                </button>
+              </div>
+              <p style={toggleHintStyle}>
+                {newMemberHasEmail
+                  ? "초대코드를 만들어서 전달하면, 상대가 코드를 입력해 본인 계정으로 연결할 수 있어요."
+                  : "계정을 만들지 않고 보호자가 직접 관리합니다. 초대코드는 생성되지 않아요."}
+              </p>
+            </div>
+
             <input value={newMemberName} onChange={(event) => onNewMemberNameChange(event.target.value)} placeholder="예) 첫째, 아빠, 엄마, 토끼" style={inputStyle} />
             <select value={newMemberRole} onChange={(event) => onNewMemberRoleChange(event.target.value as MemberRole)} style={inputStyle}>
               <option value="member">참여자</option>
@@ -116,15 +145,10 @@ export default function SettingsTab({
         </section>
       )}
 
-      <section style={{ padding: 16, borderRadius: 20, background: "#fef2f2", border: "1px solid #fecaca", marginBottom: 18 }}>
-        <h2 style={sectionTitleStyle}>회원 탈퇴</h2>
+      <section style={dangerBoxStyle}>
+        <h2 style={{ ...sectionTitleStyle, color: "#b91c1c" }}>회원 탈퇴</h2>
         <p style={subTextStyle}>탈퇴하면 계정과 프로필 정보가 삭제되며 되돌릴 수 없습니다.</p>
-        <button
-          onClick={onDeleteAccount}
-          style={{ width: "100%", padding: 14, borderRadius: 14, border: "none", background: "#b91c1c", color: "#fff", fontWeight: 800, cursor: "pointer" }}
-        >
-          탈퇴하기
-        </button>
+        <button onClick={onDeleteAccount} style={dangerButtonStyle}>탈퇴하기</button>
       </section>
     </>
   );
@@ -142,10 +166,19 @@ function MemberList({ members, inviteCodes, loading, onCreateInvite }: { members
             <div key={member.id} style={memberCardStyle}>
               <div>
                 <div style={memberNameStyle}>{member.display_name}</div>
-                <div style={memberMetaStyle}>{roleLabel(member.role)} · {member.is_virtual ? "초대 대기" : "계정 연결됨"}</div>
+                <div style={memberMetaStyle}>
+                  {roleLabel(member.role)} ·{" "}
+                  {member.is_virtual
+                    ? member.requires_account
+                      ? "초대 대기"
+                      : "계정 없이 관리 중"
+                    : "계정 연결됨"}
+                </div>
                 {inviteCodes[member.id] && <div style={inviteCodeBoxStyle}>초대코드: <strong>{inviteCodes[member.id]}</strong></div>}
               </div>
-              {member.is_virtual && <button onClick={() => onCreateInvite(member)} disabled={loading} style={smallButtonStyle}>초대코드 생성</button>}
+              {member.is_virtual && member.requires_account && (
+                <button onClick={() => onCreateInvite(member)} disabled={loading} style={smallButtonStyle}>초대코드 생성</button>
+              )}
             </div>
           ))}
         </div>
@@ -157,6 +190,7 @@ function MemberList({ members, inviteCodes, loading, onCreateInvite }: { members
 function roleLabel(role: string) { if (role === "owner") return "owner"; if (role === "manager") return "보호자"; return "참여자"; }
 
 const createBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18 };
+const dangerBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#fef2f2", border: "1px solid #fecaca", marginBottom: 18 };
 const sectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 20, letterSpacing: "-0.03em" };
 const subTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 20 };
 const inputStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #dbeafe", marginBottom: 12, outline: "none", fontSize: 15 };
@@ -168,4 +202,9 @@ const memberNameStyle: CSSProperties = { fontSize: 16, fontWeight: 900 };
 const memberMetaStyle: CSSProperties = { marginTop: 5, color: "#64748b", fontSize: 13 };
 const inviteCodeBoxStyle: CSSProperties = { marginTop: 8, padding: "6px 8px", borderRadius: 10, background: "#eef2ff", color: "#4338ca", fontSize: 13, fontWeight: 800 };
 const smallButtonStyle: CSSProperties = { border: "none", borderRadius: 12, background: "#4f46e5", color: "#fff", padding: "9px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" };
+const toggleLabelStyle: CSSProperties = { display: "block", fontSize: 13, fontWeight: 800, color: "#334155", marginBottom: 6 };
+const toggleHintStyle: CSSProperties = { fontSize: 12, color: "#64748b", marginTop: 6, lineHeight: 1.5 };
+const emailToggleActiveStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#4f46e5", color: "#fff", fontWeight: 800, cursor: "pointer", fontSize: 13 };
+const emailToggleInactiveStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "1px solid #c7d2fe", background: "#eef2ff", color: "#4338ca", fontWeight: 800, cursor: "pointer", fontSize: 13 };
+const dangerButtonStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "none", background: "#b91c1c", color: "#fff", fontWeight: 800, cursor: "pointer" };
 function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer" }; }
