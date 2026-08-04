@@ -9,6 +9,7 @@ type DayTaskListProps = {
   members: Member[];
   currentMember: Member | null;
   isManager: boolean;
+  loading: boolean;
   onSubmitTask: (task: Task) => void;
   onApproveTask: (task: Task) => void;
   onRejectTask: (task: Task) => void;
@@ -20,6 +21,7 @@ export default function DayTaskList({
   members,
   currentMember,
   isManager,
+  loading,
   onSubmitTask,
   onApproveTask,
   onRejectTask,
@@ -36,6 +38,7 @@ export default function DayTaskList({
           members={members}
           currentMember={currentMember}
           isManager={isManager}
+          loading={loading}
           onSubmit={onSubmitTask}
           onApprove={onApproveTask}
           onReject={onRejectTask}
