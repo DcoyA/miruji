@@ -947,6 +947,143 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function submitTask(task: Task) {
+    if (!workspace) {
+      setMessage("워크스페이스가 없습니다.");
+      return;
+    }
+
+    if (task.status !== "todo" && task.status !== "rolled_over" && task.status !== "rejected") {
+      setMessage("제출할 수 없는 상태입니다.");
+      return;
+    }
+
+    if (!isManager && task.assigned_member_id !== currentMember?.id) {
+      setMessage("본인에게 배정된 미션만 제출할 수 있습니다.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ status: "submitted" })
+      .eq("id", task.id)
+      .select(taskSelect)
+      .single();
+
+    if (error) {
+      setMessage(`제출 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
+    setMessage(`${task.title} 미션을 제출했습니다.`);
+    setLoading(false);
+  }
+
+  async function approveTask(task: Task) {
+    if (!workspace) {
+      setMessage("워크스페이스가 없습니다.");
+      return;
+    }
+
+    if (!isManager) {
+      setMessage("보호자/관리자만 가능합니다.");
+      return;
+    }
+
+    if (task.status !== "submitted") {
+      setMessage("제출된 미션만 승인할 수 있습니다.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ status: "approved" })
+      .eq("id", task.id)
+      .select(taskSelect)
+      .single();
+
+    if (error) {
+      setMessage(`승인 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
+
+    if (task.assigned_member_id && task.reward_points > 0) {
+      const { data: txData, error: txError } = await supabase
+        .from("reward_transactions")
+        .insert({
+          workspace_id: workspace.id,
+          member_id: task.assigned_member_id,
+          amount: task.reward_points,
+          transaction_type: "earn",
+          source_type: "task",
+          source_id: task.id,
+          memo: `${task.title} 완료`,
+          created_by_member_id: currentMember?.id || null,
+        })
+        .select(rewardTxSelect)
+        .single();
+
+      if (txError) {
+        setMessage(`승인은 완료됐지만 포인트 지급에 실패했습니다: ${txError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      setRewardTransactions((prev) => [...prev, txData as RewardTransaction]);
+    }
+
+    setMessage(`${task.title} 승인 및 포인트 지급 완료`);
+    setLoading(false);
+  }
+
+  async function rejectTask(task: Task) {
+    if (!workspace) {
+      setMessage("워크스페이스가 없습니다.");
+      return;
+    }
+
+    if (!isManager) {
+      setMessage("보호자/관리자만 가능합니다.");
+      return;
+    }
+
+    if (task.status !== "submitted") {
+      setMessage("제출된 미션만 반려할 수 있습니다.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ status: "rejected" })
+      .eq("id", task.id)
+      .select(taskSelect)
+      .single();
+
+    if (error) {
+      setMessage(`반려 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
+    setMessage(`${task.title} 미션을 반려했습니다.`);
+    setLoading(false);
+  }
+  
   function balanceByMemberId(memberId: string) {
     return rewardTransactions
       .filter((item) => item.member_id === memberId)
@@ -1077,6 +1214,10 @@ export default function Home() {
           onVerificationTypeChange={setNewTaskVerificationType}
           onRewardPointsChange={setNewTaskRewardPoints}
           onCreate={createTask}
+          onSubmitTask={submitTask}
+          onApproveTask={approveTask}
+          onRejectTask={rejectTask}
+
         />
       )}
 
