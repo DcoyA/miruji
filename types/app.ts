@@ -16,9 +16,10 @@ export type Member = {
   id: string;
   profile_id: string | null;
   display_name: string;
-  role: "owner" | "manager" | "member";
+  role: string;
   is_virtual: boolean;
   requires_account: boolean;
+  status: string;
 };
 
 export type Task = {
