@@ -36,9 +36,9 @@ export default function DayTaskList({
           members={members}
           currentMember={currentMember}
           isManager={isManager}
-          onSubmitTask={onSubmitTask}
-          onApproveTask={onApproveTask}
-          onRejectTask={onRejectTask}
+          onSubmit={onSubmitTask}
+          onApprove={onApproveTask}
+          onReject={onRejectTask}
         />
       )}
     </section>
