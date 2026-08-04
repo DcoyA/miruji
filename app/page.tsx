@@ -1197,6 +1197,7 @@ export default function Home() {
             members={activeMembers}
             currentMember={currentMember}
             isManager={isManager}
+            loading={loading}
             onSubmitTask={submitTask}
             onApproveTask={approveTask}
             onRejectTask={rejectTask}
