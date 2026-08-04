@@ -5,31 +5,87 @@ import { memberNameById, statusLabel, verificationLabel } from "@/lib/labels";
 type TaskListProps = {
   tasks: Task[];
   members: Member[];
+  currentMember: Member | null;
+  isManager: boolean;
+  loading: boolean;
+  onSubmit: (task: Task) => void;
+  onApprove: (task: Task) => void;
+  onReject: (task: Task) => void;
 };
 
-export default function TaskList({ tasks, members }: TaskListProps) {
+export default function TaskList({
+  tasks,
+  members,
+  currentMember,
+  isManager,
+  loading,
+  onSubmit,
+  onApprove,
+  onReject,
+}: TaskListProps) {
   return (
     <div style={taskListStyle}>
-      {tasks.map((task) => (
-        <div key={task.id} style={taskCardStyle}>
-          <div>
-            <div style={taskTitleStyle}>{task.title}</div>
+      {tasks.map((task) => {
+        const canSubmit =
+          !isManager &&
+          task.assigned_member_id === currentMember?.id &&
+          (task.status === "todo" || task.status === "rolled_over" || task.status === "rejected");
 
-            <div style={taskSubTextStyle}>
-              대상: {memberNameById(members, task.assigned_member_id)}
+        const canReview = isManager && task.status === "submitted";
+
+        return (
+          <div key={task.id} style={taskCardStyle}>
+            <div style={{ flex: 1 }}>
+              <div style={taskTitleStyle}>{task.title}</div>
+
+              <div style={taskSubTextStyle}>
+                대상: {memberNameById(members, task.assigned_member_id)}
+              </div>
+
+              <div style={taskSubTextStyle}>
+                인증: {verificationLabel(task.verification_type)} · 스티커{" "}
+                {task.reward_points}개
+              </div>
+
+              {(canSubmit || canReview) && (
+                <div style={actionRowStyle}>
+                  {canSubmit && (
+                    <button
+                      onClick={() => onSubmit(task)}
+                      disabled={loading}
+                      style={submitButtonStyle}
+                    >
+                      제출하기
+                    </button>
+                  )}
+                  {canReview && (
+                    <>
+                      <button
+                        onClick={() => onApprove(task)}
+                        disabled={loading}
+                        style={approveButtonStyle}
+                      >
+                        승인
+                      </button>
+                      <button
+                        onClick={() => onReject(task)}
+                        disabled={loading}
+                        style={rejectButtonStyle}
+                      >
+                        반려
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div style={taskSubTextStyle}>
-              인증: {verificationLabel(task.verification_type)} · 스티커{" "}
-              {task.reward_points}개
-            </div>
+            <span style={statusBadgeStyle(task.status)}>
+              {statusLabel(task.status)}
+            </span>
           </div>
-
-          <span style={statusBadgeStyle(task.status)}>
-            {statusLabel(task.status)}
-          </span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -81,4 +137,43 @@ const taskSubTextStyle: CSSProperties = {
   marginTop: 5,
   color: "#64748b",
   fontSize: 13,
+};
+
+const actionRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 6,
+  marginTop: 10,
+};
+
+const submitButtonStyle: CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  background: "#4f46e5",
+  color: "#fff",
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const approveButtonStyle: CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  background: "#15803d",
+  color: "#fff",
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const rejectButtonStyle: CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  background: "#b91c1c",
+  color: "#fff",
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
 };
