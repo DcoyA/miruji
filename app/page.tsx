@@ -1191,7 +1191,16 @@ export default function Home() {
             }}
           />
           <CalendarGrid currentMonth={currentMonth} selectedDate={selectedDate} tasks={tasks} onSelectDate={setSelectedDate} />
-          <DayTaskList selectedDate={selectedDate} tasks={selectedTasks} members={members} />
+          <DayTaskList
+            selectedDate={selectedDate}
+            tasks={selectedTasks}
+            members={activeMembers}
+            currentMember={currentMember}
+            isManager={isManager}
+            onSubmitTask={submitTask}
+            onApproveTask={approveTask}
+            onRejectTask={rejectTask}
+          />
         </>
       )}
 
