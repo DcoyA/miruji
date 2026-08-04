@@ -21,6 +21,9 @@ type MissionTabProps = {
   onVerificationTypeChange: (value: string) => void;
   onRewardPointsChange: (value: number) => void;
   onCreate: () => void;
+  onSubmitTask: (task: Task) => void;
+  onApproveTask: (task: Task) => void;
+  onRejectTask: (task: Task) => void;
 };
 
 export default function MissionTab({
@@ -41,6 +44,9 @@ export default function MissionTab({
   onVerificationTypeChange,
   onRewardPointsChange,
   onCreate,
+  onSubmitTask,
+  onApproveTask,
+  onRejectTask,
 }: MissionTabProps) {
   const visibleTasks = isManager
     ? tasks
@@ -118,7 +124,16 @@ export default function MissionTab({
         {visibleTasks.length === 0 ? (
           <div style={emptyStateStyle}>이 날짜에 표시할 미션이 없습니다.</div>
         ) : (
-          <TaskList tasks={visibleTasks} members={members} />
+          <TaskList
+            tasks={visibleTasks}
+            members={members}
+            currentMember={currentMember}
+            isManager={isManager}
+            loading={loading}
+            onSubmit={onSubmitTask}
+            onApprove={onApproveTask}
+            onReject={onRejectTask}
+          />
         )}
       </section>
     </>
