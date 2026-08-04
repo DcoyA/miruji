@@ -126,6 +126,11 @@ export default function Home() {
   const isManager =
     currentMember?.role === "owner" || currentMember?.role === "manager";
 
+  const activeMembers = useMemo(
+    () => members.filter((member) => member.status !== "removed"),
+    [members]
+  );
+
   const monthTaskCount = tasks.length;
   const pendingCount = tasks.filter((task) => task.status === "submitted").length;
   const approvedCount = tasks.filter((task) => task.status === "approved").length;
@@ -147,7 +152,7 @@ export default function Home() {
 
   async function loadProfile(authUserId: string): Promise<Profile | null> {
     const { data: userData } = await supabase.auth.getUser();
-    const fallbackName = userData.user?.email?.split("@")[0] || "사용자";
+    const fallbackName = userData.user?.email?.split("@")[0] || "";
 
     const { data, error } = await supabase
       .from("profiles")
@@ -156,7 +161,7 @@ export default function Home() {
       .maybeSingle();
 
     if (error) {
-      setMessage(`프로필 불러오기 실패: ${error.message}`);
+      setMessage(`프로필 조회 실패: ${error.message}`);
       return null;
     }
 
@@ -194,15 +199,15 @@ export default function Home() {
       setMessage("이메일과 비밀번호를 입력해주세요.");
       return;
     }
-  
+
     setLoading(true);
     setMessage("");
-  
+
     const appUrl =
       typeof window !== "undefined"
         ? window.location.origin
         : "https://miruji-git-main-iamborghini5757-1567s-projects.vercel.app";
-  
+
     const { error } = await supabase.auth.signUp({
       email: authEmail.trim(),
       password: authPassword.trim(),
@@ -210,17 +215,17 @@ export default function Home() {
         emailRedirectTo: `${appUrl}/auth/callback`,
         data: {
           display_name: authEmail.split("@")[0],
-          app_name: "미루지말자",
+          app_name: "",
         },
       },
     });
-  
+
     setMessage(
       error
-        ? `회원가입 실패: ${error.message}`
-        : "회원가입 완료. 미루지말자 인증 메일을 확인해주세요. 메일의 인증 링크를 누르면 인증이 완료됩니다."
+        ? `가입 실패: ${error.message}`
+        : "가입 완료. 인증 메일을 확인해주세요. 메일함(스팸함 포함)을 확인해주세요."
     );
-  
+
     setLoading(false);
   }
 
@@ -245,7 +250,7 @@ export default function Home() {
     }
 
     if (!data.user) {
-      setMessage("로그인 사용자 정보를 가져오지 못했습니다.");
+      setMessage("로그인 정보를 확인할 수 없습니다.");
       setLoading(false);
       return;
     }
@@ -284,12 +289,12 @@ export default function Home() {
     setAuthPassword("");
     setAuthMode("signin");
     setLoading(false);
-    setMessage("로그아웃 완료");
+    setMessage("로그아웃되었습니다");
   }
 
   async function deleteAccount() {
     const confirmed = window.confirm(
-      "정말 탈퇴하시겠어요? 탈퇴 후에는 계정 정보를 되돌릴 수 없습니다."
+      "정말 탈퇴하시겠습니까? 계정과 프로필 정보가 삭제되며 되돌릴 수 없습니다."
     );
     if (!confirmed) return;
 
@@ -299,7 +304,7 @@ export default function Home() {
     const accessToken = sessionData.session?.access_token;
 
     if (!accessToken) {
-      setMessage("로그인 상태를 확인할 수 없습니다.");
+      setMessage("로그인 정보를 확인할 수 없습니다.");
       setLoading(false);
       return;
     }
@@ -314,10 +319,10 @@ export default function Home() {
     if (!response.ok) {
       if (result.error === "SOLE_OWNER") {
         setMessage(
-          "탈퇴하려면 먼저 다른 구성원에게 관리자 권한을 넘기거나 해당 그룹을 삭제해주세요."
+          "워크스페이스의 유일한 owner이므로 탈퇴할 수 없습니다. 다른 사람에게 권한을 위임하거나 워크스페이스를 삭제해주세요."
         );
       } else {
-        setMessage("탈퇴 처리 중 문제가 발생했습니다. 다시 시도해주세요.");
+        setMessage("탈퇴 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
       }
       setLoading(false);
       return;
@@ -360,7 +365,7 @@ export default function Home() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      setMessage(`워크스페이스 불러오기 실패: ${error.message}`);
+      setMessage(`워크스페이스 조회 실패: ${error.message}`);
       return;
     }
 
@@ -374,7 +379,7 @@ export default function Home() {
 
   async function createWorkspace() {
     if (!profile) {
-      setMessage("로그인이 필요합니다.");
+      setMessage("프로필 정보가 없습니다.");
       return;
     }
 
@@ -405,7 +410,7 @@ export default function Home() {
     const { error: ownerError } = await supabase.from("workspace_members").insert({
       workspace_id: createdWorkspace.id,
       profile_id: profile.id,
-      display_name: profile.display_name || "사용자",
+      display_name: profile.display_name || "",
       role: "owner",
       status: "active",
       is_virtual: false,
@@ -426,23 +431,23 @@ export default function Home() {
     setWorkspaceName("");
     setWorkspaceDescription("");
     setActiveTab("settings");
-    setMessage(`워크스페이스 생성 완료: ${newWorkspace.name}`);
+    setMessage(`워크스페이스 생성됨: ${newWorkspace.name}`);
     setLoading(false);
   }
 
   async function addMember() {
     if (!workspace) {
-      setMessage("워크스페이스를 먼저 선택해주세요.");
+      setMessage("워크스페이스가 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("참여자 추가 권한이 없습니다.");
+      setMessage("보호자/관리자만 가능합니다.");
       return;
     }
 
     if (!newMemberName.trim()) {
-      setMessage("참여자 이름을 입력해주세요.");
+      setMessage("이름을 입력해주세요.");
       return;
     }
 
@@ -473,7 +478,7 @@ export default function Home() {
     setNewMemberName("");
     setNewMemberRole("member");
     setNewMemberHasEmail(true);
-    setMessage(`참여자 추가 완료: ${data.display_name}`);
+    setMessage(`참여자 추가됨: ${data.display_name}`);
     setLoading(false);
   }
 
@@ -483,12 +488,12 @@ export default function Home() {
 
   async function createInviteForMember(member: Member) {
     if (!workspace) {
-      setMessage("워크스페이스를 먼저 선택해주세요.");
+      setMessage("워크스페이스가 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("초대코드 생성 권한이 없습니다.");
+      setMessage("보호자/관리자만 가능합니다.");
       return;
     }
 
@@ -498,7 +503,7 @@ export default function Home() {
     }
 
     if (!member.requires_account) {
-      setMessage("이 참여자는 계정 없이 관리하도록 설정되어 있습니다.");
+      setMessage("계정 없이 관리 중인 참여자는 초대코드를 만들 수 없습니다.");
       return;
     }
 
@@ -525,7 +530,7 @@ export default function Home() {
     }
 
     setInviteCodes((prev) => ({ ...prev, [member.id]: inviteCode }));
-    setMessage(`초대코드 생성 완료: ${inviteCode}`);
+    setMessage(`초대코드 생성됨: ${inviteCode}`);
     setLoading(false);
   }
 
@@ -534,183 +539,109 @@ export default function Home() {
       setMessage("워크스페이스가 없습니다.");
       return;
     }
-  
+
     if (!isManager) {
       setMessage("보호자/관리자만 가능합니다.");
       return;
     }
-  
+
     if (!member.is_virtual || member.requires_account) return;
-  
+
     setLoading(true);
     setMessage("");
-  
+
     const { data, error } = await supabase
       .from("workspace_members")
       .update({ requires_account: true })
       .eq("id", member.id)
       .select(memberSelect)
       .single();
-  
+
     if (error) {
       setMessage(`전환 준비 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
     setMessage(`${member.display_name} 님을 실제 계정으로 연결할 수 있어요. 초대코드를 생성해주세요.`);
     setLoading(false);
   }
 
   async function removeMember(member: Member) {
-  if (!workspace) {
-    setMessage("워크스페이스가 없습니다.");
-    return;
-  }
+    if (!workspace) {
+      setMessage("워크스페이스가 없습니다.");
+      return;
+    }
 
-  if (!isManager) {
-    setMessage("보호자/관리자만 가능합니다.");
-    return;
-  }
+    if (!isManager) {
+      setMessage("보호자/관리자만 가능합니다.");
+      return;
+    }
 
-  if (member.role === "owner") {
-    setMessage("owner는 이 방식으로 제외할 수 없습니다.");
-    return;
-  }
+    if (member.role === "owner") {
+      setMessage("owner는 이 방식으로 제외할 수 없습니다.");
+      return;
+    }
 
-  const confirmed = window.confirm(
-    `${member.display_name} 님을 참여자 목록에서 제외할까요? 지금까지의 미션 기록과 리워드 내역은 그대로 보존됩니다.`
-  );
-  if (!confirmed) return;
+    const confirmed = window.confirm(
+      `${member.display_name} 님을 참여자 목록에서 제외할까요? 지금까지의 미션 기록과 리워드 내역은 그대로 보존됩니다.`
+    );
+    if (!confirmed) return;
 
-  setLoading(true);
-  setMessage("");
+    setLoading(true);
+    setMessage("");
 
-  const { data, error } = await supabase
-    .from("workspace_members")
-    .update({ status: "removed" })
-    .eq("id", member.id)
-    .select(memberSelect)
-    .single();
+    const { data, error } = await supabase
+      .from("workspace_members")
+      .update({ status: "removed" })
+      .eq("id", member.id)
+      .select(memberSelect)
+      .single();
 
-  if (error) {
-    setMessage(`제외 실패: ${error.message}`);
+    if (error) {
+      setMessage(`제외 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
+    setMessage(`${member.display_name} 님을 제외했습니다.`);
     setLoading(false);
-    return;
   }
 
-  setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
-  setMessage(`${member.display_name} 님을 제외했습니다.`);
-  setLoading(false);
-}
+  async function restoreMember(member: Member) {
+    if (!workspace) {
+      setMessage("워크스페이스가 없습니다.");
+      return;
+    }
 
-async function restoreMember(member: Member) {
-  if (!workspace) {
-    setMessage("워크스페이스가 없습니다.");
-    return;
-  }
+    if (!isManager) {
+      setMessage("보호자/관리자만 가능합니다.");
+      return;
+    }
 
-  if (!isManager) {
-    setMessage("보호자/관리자만 가능합니다.");
-    return;
-  }
+    setLoading(true);
+    setMessage("");
 
-  setLoading(true);
-  setMessage("");
+    const { data, error } = await supabase
+      .from("workspace_members")
+      .update({ status: "active" })
+      .eq("id", member.id)
+      .select(memberSelect)
+      .single();
 
-  const { data, error } = await supabase
-    .from("workspace_members")
-    .update({ status: "active" })
-    .eq("id", member.id)
-    .select(memberSelect)
-    .single();
+    if (error) {
+      setMessage(`복구 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
 
-  if (error) {
-    setMessage(`복구 실패: ${error.message}`);
+    setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
+    setMessage(`${member.display_name} 님을 복구했습니다.`);
     setLoading(false);
-    return;
   }
 
-  setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
-  setMessage(`${member.display_name} 님을 복구했습니다.`);
-  setLoading(false);
-}
-  
-async function removeMember(member: Member) {
-  if (!workspace) {
-    setMessage("워크스페이스가 없습니다.");
-    return;
-  }
-
-  if (!isManager) {
-    setMessage("보호자/관리자만 가능합니다.");
-    return;
-  }
-
-  if (member.role === "owner") {
-    setMessage("owner는 이 방식으로 제외할 수 없습니다.");
-    return;
-  }
-
-  const confirmed = window.confirm(
-    `${member.display_name} 님을 참여자 목록에서 제외할까요? 지금까지의 미션 기록과 리워드 내역은 그대로 보존됩니다.`
-  );
-  if (!confirmed) return;
-
-  setLoading(true);
-  setMessage("");
-
-  const { data, error } = await supabase
-    .from("workspace_members")
-    .update({ status: "removed" })
-    .eq("id", member.id)
-    .select(memberSelect)
-    .single();
-
-  if (error) {
-    setMessage(`제외 실패: ${error.message}`);
-    setLoading(false);
-    return;
-  }
-
-  setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
-  setMessage(`${member.display_name} 님을 제외했습니다.`);
-  setLoading(false);
-}
-
-async function restoreMember(member: Member) {
-  if (!workspace) {
-    setMessage("워크스페이스가 없습니다.");
-    return;
-  }
-
-  if (!isManager) {
-    setMessage("보호자/관리자만 가능합니다.");
-    return;
-  }
-
-  setLoading(true);
-  setMessage("");
-
-  const { data, error } = await supabase
-    .from("workspace_members")
-    .update({ status: "active" })
-    .eq("id", member.id)
-    .select(memberSelect)
-    .single();
-
-  if (error) {
-    setMessage(`복구 실패: ${error.message}`);
-    setLoading(false);
-    return;
-  }
-
-  setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
-  setMessage(`${member.display_name} 님을 복구했습니다.`);
-  setLoading(false);
-}
-  
   async function acceptInviteCode() {
     if (!joinInviteCode.trim()) {
       setMessage("초대코드를 입력해주세요.");
@@ -725,13 +656,13 @@ async function restoreMember(member: Member) {
     });
 
     if (error) {
-      setMessage(`초대코드 참여 실패: ${error.message}`);
+      setMessage(`참여 실패: ${error.message}`);
       setLoading(false);
       return;
     }
 
     setJoinInviteCode("");
-    setMessage("워크스페이스 참여 완료");
+    setMessage("워크스페이스에 참여했습니다");
 
     const result = data as InviteAcceptResult | null;
     const joinedWorkspaceId = result?.workspace_id;
@@ -764,22 +695,22 @@ async function restoreMember(member: Member) {
     ]);
 
     if (membersResult.error) {
-      setMessage(`참여자 불러오기 실패: ${membersResult.error.message}`);
+      setMessage(`참여자 조회 실패: ${membersResult.error.message}`);
       return;
     }
 
     if (tasksResult.error) {
-      setMessage(`미션 불러오기 실패: ${tasksResult.error.message}`);
+      setMessage(`미션 조회 실패: ${tasksResult.error.message}`);
       return;
     }
 
     if (rewardsResult.error) {
-      setMessage(`보상 불러오기 실패: ${rewardsResult.error.message}`);
+      setMessage(`리워드 조회 실패: ${rewardsResult.error.message}`);
       return;
     }
 
     if (rewardTransactionsResult.error) {
-      setMessage(`스티커 내역 불러오기 실패: ${rewardTransactionsResult.error.message}`);
+      setMessage(`리워드 내역 조회 실패: ${rewardTransactionsResult.error.message}`);
       return;
     }
 
@@ -791,22 +722,22 @@ async function restoreMember(member: Member) {
 
   async function createTask() {
     if (!workspace) {
-      setMessage("워크스페이스를 먼저 선택해주세요.");
+      setMessage("워크스페이스가 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("미션 생성 권한이 없습니다.");
+      setMessage("보호자/관리자만 가능합니다.");
       return;
     }
 
     if (!newTaskTitle.trim()) {
-      setMessage("미션 제목을 입력해주세요.");
+      setMessage("제목을 입력해주세요.");
       return;
     }
 
     if (!newTaskAssignedMemberId) {
-      setMessage("미션을 받을 참여자를 선택해주세요.");
+      setMessage("담당자를 선택해주세요.");
       return;
     }
 
@@ -845,28 +776,28 @@ async function restoreMember(member: Member) {
     setNewTaskDescription("");
     setNewTaskVerificationType("none");
     setNewTaskRewardPoints(1);
-    setMessage("미션 생성 완료");
+    setMessage("미션 생성됨");
     setLoading(false);
   }
 
   async function createReward() {
     if (!workspace) {
-      setMessage("워크스페이스를 먼저 선택해주세요.");
+      setMessage("워크스페이스가 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("보상 생성 권한이 없습니다.");
+      setMessage("보호자/관리자만 가능합니다.");
       return;
     }
 
     if (!newRewardTitle.trim()) {
-      setMessage("보상 이름을 입력해주세요.");
+      setMessage("제목을 입력해주세요.");
       return;
     }
 
     if (!newRewardTargetMemberId) {
-      setMessage("보상 대상 참여자를 선택해주세요.");
+      setMessage("대상자를 선택해주세요.");
       return;
     }
 
@@ -891,7 +822,7 @@ async function restoreMember(member: Member) {
       .single();
 
     if (error) {
-      setMessage(`보상 생성 실패: ${error.message}`);
+      setMessage(`리워드 생성 실패: ${error.message}`);
       setLoading(false);
       return;
     }
@@ -900,34 +831,34 @@ async function restoreMember(member: Member) {
     setNewRewardTitle("");
     setNewRewardDescription("");
     setNewRewardCostPoints(1);
-    setMessage("보상 생성 완료");
+    setMessage("리워드 생성됨");
     setLoading(false);
   }
 
   async function redeemReward(reward: Reward) {
     if (!workspace) {
-      setMessage("워크스페이스를 먼저 선택해주세요.");
+      setMessage("워크스페이스가 없습니다.");
       return;
     }
 
     if (!reward.target_member_id) {
-      setMessage("보상 대상자가 없습니다.");
+      setMessage("대상자가 없습니다.");
       return;
     }
 
     if (!isManager && currentMember?.id !== reward.target_member_id) {
-      setMessage("본인에게 배정된 보상만 교환할 수 있습니다.");
+      setMessage("본인의 리워드만 사용할 수 있습니다.");
       return;
     }
 
     if (reward.status === "redeemed") {
-      setMessage("이미 교환한 보상입니다.");
+      setMessage("이미 사용된 리워드입니다.");
       return;
     }
 
     const balance = balanceByMemberId(reward.target_member_id);
     if (balance < reward.cost_points) {
-      setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`);
+      setMessage(`포인트가 부족합니다. 필요 ${reward.cost_points} / 보유 ${balance}`);
       return;
     }
 
@@ -945,14 +876,14 @@ async function restoreMember(member: Member) {
         transaction_type: "spend",
         source_type: "reward",
         source_id: reward.id,
-        memo: `${reward.title} 보상 교환`,
+        memo: `${reward.title} 사용`,
         created_by_member_id: manager?.id || null,
       })
       .select(rewardTxSelect)
       .single();
 
     if (spendError) {
-      setMessage(`스티커 차감 실패: ${spendError.message}`);
+      setMessage(`포인트 차감 실패: ${spendError.message}`);
       setLoading(false);
       return;
     }
@@ -965,14 +896,14 @@ async function restoreMember(member: Member) {
       .single();
 
     if (rewardError) {
-      setMessage(`보상 상태 변경 실패: ${rewardError.message}`);
+      setMessage(`리워드 상태 변경 실패: ${rewardError.message}`);
       setLoading(false);
       return;
     }
 
     setRewardTransactions((prev) => [...prev, spendData as RewardTransaction]);
     setRewards((prev) => prev.map((item) => (item.id === reward.id ? (updatedReward as Reward) : item)));
-    setMessage(`보상 교환 완료: ${reward.title}`);
+    setMessage(`리워드 사용됨: ${reward.title}`);
     setLoading(false);
   }
 
@@ -1016,11 +947,11 @@ async function restoreMember(member: Member) {
 
       <section style={accountBoxStyle}>
         <div>
-          <div style={smallLabelStyle}>로그인 중</div>
+          <div style={smallLabelStyle}>내 계정</div>
           <strong>{profile.display_name}</strong>
           {currentMember && <div style={memberRoleTextStyle}>{currentMember.display_name} · {currentMember.role}</div>}
         </div>
-        <a href="/dev" style={devLinkStyle}>개발화면</a>
+        <a href="/dev" style={devLinkStyle}>dev</a>
       </section>
 
       {workspaces.length > 0 && (
@@ -1055,7 +986,7 @@ async function restoreMember(member: Member) {
       {workspace && activeTab === "missions" && (
         <MissionTab
           selectedDate={selectedDate}
-          members={members}
+          members={activeMembers}
           tasks={selectedTasks}
           currentMember={currentMember}
           isManager={isManager}
@@ -1076,7 +1007,7 @@ async function restoreMember(member: Member) {
 
       {workspace && activeTab === "rewards" && (
         <RewardTab
-          members={members}
+          members={activeMembers}
           rewards={rewards}
           currentMember={currentMember}
           isManager={isManager}
@@ -1138,11 +1069,11 @@ async function restoreMember(member: Member) {
 function NoWorkspacePrompt({ onGoSettings }: { onGoSettings: () => void }) {
   return (
     <section style={emptyWorkspaceBoxStyle}>
-      <h2 style={emptyWorkspaceTitleStyle}>워크스페이스가 필요합니다</h2>
+      <h2 style={emptyWorkspaceTitleStyle}>워크스페이스가 없어요</h2>
       <p style={emptyWorkspaceTextStyle}>
-        캘린더, 미션, 보상 기능을 사용하려면 먼저 워크스페이스에 참여하거나 새 워크스페이스를 만들어야 합니다.
+        가족, 친구, 팀 등 함께 미션을 관리할 워크스페이스를 만들거나 초대코드로 참여해보세요.
       </p>
-      <button onClick={onGoSettings} style={emptyWorkspaceButtonStyle}>설정에서 시작하기</button>
+      <button onClick={onGoSettings} style={emptyWorkspaceButtonStyle}>설정으로 이동</button>
     </section>
   );
 }
@@ -1158,6 +1089,6 @@ const emptyWorkspaceTitleStyle: CSSProperties = { margin: "0 0 8px", fontSize: 2
 const emptyWorkspaceTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 14 };
 const emptyWorkspaceButtonStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "none", background: "#4f46e5", color: "#fff", fontWeight: 800, cursor: "pointer" };
 const messageBoxStyle = (message: string): CSSProperties => {
-  const ok = message.includes("완료") || message.includes("성공") || message.includes("불러오기") || message.includes("교환");
+  const ok = message.includes("완료") || message.includes("성공") || message.includes("생성") || message.includes("참여");
   return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 };
 };
