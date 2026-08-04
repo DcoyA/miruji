@@ -31,7 +31,8 @@ import type {
   Workspace,
 } from "@/types/app";
 
-const memberSelect = "id, profile_id, display_name, role, is_virtual, requires_account";
+const memberSelect =
+  "id, profile_id, display_name, role, is_virtual, requires_account, status";
 const taskSelect =
   "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points";
 const rewardSelect =
@@ -561,6 +562,154 @@ export default function Home() {
     setMessage(`${member.display_name} 님을 실제 계정으로 연결할 수 있어요. 초대코드를 생성해주세요.`);
     setLoading(false);
   }
+
+  async function removeMember(member: Member) {
+  if (!workspace) {
+    setMessage("워크스페이스가 없습니다.");
+    return;
+  }
+
+  if (!isManager) {
+    setMessage("보호자/관리자만 가능합니다.");
+    return;
+  }
+
+  if (member.role === "owner") {
+    setMessage("owner는 이 방식으로 제외할 수 없습니다.");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `${member.display_name} 님을 참여자 목록에서 제외할까요? 지금까지의 미션 기록과 리워드 내역은 그대로 보존됩니다.`
+  );
+  if (!confirmed) return;
+
+  setLoading(true);
+  setMessage("");
+
+  const { data, error } = await supabase
+    .from("workspace_members")
+    .update({ status: "removed" })
+    .eq("id", member.id)
+    .select(memberSelect)
+    .single();
+
+  if (error) {
+    setMessage(`제외 실패: ${error.message}`);
+    setLoading(false);
+    return;
+  }
+
+  setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
+  setMessage(`${member.display_name} 님을 제외했습니다.`);
+  setLoading(false);
+}
+
+async function restoreMember(member: Member) {
+  if (!workspace) {
+    setMessage("워크스페이스가 없습니다.");
+    return;
+  }
+
+  if (!isManager) {
+    setMessage("보호자/관리자만 가능합니다.");
+    return;
+  }
+
+  setLoading(true);
+  setMessage("");
+
+  const { data, error } = await supabase
+    .from("workspace_members")
+    .update({ status: "active" })
+    .eq("id", member.id)
+    .select(memberSelect)
+    .single();
+
+  if (error) {
+    setMessage(`복구 실패: ${error.message}`);
+    setLoading(false);
+    return;
+  }
+
+  setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
+  setMessage(`${member.display_name} 님을 복구했습니다.`);
+  setLoading(false);
+}
+  
+async function removeMember(member: Member) {
+  if (!workspace) {
+    setMessage("워크스페이스가 없습니다.");
+    return;
+  }
+
+  if (!isManager) {
+    setMessage("보호자/관리자만 가능합니다.");
+    return;
+  }
+
+  if (member.role === "owner") {
+    setMessage("owner는 이 방식으로 제외할 수 없습니다.");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `${member.display_name} 님을 참여자 목록에서 제외할까요? 지금까지의 미션 기록과 리워드 내역은 그대로 보존됩니다.`
+  );
+  if (!confirmed) return;
+
+  setLoading(true);
+  setMessage("");
+
+  const { data, error } = await supabase
+    .from("workspace_members")
+    .update({ status: "removed" })
+    .eq("id", member.id)
+    .select(memberSelect)
+    .single();
+
+  if (error) {
+    setMessage(`제외 실패: ${error.message}`);
+    setLoading(false);
+    return;
+  }
+
+  setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
+  setMessage(`${member.display_name} 님을 제외했습니다.`);
+  setLoading(false);
+}
+
+async function restoreMember(member: Member) {
+  if (!workspace) {
+    setMessage("워크스페이스가 없습니다.");
+    return;
+  }
+
+  if (!isManager) {
+    setMessage("보호자/관리자만 가능합니다.");
+    return;
+  }
+
+  setLoading(true);
+  setMessage("");
+
+  const { data, error } = await supabase
+    .from("workspace_members")
+    .update({ status: "active" })
+    .eq("id", member.id)
+    .select(memberSelect)
+    .single();
+
+  if (error) {
+    setMessage(`복구 실패: ${error.message}`);
+    setLoading(false);
+    return;
+  }
+
+  setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
+  setMessage(`${member.display_name} 님을 복구했습니다.`);
+  setLoading(false);
+}
   
   async function acceptInviteCode() {
     if (!joinInviteCode.trim()) {
@@ -969,6 +1118,8 @@ export default function Home() {
           inviteCodes={inviteCodes}
           onCreateInvite={createInviteForMember}
           onEnableAccount={enableAccountForMember}
+          onRemoveMember={removeMember}
+          onRestoreMember={restoreMember}
           joinInviteCode={joinInviteCode}
           onJoinInviteCodeChange={setJoinInviteCode}
           onAcceptInvite={acceptInviteCode}
