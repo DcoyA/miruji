@@ -25,6 +25,8 @@ type SettingsTabProps = {
   inviteCodes: Record<string, string>;
   onCreateInvite: (member: Member) => void;
   onEnableAccount: (member: Member) => void;
+  onRemoveMember: (member: Member) => void;
+  onRestoreMember: (member: Member) => void;
   joinInviteCode: string;
   onJoinInviteCodeChange: (value: string) => void;
   onAcceptInvite: () => void;
@@ -53,6 +55,8 @@ export default function SettingsTab({
   inviteCodes,
   onCreateInvite,
   onEnableAccount,
+  onRemoveMember,
+  onRestoreMember,
   joinInviteCode,
   onJoinInviteCodeChange,
   onAcceptInvite,
@@ -129,6 +133,8 @@ export default function SettingsTab({
             loading={loading}
             onCreateInvite={onCreateInvite}
             onEnableAccount={onEnableAccount}
+            onRemoveMember={onRemoveMember}
+            onRestoreMember={onRestoreMember}
           />
         </>
       )}
@@ -168,12 +174,16 @@ function MemberList({
   loading,
   onCreateInvite,
   onEnableAccount,
+  onRemoveMember,
+  onRestoreMember,
 }: {
   members: Member[];
   inviteCodes: Record<string, string>;
   loading: boolean;
   onCreateInvite: (member: Member) => void;
   onEnableAccount: (member: Member) => void;
+  onRemoveMember: (member: Member) => void;
+  onRestoreMember: (member: Member) => void;
 }) {
   return (
     <section style={createBoxStyle}>
@@ -182,38 +192,78 @@ function MemberList({
         <div style={emptyStateStyle}>아직 참여자가 없습니다.</div>
       ) : (
         <div style={memberListStyle}>
-          {members.map((member) => (
-            <div key={member.id} style={memberCardStyle}>
-              <div>
-                <div style={memberNameStyle}>{member.display_name}</div>
-                <div style={memberMetaStyle}>
-                  {roleLabel(member.role)} ·{" "}
-                  {member.is_virtual
-                    ? member.requires_account
-                      ? "초대 대기"
-                      : "계정 없이 관리 중"
-                    : "계정 연결됨"}
-                </div>
-                {inviteCodes[member.id] && (
-                  <div style={inviteCodeBoxStyle}>
-                    초대코드: <strong>{inviteCodes[member.id]}</strong>
+          {members.map((member) => {
+            const isRemoved = member.status === "removed";
+            return (
+              <div
+                key={member.id}
+                style={isRemoved ? { ...memberCardStyle, opacity: 0.55 } : memberCardStyle}
+              >
+                <div>
+                  <div style={memberNameStyle}>{member.display_name}</div>
+                  <div style={memberMetaStyle}>
+                    {roleLabel(member.role)} ·{" "}
+                    {isRemoved
+                      ? "제외됨"
+                      : member.is_virtual
+                      ? member.requires_account
+                        ? "초대 대기"
+                        : "계정 없이 관리 중"
+                      : "계정 연결됨"}
                   </div>
-                )}
+                  {inviteCodes[member.id] && (
+                    <div style={inviteCodeBoxStyle}>
+                      초대코드: <strong>{inviteCodes[member.id]}</strong>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: 6 }}>
+                  {isRemoved ? (
+                    <button
+                      onClick={() => onRestoreMember(member)}
+                      disabled={loading}
+                      style={smallButtonStyle}
+                    >
+                      복구하기
+                    </button>
+                  ) : (
+                    <>
+                      {member.is_virtual && !member.requires_account && (
+                        <button
+                          onClick={() => onEnableAccount(member)}
+                          disabled={loading}
+                          style={smallButtonStyle}
+                        >
+                          실제 계정으로 전환하기
+                        </button>
+                      )}
+
+                      {member.is_virtual && member.requires_account && (
+                        <button
+                          onClick={() => onCreateInvite(member)}
+                          disabled={loading}
+                          style={smallButtonStyle}
+                        >
+                          초대코드 생성
+                        </button>
+                      )}
+
+                      {member.role !== "owner" && (
+                        <button
+                          onClick={() => onRemoveMember(member)}
+                          disabled={loading}
+                          style={{ ...smallButtonStyle, background: "#b91c1c" }}
+                        >
+                          제외하기
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
-
-              {member.is_virtual && !member.requires_account && (
-                <button onClick={() => onEnableAccount(member)} disabled={loading} style={smallButtonStyle}>
-                  실제 계정으로 전환하기
-                </button>
-              )}
-
-              {member.is_virtual && member.requires_account && (
-                <button onClick={() => onCreateInvite(member)} disabled={loading} style={smallButtonStyle}>
-                  초대코드 생성
-                </button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>
