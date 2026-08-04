@@ -7,12 +7,22 @@ type DayTaskListProps = {
   selectedDate: string;
   tasks: Task[];
   members: Member[];
+  currentMember: Member | null;
+  isManager: boolean;
+  onSubmitTask: (task: Task) => void;
+  onApproveTask: (task: Task) => void;
+  onRejectTask: (task: Task) => void;
 };
 
 export default function DayTaskList({
   selectedDate,
   tasks,
   members,
+  currentMember,
+  isManager,
+  onSubmitTask,
+  onApproveTask,
+  onRejectTask,
 }: DayTaskListProps) {
   return (
     <section style={dayTaskSectionStyle}>
@@ -21,7 +31,15 @@ export default function DayTaskList({
       {tasks.length === 0 ? (
         <div style={emptyStateStyle}>이 날짜에 등록된 미션이 없습니다.</div>
       ) : (
-        <TaskList tasks={tasks} members={members} />
+        <TaskList
+          tasks={tasks}
+          members={members}
+          currentMember={currentMember}
+          isManager={isManager}
+          onSubmitTask={onSubmitTask}
+          onApproveTask={onApproveTask}
+          onRejectTask={onRejectTask}
+        />
       )}
     </section>
   );
