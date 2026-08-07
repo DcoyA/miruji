@@ -356,10 +356,6 @@ function buildInviteLink(code: string) {
   if (typeof window === "undefined") return "";
   return `${window.location.origin}/join?code=${code}`;
 }
-function buildInviteLink(code: string) {
-  if (typeof window === "undefined") return "";
-  return `${window.location.origin}/join?code=${code}`;
-}
 function formatExpiryDate(iso: string) {
   const date = new Date(iso);
   return `${date.getMonth() + 1}월 ${date.getDate()}일`;
