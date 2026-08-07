@@ -31,6 +31,8 @@ type SettingsTabProps = {
   onJoinInviteCodeChange: (value: string) => void;
   onAcceptInvite: () => void;
   onDeleteAccount: () => void;
+  onTransferOwnership: (member: Member) => void;
+  onDeleteWorkspace: (workspace: Workspace) => void;
 };
 
 export default function SettingsTab({
@@ -129,12 +131,14 @@ export default function SettingsTab({
 
           <MemberList
             members={members}
+            currentMember={currentMember}
             inviteCodes={inviteCodes}
             loading={loading}
             onCreateInvite={onCreateInvite}
             onEnableAccount={onEnableAccount}
             onRemoveMember={onRemoveMember}
             onRestoreMember={onRestoreMember}
+            onTransferOwnership={onTransferOwnership}
           />
         </>
       )}
@@ -159,6 +163,19 @@ export default function SettingsTab({
         </section>
       )}
 
+      {hasWorkspace && currentMember?.role === "owner" && (
+        <section style={dangerBoxStyle}>
+          <h2 style={{ ...sectionTitleStyle, color: "#b91c1c" }}>워크스페이스 삭제</h2>
+          <p style={subTextStyle}>
+            워크스페이스를 삭제하면 모든 미션, 참여자, 보상 기록이 함께 삭제되며 되돌릴 수
+            없습니다. owner는 다른 참여자의 동의 없이 단독으로 삭제할 수 있습니다.
+          </p>
+          <button onClick={() => onDeleteWorkspace(workspace!)} style={dangerButtonStyle}>
+            워크스페이스 삭제하기
+          </button>
+        </section>
+      )}
+      
       <section style={dangerBoxStyle}>
         <h2 style={{ ...sectionTitleStyle, color: "#b91c1c" }}>회원 탈퇴</h2>
         <p style={subTextStyle}>탈퇴하면 계정과 프로필 정보가 삭제되며 되돌릴 수 없습니다.</p>
@@ -170,21 +187,27 @@ export default function SettingsTab({
 
 function MemberList({
   members,
+  currentMember,
   inviteCodes,
   loading,
   onCreateInvite,
   onEnableAccount,
   onRemoveMember,
   onRestoreMember,
+  onTransferOwnership,
 }: {
   members: Member[];
+  currentMember: Member | null;
   inviteCodes: Record<string, string>;
   loading: boolean;
   onCreateInvite: (member: Member) => void;
   onEnableAccount: (member: Member) => void;
   onRemoveMember: (member: Member) => void;
   onRestoreMember: (member: Member) => void;
+  onTransferOwnership: (member: Member) => void;
 }) {
+  const isOwner = currentMember?.role === "owner";
+
   return (
     <section style={createBoxStyle}>
       <h2 style={sectionTitleStyle}>참여자 목록</h2>
@@ -194,6 +217,12 @@ function MemberList({
         <div style={memberListStyle}>
           {members.map((member) => {
             const isRemoved = member.status === "removed";
+            const canTransferTo =
+              isOwner &&
+              !isRemoved &&
+              member.id !== currentMember?.id &&
+              Boolean(member.profile_id);
+
             return (
               <div
                 key={member.id}
@@ -231,6 +260,17 @@ function MemberList({
                     </div>
                   )}
                 </div>
+
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {canTransferTo && (
+                    <button
+                      onClick={() => onTransferOwnership(member)}
+                      disabled={loading}
+                      style={smallButtonStyle}
+                    >
+                      소유권 넘기기
+                    </button>
+                  )}
 
                 <div style={{ display: "flex", gap: 6 }}>
                   {isRemoved ? (
