@@ -21,10 +21,8 @@ import SettingsTab from "@/features/settings/SettingsTab";
 import { addMonths, endOfMonth, startOfMonth, toDateKey } from "@/lib/date";
 import { tabTitle } from "@/lib/labels";
 
-import OnboardingGate from "@/features/onboarding/OnboardingGate";
+import OnboardingGate, { type OnboardingStep } from "@/features/onboarding/OnboardingGate";
 import NoWorkspacePrompt from "@/features/onboarding/NoWorkspacePrompt";
-
-type OnboardingStep = "choice" | "create" | "join";
 
 import type {
   ActiveTab,
