@@ -1389,9 +1389,20 @@ export default function Home() {
   const needsOnboarding = !profile.onboarding_completed && workspaces.length === 0;
 
   if (needsOnboarding) {
+    if (pendingInviteCode) {
+      return (
+        <Shell>
+          <AppHeader title="미루지말자" loading={loading} onSignOut={signOut} />
+          <h1 style={titleStyle}>초대 확인 중...</h1>
+          <p style={subTextStyle}>초대 코드로 워크스페이스에 자동으로 참여하고 있어요.</p>
+          {message && <div style={messageBoxStyle(message)}>{message}</div>}
+        </Shell>
+      );
+    }
+  
     return (
       <Shell>
-        <AppHeader title="온보딩" loading={loading} onSignOut={signOut} />
+        <AppHeader title="미루지말자" loading={loading} onSignOut={signOut} />
         <OnboardingGate
           step={onboardingStep}
           loading={loading}
