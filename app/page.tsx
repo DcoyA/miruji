@@ -395,7 +395,7 @@ export default function Home() {
     if (!response.ok) {
       if (result.error === "SOLE_OWNER") {
         setMessage(
-          "단독 owner인 워크스페이스가 있어 삭제할 수 없습니다. 다른 매니저를 지정해주세요."
+          "혼자 owner인 워크스페이스가 있어 탈퇴할 수 없습니다. 설정 탭에서 다른 참여자에게 소유권을 넘기거나, 해당 워크스페이스를 삭제한 뒤 다시 시도해주세요."
         );
       } else {
         setMessage("계정 삭제에 실패했습니다. 다시 시도해주세요.");
@@ -409,6 +409,76 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function transferOwnership(targetMember: Member) {
+    if (!workspace) {
+      setMessage("워크스페이스가 없습니다.");
+      return;
+    }
+  
+    if (currentMember?.role !== "owner") {
+      setMessage("owner만 소유권을 넘길 수 있습니다.");
+      return;
+    }
+  
+    if (!targetMember.profile_id) {
+      setMessage("계정이 연결된 참여자에게만 소유권을 넘길 수 있습니다.");
+      return;
+    }
+  
+    const confirmed = window.confirm(
+      `${targetMember.display_name}에게 owner 권한을 넘기시겠습니까? 넘긴 후 본인은 manager로 변경됩니다.`
+    );
+    if (!confirmed) return;
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { error } = await supabase.rpc("transfer_workspace_ownership", {
+      target_workspace_id: workspace.id,
+      new_owner_member_id: targetMember.id,
+    });
+  
+    if (error) {
+      setMessage(`소유권 이전 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    await loadWorkspaceData(workspace.id);
+    setMessage(`${targetMember.display_name}에게 owner 권한을 넘겼습니다.`);
+    setLoading(false);
+  }
+  
+  async function deleteWorkspace(targetWorkspace: Workspace) {
+    if (currentMember?.role !== "owner") {
+      setMessage("owner만 워크스페이스를 삭제할 수 있습니다.");
+      return;
+    }
+  
+    const confirmed = window.confirm(
+      `"${targetWorkspace.name}" 워크스페이스를 삭제하시겠습니까? 모든 미션, 참여자, 보상 데이터가 함께 삭제되며 되돌릴 수 없습니다. 다른 참여자의 동의는 필요하지 않습니다.`
+    );
+    if (!confirmed) return;
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { error } = await supabase.from("workspaces").delete().eq("id", targetWorkspace.id);
+  
+    if (error) {
+      setMessage(`워크스페이스 삭제 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setWorkspaces((prev) => prev.filter((item) => item.id !== targetWorkspace.id));
+    setWorkspace((prev) => (prev?.id === targetWorkspace.id ? null : prev));
+    setMessage(`${targetWorkspace.name} 워크스페이스가 삭제되었습니다.`);
+    setLoading(false);
+  
+    await loadWorkspaces();
+  }
+  
   function resetState() {
     setWorkspaces([]);
     setWorkspace(null);
@@ -1569,6 +1639,8 @@ export default function Home() {
           onJoinInviteCodeChange={setJoinInviteCode}
           onAcceptInvite={acceptInviteCode}
           onDeleteAccount={deleteAccount}
+          onTransferOwnership={transferOwnership}
+          onDeleteWorkspace={deleteWorkspace}
         />
       )}
 
