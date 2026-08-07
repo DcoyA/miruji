@@ -8,9 +8,11 @@ type AuthPanelProps = {
   password: string;
   loading: boolean;
   message: string;
+  agreedToTerms: boolean;
   onModeChange: (mode: AuthMode) => void;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
+  onAgreedToTermsChange: (value: boolean) => void;
   onSignIn: () => void;
   onSignUp: () => void;
 };
@@ -21,9 +23,11 @@ export default function AuthPanel({
   password,
   loading,
   message,
+  agreedToTerms,
   onModeChange,
   onEmailChange,
   onPasswordChange,
+  onAgreedToTermsChange,
   onSignIn,
   onSignUp,
 }: AuthPanelProps) {
@@ -65,6 +69,27 @@ export default function AuthPanel({
         style={inputStyle}
       />
 
+      {mode === "signup" && (
+        <label style={agreementRowStyle}>
+          <input
+            type="checkbox"
+            checked={agreedToTerms}
+            onChange={(event) => onAgreedToTermsChange(event.target.checked)}
+            style={{ marginTop: 2 }}
+          />
+          <span>
+            <a href="/legal/terms" target="_blank" rel="noopener noreferrer" style={legalLinkStyle}>
+              이용약관
+            </a>
+            {" 및 "}
+            <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" style={legalLinkStyle}>
+              개인정보처리방침
+            </a>
+            에 동의합니다.
+          </span>
+        </label>
+      )}
+      
       {mode === "signin" ? (
         <button
           onClick={onSignIn}
@@ -126,6 +151,22 @@ const secondaryButtonStyle: CSSProperties = {
   color: "#4338ca",
   fontWeight: 800,
   cursor: "pointer",
+};
+
+const agreementRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 8,
+  fontSize: 13,
+  color: "#475569",
+  lineHeight: 1.5,
+  marginBottom: 14,
+};
+
+const legalLinkStyle: CSSProperties = {
+  color: "#4338ca",
+  fontWeight: 700,
+  textDecoration: "underline",
 };
 
 function primaryButtonStyle(loading: boolean): CSSProperties {
