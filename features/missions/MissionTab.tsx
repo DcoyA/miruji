@@ -1,12 +1,16 @@
 import type { CSSProperties } from "react";
-import type { Member, Task } from "@/types/app";
+import type { Member, Task, TaskTemplate } from "@/types/app";
 import { formatKoreanDate } from "@/lib/date";
+import { repeatSummary, weekdayLabel } from "@/lib/labels";
 import TaskList from "@/features/tasks/TaskList";
+
+type RepeatType = "none" | "daily" | "weekly";
 
 type MissionTabProps = {
   selectedDate: string;
   members: Member[];
   tasks: Task[];
+  templates: TaskTemplate[];
   currentMember: Member | null;
   isManager: boolean;
   title: string;
@@ -14,22 +18,32 @@ type MissionTabProps = {
   assignedMemberId: string;
   verificationType: string;
   rewardPoints: number;
+  repeatType: RepeatType;
+  repeatWeekdays: number[];
   loading: boolean;
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onAssignedMemberIdChange: (value: string) => void;
   onVerificationTypeChange: (value: string) => void;
   onRewardPointsChange: (value: number) => void;
+  onRepeatTypeChange: (value: RepeatType) => void;
+  onToggleRepeatWeekday: (day: number) => void;
   onCreate: () => void;
   onSubmitTask: (task: Task) => void;
   onApproveTask: (task: Task) => void;
   onRejectTask: (task: Task) => void;
+  onToggleTemplateActive: (template: TaskTemplate) => void;
+  onDeleteTemplate: (template: TaskTemplate) => void;
+  onRolloverNow: () => void;
 };
+
+const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
 
 export default function MissionTab({
   selectedDate,
   members,
   tasks,
+  templates,
   currentMember,
   isManager,
   title,
@@ -37,26 +51,41 @@ export default function MissionTab({
   assignedMemberId,
   verificationType,
   rewardPoints,
+  repeatType,
+  repeatWeekdays,
   loading,
   onTitleChange,
   onDescriptionChange,
   onAssignedMemberIdChange,
   onVerificationTypeChange,
   onRewardPointsChange,
+  onRepeatTypeChange,
+  onToggleRepeatWeekday,
   onCreate,
   onSubmitTask,
   onApproveTask,
   onRejectTask,
+  onToggleTemplateActive,
+  onDeleteTemplate,
+  onRolloverNow,
 }: MissionTabProps) {
   const visibleTasks = isManager
     ? tasks
     : tasks.filter((task) => task.assigned_member_id === currentMember?.id);
 
+  const createDisabled =
+    loading || (repeatType === "weekly" && repeatWeekdays.length === 0);
+
   return (
     <>
       {isManager ? (
         <section style={createBoxStyle}>
-          <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션 추가</h2>
+          <div style={createHeaderRowStyle}>
+            <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션 추가</h2>
+            <button onClick={onRolloverNow} disabled={loading} style={rolloverButtonStyle}>
+              지난 미션 정리하기
+            </button>
+          </div>
 
           <input
             value={title}
@@ -107,14 +136,78 @@ export default function MissionTab({
             style={inputStyle}
           />
 
-          <button onClick={onCreate} disabled={loading} style={primaryButtonStyle(loading)}>
-            {loading ? "생성 중..." : "미션 만들기"}
+          <div style={repeatLabelStyle}>반복 설정</div>
+          <select
+            value={repeatType}
+            onChange={(event) => onRepeatTypeChange(event.target.value as RepeatType)}
+            style={inputStyle}
+          >
+            <option value="none">반복 없음 (오늘만)</option>
+            <option value="daily">매일 반복</option>
+            <option value="weekly">요일 선택 반복</option>
+          </select>
+
+          {repeatType === "weekly" && (
+            <div style={weekdayRowStyle}>
+              {WEEKDAYS.map((day) => {
+                const active = repeatWeekdays.includes(day);
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => onToggleRepeatWeekday(day)}
+                    style={active ? weekdayButtonActiveStyle : weekdayButtonStyle}
+                  >
+                    {weekdayLabel(day)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <button onClick={onCreate} disabled={createDisabled} style={primaryButtonStyle(createDisabled)}>
+            {loading ? "생성 중..." : repeatType === "none" ? "미션 만들기" : "반복 미션 만들기"}
           </button>
         </section>
       ) : (
         <section style={createBoxStyle}>
           <h2 style={sectionTitleStyle}>내 미션</h2>
           <p style={subTextStyle}>참여자는 본인에게 배정된 미션만 확인합니다.</p>
+        </section>
+      )}
+
+      {isManager && templates.length > 0 && (
+        <section style={templateSectionStyle}>
+          <h2 style={sectionTitleStyle}>반복 미션 관리</h2>
+          <div style={templateListStyle}>
+            {templates.map((template) => (
+              <div key={template.id} style={templateCardStyle}>
+                <div>
+                  <div style={templateTitleStyle}>{template.title}</div>
+                  <div style={taskSubTextStyleLocal}>
+                    {repeatSummary(template.repeat_type, template.repeat_weekdays)} · 스티커{" "}
+                    {template.reward_points}개
+                  </div>
+                </div>
+                <div style={templateActionRowStyle}>
+                  <button
+                    onClick={() => onToggleTemplateActive(template)}
+                    disabled={loading}
+                    style={template.is_active ? pauseButtonStyle : resumeButtonStyle}
+                  >
+                    {template.is_active ? "일시중지" : "재개"}
+                  </button>
+                  <button
+                    onClick={() => onDeleteTemplate(template)}
+                    disabled={loading}
+                    style={deleteButtonStyle}
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
@@ -148,8 +241,17 @@ const createBoxStyle: CSSProperties = {
   marginBottom: 18,
 };
 
+const createHeaderRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 8,
+  marginBottom: 10,
+  flexWrap: "wrap",
+};
+
 const sectionTitleStyle: CSSProperties = {
-  margin: "0 0 10px",
+  margin: 0,
   fontSize: 20,
   letterSpacing: "-0.03em",
 };
@@ -170,6 +272,39 @@ const inputStyle: CSSProperties = {
   fontSize: 15,
 };
 
+const repeatLabelStyle: CSSProperties = {
+  fontSize: 13,
+  fontWeight: 800,
+  color: "#475569",
+  margin: "4px 0 8px",
+};
+
+const weekdayRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 6,
+  marginBottom: 12,
+  flexWrap: "wrap",
+};
+
+const weekdayButtonStyle: CSSProperties = {
+  flex: 1,
+  minWidth: 36,
+  padding: "8px 0",
+  borderRadius: 10,
+  border: "1px solid #dbeafe",
+  background: "#fff",
+  color: "#64748b",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const weekdayButtonActiveStyle: CSSProperties = {
+  ...weekdayButtonStyle,
+  background: "#4f46e5",
+  borderColor: "#4f46e5",
+  color: "#fff",
+};
+
 const dayTaskSectionStyle: CSSProperties = {
   marginBottom: 80,
 };
@@ -182,15 +317,98 @@ const emptyStateStyle: CSSProperties = {
   textAlign: "center",
 };
 
-function primaryButtonStyle(loading: boolean): CSSProperties {
+const rolloverButtonStyle: CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 12,
+  border: "1px solid #dbeafe",
+  background: "#fff",
+  color: "#4f46e5",
+  fontWeight: 800,
+  fontSize: 12,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+
+const templateSectionStyle: CSSProperties = {
+  marginBottom: 24,
+};
+
+const templateListStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+};
+
+const templateCardStyle: CSSProperties = {
+  padding: 14,
+  borderRadius: 18,
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  flexWrap: "wrap",
+};
+
+const templateTitleStyle: CSSProperties = {
+  fontWeight: 900,
+  fontSize: 15,
+};
+
+const taskSubTextStyleLocal: CSSProperties = {
+  marginTop: 5,
+  color: "#64748b",
+  fontSize: 13,
+};
+
+const templateActionRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 6,
+};
+
+const pauseButtonStyle: CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  background: "#f59e0b",
+  color: "#fff",
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const resumeButtonStyle: CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  background: "#15803d",
+  color: "#fff",
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const deleteButtonStyle: CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  background: "#b91c1c",
+  color: "#fff",
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+function primaryButtonStyle(disabled: boolean): CSSProperties {
   return {
     width: "100%",
     padding: 14,
     borderRadius: 14,
     border: "none",
-    background: loading ? "#94a3b8" : "#4f46e5",
+    background: disabled ? "#94a3b8" : "#4f46e5",
     color: "#fff",
     fontWeight: 800,
-    cursor: loading ? "not-allowed" : "pointer",
+    cursor: disabled ? "not-allowed" : "pointer",
   };
 }
