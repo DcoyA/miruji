@@ -105,6 +105,8 @@ export default function Home() {
   const [inviteCodes, setInviteCodes] = useState<Record<string, string>>({});
   const [joinInviteCode, setJoinInviteCode] = useState("");
   const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
+  const [inviteExpiresAt, setInviteExpiresAt] = useState<Record<string, string>>({});
+
 
   useEffect(() => {
     initializeAuth();
@@ -685,9 +687,59 @@ export default function Home() {
 
     setInviteCodes((prev) => ({ ...prev, [member.id]: inviteCode }));
     setMessage(`초대코드 생성 완료: ${inviteCode}`);
+    setInviteExpiresAt((prev) => ({
+      ...prev,
+      [member.id]: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    }));
     setLoading(false);
   }
 
+  async function cancelInvite(member: Member) {
+    if (!workspace) {
+      setMessage("워크스페이스가 없습니다.");
+      return;
+    }
+  
+    if (!isManager) {
+      setMessage("보호자/관리자만 가능합니다.");
+      return;
+    }
+  
+    const confirmed = window.confirm(
+      `${member.display_name}에게 발급한 초대코드를 취소하시겠습니까?`
+    );
+    if (!confirmed) return;
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { error } = await supabase
+      .from("workspace_invites")
+      .update({ status: "cancelled" })
+      .eq("workspace_id", workspace.id)
+      .eq("target_member_id", member.id)
+      .eq("status", "pending");
+  
+    if (error) {
+      setMessage(`초대코드 취소 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setInviteCodes((prev) => {
+      const next = { ...prev };
+      delete next[member.id];
+      return next;
+    });
+    setInviteExpiresAt((prev) => {
+      const next = { ...prev };
+      delete next[member.id];
+      return next;
+    });
+    setMessage(`${member.display_name}의 초대코드를 취소했습니다.`);
+    setLoading(false);
+  }
+  
   async function enableAccountForMember(member: Member) {
     if (!workspace) {
       setMessage("워크스페이스가 없습니다.");
@@ -1130,6 +1182,41 @@ export default function Home() {
     setNewRewardDescription("");
     setNewRewardCostPoints(1);
     setMessage("보상 생성 완료");
+    setLoading(false);
+  }
+
+  async function deleteReward(reward: Reward) {
+    if (!workspace) {
+      setMessage("워크스페이스가 없습니다.");
+      return;
+    }
+  
+    if (!isManager) {
+      setMessage("보호자/관리자만 가능합니다.");
+      return;
+    }
+  
+    if (reward.status !== "approved") {
+      setMessage("이미 신청되었거나 완료된 보상은 삭제할 수 없습니다.");
+      return;
+    }
+  
+    const confirmed = window.confirm(`"${reward.title}" 보상을 삭제하시겠습니까?`);
+    if (!confirmed) return;
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { error } = await supabase.from("rewards").delete().eq("id", reward.id);
+  
+    if (error) {
+      setMessage(`보상 삭제 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setRewards((prev) => prev.filter((item) => item.id !== reward.id));
+    setMessage(`${reward.title} 보상이 삭제되었습니다.`);
     setLoading(false);
   }
 
@@ -1607,6 +1694,7 @@ export default function Home() {
           onRequestRedeem={requestRedeem}
           onConfirmRedeem={confirmRedeem}
           onRejectRedeem={rejectRedeem}
+          onDeleteReward={deleteReward}
         />
       )}
 
@@ -1640,6 +1728,8 @@ export default function Home() {
           onAcceptInvite={acceptInviteCode}
           onDeleteAccount={deleteAccount}
           onTransferOwnership={transferOwnership}
+          onCancelInvite={cancelInvite}
+          inviteExpiresAt={inviteExpiresAt}
           onDeleteWorkspace={deleteWorkspace}
         />
       )}
