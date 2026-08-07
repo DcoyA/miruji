@@ -63,6 +63,8 @@ export default function SettingsTab({
   onJoinInviteCodeChange,
   onAcceptInvite,
   onDeleteAccount,
+  onTransferOwnership,
+  onDeleteWorkspace,
 }: SettingsTabProps) {
   const hasWorkspace = Boolean(workspace);
 
@@ -175,7 +177,7 @@ export default function SettingsTab({
           </button>
         </section>
       )}
-      
+
       <section style={dangerBoxStyle}>
         <h2 style={{ ...sectionTitleStyle, color: "#b91c1c" }}>회원 탈퇴</h2>
         <p style={subTextStyle}>탈퇴하면 계정과 프로필 정보가 삭제되며 되돌릴 수 없습니다.</p>
@@ -272,7 +274,6 @@ function MemberList({
                     </button>
                   )}
 
-                <div style={{ display: "flex", gap: 6 }}>
                   {isRemoved ? (
                     <button
                       onClick={() => onRestoreMember(member)}
