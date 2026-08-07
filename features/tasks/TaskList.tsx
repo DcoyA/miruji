@@ -96,6 +96,8 @@ function statusBadgeStyle(status: string): CSSProperties {
     submitted: { bg: "#dbeafe", text: "#1d4ed8" },
     approved: { bg: "#dcfce7", text: "#15803d" },
     rejected: { bg: "#fee2e2", text: "#b91c1c" },
+    rolled_over: { bg: "#fde68a", text: "#b45309" },
+    missed: { bg: "#e5e7eb", text: "#4b5563" },
   };
 
   const color = colors[status] || colors.todo;
