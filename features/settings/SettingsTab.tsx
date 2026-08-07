@@ -302,7 +302,6 @@ const memberCardStyle: CSSProperties = { padding: 14, borderRadius: 18, backgrou
 const memberNameStyle: CSSProperties = { fontSize: 16, fontWeight: 900 };
 const memberMetaStyle: CSSProperties = { marginTop: 5, color: "#64748b", fontSize: 13 };
 const inviteCodeBoxStyle: CSSProperties = { marginTop: 8, padding: "6px 8px", borderRadius: 10, background: "#eef2ff", color: "#4338ca", fontSize: 13, fontWeight: 800 };
-const inviteCodeBoxStyle: CSSProperties = { marginTop: 8, padding: "6px 8px", borderRadius: 10, background: "#eef2ff", color: "#4338ca", fontSize: 13, fontWeight: 800 };
 const copyLinkButtonStyle: CSSProperties = { marginTop: 8, border: "none", borderRadius: 10, background: "#4338ca", color: "#fff", padding: "6px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer" };
 const smallButtonStyle: CSSProperties = { border: "none", borderRadius: 12, background: "#4f46e5", color: "#fff", padding: "9px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" };
 const toggleLabelStyle: CSSProperties = { display: "block", fontSize: 13, fontWeight: 800, color: "#334155", marginBottom: 6 };
