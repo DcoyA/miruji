@@ -213,7 +213,21 @@ function MemberList({
                   </div>
                   {inviteCodes[member.id] && (
                     <div style={inviteCodeBoxStyle}>
-                      초대코드: <strong>{inviteCodes[member.id]}</strong>
+                      <div>
+                        초대코드: <strong>{inviteCodes[member.id]}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const link = buildInviteLink(inviteCodes[member.id]);
+                          if (link && typeof navigator !== "undefined") {
+                            navigator.clipboard.writeText(link);
+                          }
+                        }}
+                        style={copyLinkButtonStyle}
+                      >
+                        참여 링크 복사하기
+                      </button>
                     </div>
                   )}
                 </div>
@@ -271,6 +285,10 @@ function MemberList({
 }
 
 function roleLabel(role: string) { if (role === "owner") return "owner"; if (role === "manager") return "보호자"; return "참여자"; }
+function buildInviteLink(code: string) {
+  if (typeof window === "undefined") return "";
+  return `${window.location.origin}/join?code=${code}`;
+}
 
 const createBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18 };
 const dangerBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#fef2f2", border: "1px solid #fecaca", marginBottom: 18 };
@@ -284,6 +302,8 @@ const memberCardStyle: CSSProperties = { padding: 14, borderRadius: 18, backgrou
 const memberNameStyle: CSSProperties = { fontSize: 16, fontWeight: 900 };
 const memberMetaStyle: CSSProperties = { marginTop: 5, color: "#64748b", fontSize: 13 };
 const inviteCodeBoxStyle: CSSProperties = { marginTop: 8, padding: "6px 8px", borderRadius: 10, background: "#eef2ff", color: "#4338ca", fontSize: 13, fontWeight: 800 };
+const inviteCodeBoxStyle: CSSProperties = { marginTop: 8, padding: "6px 8px", borderRadius: 10, background: "#eef2ff", color: "#4338ca", fontSize: 13, fontWeight: 800 };
+const copyLinkButtonStyle: CSSProperties = { marginTop: 8, border: "none", borderRadius: 10, background: "#4338ca", color: "#fff", padding: "6px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer" };
 const smallButtonStyle: CSSProperties = { border: "none", borderRadius: 12, background: "#4f46e5", color: "#fff", padding: "9px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" };
 const toggleLabelStyle: CSSProperties = { display: "block", fontSize: 13, fontWeight: 800, color: "#334155", marginBottom: 6 };
 const toggleHintStyle: CSSProperties = { fontSize: 12, color: "#64748b", marginTop: 6, lineHeight: 1.5 };
