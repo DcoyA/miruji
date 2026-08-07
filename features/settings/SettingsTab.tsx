@@ -33,6 +33,8 @@ type SettingsTabProps = {
   onDeleteAccount: () => void;
   onTransferOwnership: (member: Member) => void;
   onDeleteWorkspace: (workspace: Workspace) => void;
+  onCancelInvite: (member: Member) => void;
+  inviteExpiresAt: Record<string, string>;
 };
 
 export default function SettingsTab({
@@ -65,6 +67,8 @@ export default function SettingsTab({
   onDeleteAccount,
   onTransferOwnership,
   onDeleteWorkspace,
+  onCancelInvite,
+  inviteExpiresAt,
 }: SettingsTabProps) {
   const hasWorkspace = Boolean(workspace);
 
@@ -141,6 +145,8 @@ export default function SettingsTab({
             onRemoveMember={onRemoveMember}
             onRestoreMember={onRestoreMember}
             onTransferOwnership={onTransferOwnership}
+            onCancelInvite={onCancelInvite}
+            inviteExpiresAt={inviteExpiresAt}
           />
         </>
       )}
@@ -197,6 +203,8 @@ function MemberList({
   onRemoveMember,
   onRestoreMember,
   onTransferOwnership,
+  onCancelInvite,
+  inviteExpiresAt,
 }: {
   members: Member[];
   currentMember: Member | null;
@@ -207,7 +215,10 @@ function MemberList({
   onRemoveMember: (member: Member) => void;
   onRestoreMember: (member: Member) => void;
   onTransferOwnership: (member: Member) => void;
+  onCancelInvite: (member: Member) => void;
+  inviteExpiresAt: Record<string, string>;
 }) {
+
   const isOwner = currentMember?.role === "owner";
 
   return (
@@ -247,18 +258,33 @@ function MemberList({
                       <div>
                         초대코드: <strong>{inviteCodes[member.id]}</strong>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const link = buildInviteLink(inviteCodes[member.id]);
-                          if (link && typeof navigator !== "undefined") {
-                            navigator.clipboard.writeText(link);
-                          }
-                        }}
-                        style={copyLinkButtonStyle}
-                      >
-                        참여 링크 복사하기
-                      </button>
+                      {inviteExpiresAt[member.id] && (
+                        <div style={{ marginTop: 4, fontSize: 12, fontWeight: 600 }}>
+                          만료일: {formatExpiryDate(inviteExpiresAt[member.id])}까지
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const link = buildInviteLink(inviteCodes[member.id]);
+                            if (link && typeof navigator !== "undefined") {
+                              navigator.clipboard.writeText(link);
+                            }
+                          }}
+                          style={copyLinkButtonStyle}
+                        >
+                          참여 링크 복사하기
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onCancelInvite(member)}
+                          disabled={loading}
+                          style={{ ...copyLinkButtonStyle, background: "#b91c1c" }}
+                        >
+                          초대코드 취소
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -329,6 +355,14 @@ function roleLabel(role: string) { if (role === "owner") return "owner"; if (rol
 function buildInviteLink(code: string) {
   if (typeof window === "undefined") return "";
   return `${window.location.origin}/join?code=${code}`;
+}
+function buildInviteLink(code: string) {
+  if (typeof window === "undefined") return "";
+  return `${window.location.origin}/join?code=${code}`;
+}
+function formatExpiryDate(iso: string) {
+  const date = new Date(iso);
+  return `${date.getMonth() + 1}월 ${date.getDate()}일`;
 }
 
 const createBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18 };
