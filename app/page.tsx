@@ -24,6 +24,8 @@ import { tabTitle } from "@/lib/labels";
 import OnboardingGate, { type OnboardingStep } from "@/features/onboarding/OnboardingGate";
 import NoWorkspacePrompt from "@/features/onboarding/NoWorkspacePrompt";
 
+const PENDING_INVITE_STORAGE_KEY = "miruji_pending_invite_code";
+
 import type {
   ActiveTab,
   Member,
@@ -101,6 +103,7 @@ export default function Home() {
   const [newMemberHasEmail, setNewMemberHasEmail] = useState(true);
   const [inviteCodes, setInviteCodes] = useState<Record<string, string>>({});
   const [joinInviteCode, setJoinInviteCode] = useState("");
+  const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
 
   useEffect(() => {
     initializeAuth();
@@ -134,6 +137,29 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id, profile?.onboarding_completed, workspacesLoaded, workspaces.length]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(PENDING_INVITE_STORAGE_KEY);
+    if (stored) {
+      setPendingInviteCode(stored);
+      setJoinInviteCode(stored);
+    }
+  }, []);
+  
+  useEffect(() => {
+    if (!pendingInviteCode) return;
+    if (!profile || !workspacesLoaded || loading) return;
+  
+    const codeToConsume = pendingInviteCode;
+    setPendingInviteCode(null);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(PENDING_INVITE_STORAGE_KEY);
+    }
+    acceptInviteCode(codeToConsume);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingInviteCode, profile?.id, workspacesLoaded, loading]);
+
+  
   const selectedTasks = useMemo(() => {
     return tasks.filter((task) => task.due_date === selectedDate);
   }, [tasks, selectedDate]);
@@ -693,43 +719,45 @@ export default function Home() {
     setLoading(false);
   }
 
-  async function acceptInviteCode() {
-    if (!joinInviteCode.trim()) {
-      setMessage("초대코드를 입력해주세요.");
+  async function acceptInviteCode(codeOverride?: string) {
+    const codeToUse = (codeOverride ?? joinInviteCode).trim();
+  
+    if (!codeToUse) {
+      setMessage("초대 코드를 입력해주세요.");
       return;
     }
-
+  
     setLoading(true);
     setMessage("");
-
+  
     const { data, error } = await supabase.rpc("accept_workspace_invite", {
-      input_code: joinInviteCode.trim().toUpperCase(),
+      input_code: codeToUse.toUpperCase(),
     });
-
+  
     if (error) {
       setMessage(`참여 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-
+  
     setJoinInviteCode("");
-    setMessage("참여 완료");
-
+    setMessage("워크스페이스에 참여했습니다");
+  
     const result = data as InviteAcceptResult | null;
     const joinedWorkspaceId = result?.workspace_id;
-
+  
     await loadWorkspaces();
-
+  
     if (joinedWorkspaceId) {
       const { data: joinedWorkspace } = await supabase
         .from("workspaces")
         .select("id, name, description")
         .eq("id", joinedWorkspaceId)
         .single();
-
+  
       if (joinedWorkspace) setWorkspace(joinedWorkspace as Workspace);
     }
-
+  
     setActiveTab("calendar");
     setLoading(false);
   }
