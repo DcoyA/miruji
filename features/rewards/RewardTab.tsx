@@ -1,4 +1,3 @@
-
 import type { CSSProperties } from "react";
 import type { Member, Reward } from "@/types/app";
 import { memberNameById } from "@/lib/labels";
@@ -19,7 +18,9 @@ type RewardTabProps = {
   onTargetMemberIdChange: (value: string) => void;
   onCostPointsChange: (value: number) => void;
   onCreate: () => void;
-  onRedeem: (reward: Reward) => void;
+  onRequestRedeem: (reward: Reward) => void;
+  onConfirmRedeem: (reward: Reward) => void;
+  onRejectRedeem: (reward: Reward) => void;
 };
 
 export default function RewardTab({
@@ -38,7 +39,9 @@ export default function RewardTab({
   onTargetMemberIdChange,
   onCostPointsChange,
   onCreate,
-  onRedeem,
+  onRequestRedeem,
+  onConfirmRedeem,
+  onRejectRedeem,
 }: RewardTabProps) {
   const visibleRewards = isManager
     ? rewards
@@ -52,7 +55,7 @@ export default function RewardTab({
         <section style={createBoxStyle}>
           <h2 style={sectionTitleStyle}>내 스티커</h2>
           <div style={balanceBoxStyle}>{currentBalance}개</div>
-          <p style={subTextStyle}>참여자는 본인에게 배정된 보상만 확인하고 교환할 수 있습니다.</p>
+          <p style={subTextStyle}>참여자는 본인에게 배정된 보상만 확인하고 교환을 신청할 수 있습니다. 신청 후 매니저가 승인하면 스티커가 차감됩니다.</p>
         </section>
       )}
 
@@ -87,7 +90,9 @@ export default function RewardTab({
           <div style={rewardListStyle}>
             {visibleRewards.map((reward) => {
               const balance = reward.target_member_id ? balanceByMemberId(reward.target_member_id) : 0;
-              const canRedeem = reward.status !== "redeemed" && balance >= reward.cost_points;
+              const canRequest = reward.status === "approved" && balance >= reward.cost_points;
+              const isOwnReward = !isManager && reward.target_member_id === currentMember?.id;
+
               return (
                 <div key={reward.id} style={rewardCardStyle}>
                   <div>
@@ -95,10 +100,29 @@ export default function RewardTab({
                     {reward.description && <div style={rewardSubTextStyle}>{reward.description}</div>}
                     <div style={rewardSubTextStyle}>대상: {memberNameById(members, reward.target_member_id)} · 필요 {reward.cost_points}개 · 현재 {balance}개</div>
                   </div>
-                  {reward.status === "redeemed" ? (
-                    <span style={redeemedBadgeStyle}>교환 완료</span>
-                  ) : (
-                    <button onClick={() => onRedeem(reward)} disabled={loading || !canRedeem} style={canRedeem ? rewardButtonStyle : disabledRewardButtonStyle}>교환하기</button>
+
+                  {reward.status === "redeemed" && <span style={redeemedBadgeStyle}>교환 완료</span>}
+
+                  {reward.status === "requested" && isManager && (
+                    <div style={reviewButtonRowStyle}>
+                      <span style={requestedBadgeStyle}>교환 신청됨</span>
+                      <button onClick={() => onConfirmRedeem(reward)} disabled={loading} style={rewardButtonStyle}>승인</button>
+                      <button onClick={() => onRejectRedeem(reward)} disabled={loading} style={rejectButtonStyle}>거절</button>
+                    </div>
+                  )}
+
+                  {reward.status === "requested" && !isManager && (
+                    <span style={requestedBadgeStyle}>매니저 승인 대기중</span>
+                  )}
+
+                  {reward.status === "approved" && isOwnReward && (
+                    <button onClick={() => onRequestRedeem(reward)} disabled={loading || !canRequest} style={canRequest ? rewardButtonStyle : disabledRewardButtonStyle}>
+                      교환 신청하기
+                    </button>
+                  )}
+
+                  {reward.status === "approved" && isManager && (
+                    <span style={rewardSubTextStyle}>대상 참여자의 신청 대기중</span>
                   )}
                 </div>
               );
@@ -120,8 +144,11 @@ const rewardListStyle: CSSProperties = { display: "flex", flexDirection: "column
 const rewardCardStyle: CSSProperties = { padding: 14, borderRadius: 18, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: 12 };
 const rewardTitleStyle: CSSProperties = { fontWeight: 900, fontSize: 16 };
 const rewardSubTextStyle: CSSProperties = { marginTop: 5, color: "#64748b", fontSize: 13 };
-const rewardButtonStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#f97316", color: "#fff", fontWeight: 800, cursor: "pointer" };
+const rewardButtonStyle: CSSProperties = { flex: 1, padding: 12, borderRadius: 14, border: "none", background: "#f97316", color: "#fff", fontWeight: 800, cursor: "pointer" };
+const rejectButtonStyle: CSSProperties = { flex: 1, padding: 12, borderRadius: 14, border: "none", background: "#ef4444", color: "#fff", fontWeight: 800, cursor: "pointer" };
 const disabledRewardButtonStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#cbd5e1", color: "#64748b", fontWeight: 800, cursor: "not-allowed" };
 const redeemedBadgeStyle: CSSProperties = { width: "fit-content", padding: "6px 10px", borderRadius: 999, background: "#dcfce7", color: "#15803d", fontSize: 12, fontWeight: 800 };
+const requestedBadgeStyle: CSSProperties = { width: "fit-content", padding: "6px 10px", borderRadius: 999, background: "#dbeafe", color: "#1d4ed8", fontSize: 12, fontWeight: 800 };
+const reviewButtonRowStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
 const balanceBoxStyle: CSSProperties = { padding: 18, borderRadius: 18, background: "#eef2ff", color: "#4f46e5", fontSize: 28, fontWeight: 900, textAlign: "center", marginBottom: 12 };
 function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer" }; }
