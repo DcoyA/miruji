@@ -65,6 +65,7 @@ export default function Home() {
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -261,6 +262,11 @@ export default function Home() {
       return;
     }
 
+    if (!agreedToTerms) {
+      setMessage("이용약관과 개인정보처리방침에 동의해주세요.");
+      return;
+    }
+
     setLoading(true);
     setMessage("");
 
@@ -431,6 +437,7 @@ export default function Home() {
     setNewMemberHasEmail(true);
     setInviteCodes({});
     setJoinInviteCode("");
+    setAgreedToTerms(false);
   }
 
   async function loadWorkspaces() {
@@ -1362,16 +1369,18 @@ export default function Home() {
     return (
       <Shell>
         <AuthPanel
-          mode={authMode}
-          email={authEmail}
-          password={authPassword}
-          loading={loading}
-          message={message}
-          onModeChange={setAuthMode}
-          onEmailChange={setAuthEmail}
-          onPasswordChange={setAuthPassword}
-          onSignIn={signIn}
-          onSignUp={signUp}
+            mode={authMode}
+            email={authEmail}
+            password={authPassword}
+            loading={loading}
+            message={message}
+            agreedToTerms={agreedToTerms}
+            onModeChange={setAuthMode}
+            onEmailChange={setAuthEmail}
+            onPasswordChange={setAuthPassword}
+            onAgreedToTermsChange={setAgreedToTerms}
+            onSignIn={signIn}
+            onSignUp={signUp}
         />
       </Shell>
     );
