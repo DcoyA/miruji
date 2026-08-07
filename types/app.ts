@@ -32,6 +32,21 @@ export type Task = {
   assigned_member_id: string | null;
   verification_type: string;
   reward_points: number;
+  template_id: string | null;
+};
+
+export type TaskTemplate = {
+  id: string;
+  workspace_id: string;
+  title: string;
+  description: string | null;
+  assigned_member_id: string | null;
+  verification_type: string;
+  reward_points: number;
+  rollover_enabled: boolean;
+  repeat_type: string;
+  repeat_weekdays: number[];
+  is_active: boolean;
 };
 
 export type Reward = {
