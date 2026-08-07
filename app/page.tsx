@@ -173,7 +173,7 @@ export default function Home() {
       .maybeSingle();
 
     if (error) {
-      setMessage(`프로필 조회 실패: ${error.message}`);
+      setMessage(`프로필 불러오기 실패: ${error.message}`);
       return null;
     }
 
@@ -226,15 +226,15 @@ export default function Home() {
       setMessage("이메일과 비밀번호를 입력해주세요.");
       return;
     }
-  
+
     setLoading(true);
     setMessage("");
-  
+
     const appUrl =
       typeof window !== "undefined"
         ? window.location.origin
         : "https://miruji-git-main-iamborghini5757-1567s-projects.vercel.app";
-  
+
     const { data, error } = await supabase.auth.signUp({
       email: authEmail.trim(),
       password: authPassword.trim(),
@@ -246,22 +246,22 @@ export default function Home() {
         },
       },
     });
-  
+
     if (error) {
       setMessage(`가입 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     const isAlreadyRegistered = data.user && (data.user.identities?.length ?? 0) === 0;
-  
+
     if (isAlreadyRegistered) {
-      setMessage("이미 가입된 이메일입니다. 로그인 화면에서 로그인해주세요.");
+      setMessage("이미 가입된 이메일입니다. 로그인해주세요.");
       setLoading(false);
       return;
     }
-  
-    setMessage("가입 완료. 인증 메일을 확인해주세요. 메일함(스팸함 포함)을 확인해주세요.");
+
+    setMessage("가입 완료. 이메일 인증 후 로그인해주세요.");
     setLoading(false);
   }
 
@@ -286,7 +286,7 @@ export default function Home() {
     }
 
     if (!data.user) {
-      setMessage("로그인 정보를 확인할 수 없습니다.");
+      setMessage("로그인에 실패했습니다.");
       setLoading(false);
       return;
     }
@@ -294,7 +294,7 @@ export default function Home() {
     const loadedProfile = await loadProfile(data.user.id);
     if (loadedProfile) {
       await loadWorkspaces();
-      setMessage("로그인 성공");
+      setMessage("로그인 완료");
     }
     setLoading(false);
   }
@@ -325,12 +325,12 @@ export default function Home() {
     setAuthPassword("");
     setAuthMode("signin");
     setLoading(false);
-    setMessage("로그아웃되었습니다");
+    setMessage("");
   }
 
   async function deleteAccount() {
     const confirmed = window.confirm(
-      "정말 탈퇴하시겠습니까? 계정과 프로필 정보가 삭제되며 되돌릴 수 없습니다."
+      "정말 계정을 삭제하시겠습니까? 되돌릴 수 없습니다."
     );
     if (!confirmed) return;
 
@@ -340,7 +340,7 @@ export default function Home() {
     const accessToken = sessionData.session?.access_token;
 
     if (!accessToken) {
-      setMessage("로그인 정보를 확인할 수 없습니다.");
+      setMessage("인증 정보를 확인할 수 없습니다.");
       setLoading(false);
       return;
     }
@@ -355,17 +355,17 @@ export default function Home() {
     if (!response.ok) {
       if (result.error === "SOLE_OWNER") {
         setMessage(
-          "워크스페이스의 유일한 owner이므로 탈퇴할 수 없습니다. 다른 사람에게 권한을 위임하거나 워크스페이스를 삭제해주세요."
+          "단독 owner인 워크스페이스가 있어 삭제할 수 없습니다. 다른 매니저를 지정해주세요."
         );
       } else {
-        setMessage("탈퇴 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        setMessage("계정 삭제에 실패했습니다. 다시 시도해주세요.");
       }
       setLoading(false);
       return;
     }
 
     await supabase.auth.signOut();
-    setMessage("탈퇴가 완료되었습니다.");
+    setMessage("계정이 삭제되었습니다.");
     setLoading(false);
   }
 
@@ -403,7 +403,7 @@ export default function Home() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      setMessage(`워크스페이스 조회 실패: ${error.message}`);
+      setMessage(`워크스페이스 불러오기 실패: ${error.message}`);
       setWorkspacesLoaded(true);
       return;
     }
@@ -419,7 +419,7 @@ export default function Home() {
 
   async function createWorkspace() {
     if (!profile) {
-      setMessage("프로필 정보가 없습니다.");
+      setMessage("프로필이 없습니다.");
       return;
     }
 
@@ -471,7 +471,7 @@ export default function Home() {
     setWorkspaceName("");
     setWorkspaceDescription("");
     setActiveTab("settings");
-    setMessage(`워크스페이스 생성됨: ${newWorkspace.name}`);
+    setMessage(`워크스페이스 생성 완료: ${newWorkspace.name}`);
     setLoading(false);
   }
 
@@ -482,7 +482,7 @@ export default function Home() {
     }
 
     if (!isManager) {
-      setMessage("보호자/관리자만 가능합니다.");
+      setMessage("매니저/오너만 가능합니다.");
       return;
     }
 
@@ -518,7 +518,7 @@ export default function Home() {
     setNewMemberName("");
     setNewMemberRole("member");
     setNewMemberHasEmail(true);
-    setMessage(`참여자 추가됨: ${data.display_name}`);
+    setMessage(`참여자 추가 완료: ${data.display_name}`);
     setLoading(false);
   }
 
@@ -533,17 +533,17 @@ export default function Home() {
     }
 
     if (!isManager) {
-      setMessage("보호자/관리자만 가능합니다.");
+      setMessage("매니저/오너만 가능합니다.");
       return;
     }
 
     if (!member.is_virtual) {
-      setMessage("이미 계정과 연결된 참여자입니다.");
+      setMessage("이미 실제 계정과 연결된 참여자입니다.");
       return;
     }
 
     if (!member.requires_account) {
-      setMessage("계정 없이 관리 중인 참여자는 초대코드를 만들 수 없습니다.");
+      setMessage("먼저 '실제 계정으로 전환하기'를 눌러주세요.");
       return;
     }
 
@@ -570,7 +570,7 @@ export default function Home() {
     }
 
     setInviteCodes((prev) => ({ ...prev, [member.id]: inviteCode }));
-    setMessage(`초대코드 생성됨: ${inviteCode}`);
+    setMessage(`초대코드 생성 완료: ${inviteCode}`);
     setLoading(false);
   }
 
@@ -581,7 +581,7 @@ export default function Home() {
     }
 
     if (!isManager) {
-      setMessage("보호자/관리자만 가능합니다.");
+      setMessage("매니저/오너만 가능합니다.");
       return;
     }
 
@@ -598,13 +598,13 @@ export default function Home() {
       .single();
 
     if (error) {
-      setMessage(`전환 준비 실패: ${error.message}`);
+      setMessage(`전환 처리 실패: ${error.message}`);
       setLoading(false);
       return;
     }
 
     setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
-    setMessage(`${member.display_name} 님을 실제 계정으로 연결할 수 있어요. 초대코드를 생성해주세요.`);
+    setMessage(`${member.display_name} 계정 전환 준비 완료. 초대코드를 생성해주세요.`);
     setLoading(false);
   }
 
@@ -615,17 +615,17 @@ export default function Home() {
     }
 
     if (!isManager) {
-      setMessage("보호자/관리자만 가능합니다.");
+      setMessage("매니저/오너만 가능합니다.");
       return;
     }
 
     if (member.role === "owner") {
-      setMessage("owner는 이 방식으로 제외할 수 없습니다.");
+      setMessage("owner는 제외할 수 없습니다.");
       return;
     }
 
     const confirmed = window.confirm(
-      `${member.display_name} 님을 참여자 목록에서 제외할까요? 지금까지의 미션 기록과 리워드 내역은 그대로 보존됩니다.`
+      `${member.display_name}님을 제외하시겠습니까? 기록은 유지되고 나중에 복구할 수 있습니다.`
     );
     if (!confirmed) return;
 
@@ -646,7 +646,7 @@ export default function Home() {
     }
 
     setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
-    setMessage(`${member.display_name} 님을 제외했습니다.`);
+    setMessage(`${member.display_name}님을 제외했습니다.`);
     setLoading(false);
   }
 
@@ -657,7 +657,7 @@ export default function Home() {
     }
 
     if (!isManager) {
-      setMessage("보호자/관리자만 가능합니다.");
+      setMessage("매니저/오너만 가능합니다.");
       return;
     }
 
@@ -678,7 +678,7 @@ export default function Home() {
     }
 
     setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
-    setMessage(`${member.display_name} 님을 복구했습니다.`);
+    setMessage(`${member.display_name}님을 복구했습니다.`);
     setLoading(false);
   }
 
@@ -702,7 +702,7 @@ export default function Home() {
     }
 
     setJoinInviteCode("");
-    setMessage("워크스페이스에 참여했습니다");
+    setMessage("참여 완료");
 
     const result = data as InviteAcceptResult | null;
     const joinedWorkspaceId = result?.workspace_id;
@@ -735,22 +735,22 @@ export default function Home() {
     ]);
 
     if (membersResult.error) {
-      setMessage(`참여자 조회 실패: ${membersResult.error.message}`);
+      setMessage(`참여자 불러오기 실패: ${membersResult.error.message}`);
       return;
     }
 
     if (tasksResult.error) {
-      setMessage(`미션 조회 실패: ${tasksResult.error.message}`);
+      setMessage(`미션 불러오기 실패: ${tasksResult.error.message}`);
       return;
     }
 
     if (rewardsResult.error) {
-      setMessage(`리워드 조회 실패: ${rewardsResult.error.message}`);
+      setMessage(`보상 불러오기 실패: ${rewardsResult.error.message}`);
       return;
     }
 
     if (rewardTransactionsResult.error) {
-      setMessage(`리워드 내역 조회 실패: ${rewardTransactionsResult.error.message}`);
+      setMessage(`포인트 내역 불러오기 실패: ${rewardTransactionsResult.error.message}`);
       return;
     }
 
@@ -767,7 +767,7 @@ export default function Home() {
     }
 
     if (!isManager) {
-      setMessage("보호자/관리자만 가능합니다.");
+      setMessage("매니저/오너만 가능합니다.");
       return;
     }
 
@@ -816,7 +816,7 @@ export default function Home() {
     setNewTaskDescription("");
     setNewTaskVerificationType("none");
     setNewTaskRewardPoints(1);
-    setMessage("미션 생성됨");
+    setMessage("미션 생성 완료");
     setLoading(false);
   }
 
@@ -827,7 +827,7 @@ export default function Home() {
     }
 
     if (!isManager) {
-      setMessage("보호자/관리자만 가능합니다.");
+      setMessage("매니저/오너만 가능합니다.");
       return;
     }
 
@@ -837,7 +837,7 @@ export default function Home() {
     }
 
     if (!newRewardTargetMemberId) {
-      setMessage("대상자를 선택해주세요.");
+      setMessage("대상을 선택해주세요.");
       return;
     }
 
@@ -862,7 +862,7 @@ export default function Home() {
       .single();
 
     if (error) {
-      setMessage(`리워드 생성 실패: ${error.message}`);
+      setMessage(`보상 생성 실패: ${error.message}`);
       setLoading(false);
       return;
     }
@@ -871,41 +871,82 @@ export default function Home() {
     setNewRewardTitle("");
     setNewRewardDescription("");
     setNewRewardCostPoints(1);
-    setMessage("리워드 생성됨");
+    setMessage("보상 생성 완료");
     setLoading(false);
   }
 
-  async function redeemReward(reward: Reward) {
+  async function requestRedeem(reward: Reward) {
     if (!workspace) {
       setMessage("워크스페이스가 없습니다.");
       return;
     }
 
-    if (!reward.target_member_id) {
-      setMessage("대상자가 없습니다.");
+    if (currentMember?.id !== reward.target_member_id) {
+      setMessage("본인에게 배정된 보상만 신청할 수 있습니다.");
       return;
     }
 
-    if (!isManager && currentMember?.id !== reward.target_member_id) {
-      setMessage("본인의 리워드만 사용할 수 있습니다.");
-      return;
-    }
-
-    if (reward.status === "redeemed") {
-      setMessage("이미 사용된 리워드입니다.");
+    if (reward.status !== "approved") {
+      setMessage("이미 신청되었거나 교환 완료된 보상입니다.");
       return;
     }
 
     const balance = balanceByMemberId(reward.target_member_id);
     if (balance < reward.cost_points) {
-      setMessage(`포인트가 부족합니다. 필요 ${reward.cost_points} / 보유 ${balance}`);
+      setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`);
       return;
     }
 
     setLoading(true);
     setMessage("");
 
-    const manager = currentMember || members.find((member) => member.role === "owner" || member.role === "manager") || null;
+    const { data, error } = await supabase
+      .from("rewards")
+      .update({ status: "requested" })
+      .eq("id", reward.id)
+      .select(rewardSelect)
+      .single();
+
+    if (error) {
+      setMessage(`교환 신청 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setRewards((prev) => prev.map((item) => (item.id === reward.id ? (data as Reward) : item)));
+    setMessage(`${reward.title} 교환을 신청했습니다. 매니저 승인을 기다려주세요.`);
+    setLoading(false);
+  }
+
+  async function confirmRedeem(reward: Reward) {
+    if (!workspace) {
+      setMessage("워크스페이스가 없습니다.");
+      return;
+    }
+
+    if (!isManager) {
+      setMessage("매니저/오너만 승인할 수 있습니다.");
+      return;
+    }
+
+    if (!reward.target_member_id) {
+      setMessage("대상 참여자가 없습니다.");
+      return;
+    }
+
+    if (reward.status !== "requested") {
+      setMessage("신청된 보상만 승인할 수 있습니다.");
+      return;
+    }
+
+    const balance = balanceByMemberId(reward.target_member_id);
+    if (balance < reward.cost_points) {
+      setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`);
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
 
     const { data: spendData, error: spendError } = await supabase
       .from("reward_transactions")
@@ -916,8 +957,8 @@ export default function Home() {
         transaction_type: "spend",
         source_type: "reward",
         source_id: reward.id,
-        memo: `${reward.title} 사용`,
-        created_by_member_id: manager?.id || null,
+        memo: `${reward.title} 교환`,
+        created_by_member_id: currentMember?.id || null,
       })
       .select(rewardTxSelect)
       .single();
@@ -936,14 +977,51 @@ export default function Home() {
       .single();
 
     if (rewardError) {
-      setMessage(`리워드 상태 변경 실패: ${rewardError.message}`);
+      setMessage(`보상 상태 변경 실패: ${rewardError.message}`);
       setLoading(false);
       return;
     }
 
     setRewardTransactions((prev) => [...prev, spendData as RewardTransaction]);
     setRewards((prev) => prev.map((item) => (item.id === reward.id ? (updatedReward as Reward) : item)));
-    setMessage(`리워드 사용됨: ${reward.title}`);
+    setMessage(`교환 승인 완료: ${reward.title}`);
+    setLoading(false);
+  }
+
+  async function rejectRedeem(reward: Reward) {
+    if (!workspace) {
+      setMessage("워크스페이스가 없습니다.");
+      return;
+    }
+
+    if (!isManager) {
+      setMessage("매니저/오너만 거절할 수 있습니다.");
+      return;
+    }
+
+    if (reward.status !== "requested") {
+      setMessage("신청된 보상만 거절할 수 있습니다.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("rewards")
+      .update({ status: "approved" })
+      .eq("id", reward.id)
+      .select(rewardSelect)
+      .single();
+
+    if (error) {
+      setMessage(`거절 처리 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setRewards((prev) => prev.map((item) => (item.id === reward.id ? (data as Reward) : item)));
+    setMessage(`${reward.title} 신청을 거절했습니다.`);
     setLoading(false);
   }
 
@@ -980,7 +1058,7 @@ export default function Home() {
     }
 
     setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
-    setMessage(`${task.title} 미션을 제출했습니다.`);
+    setMessage(`${task.title} 제출 완료.`);
     setLoading(false);
   }
 
@@ -991,7 +1069,7 @@ export default function Home() {
     }
 
     if (!isManager) {
-      setMessage("보호자/관리자만 가능합니다.");
+      setMessage("매니저/오너만 가능합니다.");
       return;
     }
 
@@ -1028,14 +1106,14 @@ export default function Home() {
           transaction_type: "earn",
           source_type: "task",
           source_id: task.id,
-          memo: `${task.title} 완료`,
+          memo: `${task.title} 승인`,
           created_by_member_id: currentMember?.id || null,
         })
         .select(rewardTxSelect)
         .single();
 
       if (txError) {
-        setMessage(`승인은 완료됐지만 포인트 지급에 실패했습니다: ${txError.message}`);
+        setMessage(`포인트 지급 실패: ${txError.message}`);
         setLoading(false);
         return;
       }
@@ -1054,7 +1132,7 @@ export default function Home() {
     }
 
     if (!isManager) {
-      setMessage("보호자/관리자만 가능합니다.");
+      setMessage("매니저/오너만 가능합니다.");
       return;
     }
 
@@ -1080,10 +1158,10 @@ export default function Home() {
     }
 
     setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
-    setMessage(`${task.title} 미션을 반려했습니다.`);
+    setMessage(`${task.title} 반려 처리.`);
     setLoading(false);
   }
-  
+
   function balanceByMemberId(memberId: string) {
     return rewardTransactions
       .filter((item) => item.member_id === memberId)
@@ -1093,8 +1171,8 @@ export default function Home() {
   if (authLoading) {
     return (
       <Shell>
-        <h1 style={titleStyle}>미루지말자</h1>
-        <p style={subTextStyle}>로그인 상태를 확인하는 중입니다...</p>
+        <h1 style={titleStyle}>미루지</h1>
+        <p style={subTextStyle}>인증 정보를 확인하는 중...</p>
       </Shell>
     );
   }
@@ -1121,8 +1199,8 @@ export default function Home() {
   if (!workspacesLoaded) {
     return (
       <Shell>
-        <h1 style={titleStyle}>미루지말자</h1>
-        <p style={subTextStyle}>정보를 불러오는 중입니다...</p>
+        <h1 style={titleStyle}>미루지</h1>
+        <p style={subTextStyle}>워크스페이스를 불러오는 중...</p>
       </Shell>
     );
   }
@@ -1132,7 +1210,7 @@ export default function Home() {
   if (needsOnboarding) {
     return (
       <Shell>
-        <AppHeader title="시작하기" loading={loading} onSignOut={signOut} />
+        <AppHeader title="온보딩" loading={loading} onSignOut={signOut} />
         <OnboardingGate
           step={onboardingStep}
           loading={loading}
@@ -1159,7 +1237,7 @@ export default function Home() {
 
       <section style={accountBoxStyle}>
         <div>
-          <div style={smallLabelStyle}>내 계정</div>
+          <div style={smallLabelStyle}>로그인 계정</div>
           <strong>{profile.display_name}</strong>
           {currentMember && <div style={memberRoleTextStyle}>{currentMember.display_name} · {currentMember.role}</div>}
         </div>
@@ -1227,7 +1305,6 @@ export default function Home() {
           onSubmitTask={submitTask}
           onApproveTask={approveTask}
           onRejectTask={rejectTask}
-
         />
       )}
 
@@ -1248,7 +1325,9 @@ export default function Home() {
           onTargetMemberIdChange={setNewRewardTargetMemberId}
           onCostPointsChange={setNewRewardCostPoints}
           onCreate={createReward}
-          onRedeem={redeemReward}
+          onRequestRedeem={requestRedeem}
+          onConfirmRedeem={confirmRedeem}
+          onRejectRedeem={rejectRedeem}
         />
       )}
 
@@ -1326,15 +1405,15 @@ function OnboardingGate({
   if (step === "create") {
     return (
       <section style={onboardingBoxStyle}>
-        <button onClick={onBack} style={onboardingBackButtonStyle}>← 뒤로</button>
+        <button onClick={onBack} style={onboardingBackButtonStyle}>뒤로</button>
         <h2 style={onboardingTitleStyle}>워크스페이스 만들기</h2>
         <p style={onboardingTextStyle}>
-          가족, 부부, 학급처럼 함께 미션을 관리할 공간을 만들어요. 만든 사람이 자동으로 관리자(owner)가 됩니다.
+          가족, 아이, 참여자를 관리할 공간을 만들어요. 만든 사람이 매니저(owner)가 됩니다.
         </p>
         <input
           value={workspaceName}
           onChange={(event) => onWorkspaceNameChange(event.target.value)}
-          placeholder="예) 우리집, 1학년 3반, OO네 부부"
+          placeholder="예) 우리집, 1반 3반, OO네 가족"
           style={onboardingInputStyle}
         />
         <textarea
@@ -1355,10 +1434,10 @@ function OnboardingGate({
   if (step === "join") {
     return (
       <section style={onboardingBoxStyle}>
-        <button onClick={onBack} style={onboardingBackButtonStyle}>← 뒤로</button>
+        <button onClick={onBack} style={onboardingBackButtonStyle}>뒤로</button>
         <h2 style={onboardingTitleStyle}>초대코드로 참여하기</h2>
         <p style={onboardingTextStyle}>
-          이미 워크스페이스를 사용 중인 분에게 초대코드를 받으셨다면 여기에 입력해주세요.
+          매니저에게 받은 초대코드를 입력해주세요.
         </p>
         <input
           value={joinInviteCode}
@@ -1367,7 +1446,7 @@ function OnboardingGate({
           style={onboardingInputStyle}
         />
         <button onClick={onAcceptInvite} disabled={loading} style={onboardingPrimaryButtonStyle(loading)}>
-          {loading ? "참여 중..." : "초대코드로 참여하기"}
+          {loading ? "참여 중..." : "참여하기"}
         </button>
         {message && <div style={onboardingMessageStyle}>{message}</div>}
       </section>
@@ -1378,16 +1457,16 @@ function OnboardingGate({
     <section style={onboardingBoxStyle}>
       <h1 style={onboardingWelcomeTitleStyle}>환영해요!</h1>
       <p style={onboardingTextStyle}>
-        미루지말자는 부모-자녀, 부부, 선생님-학생처럼 함께 미션을 관리하는 사람들을 위한 앱이에요.
-        먼저 어떻게 시작할지 선택해주세요.
+        가족, 아이, 참여자와 함께 쓸 수 있는 미션-보상 공간이에요.
+        아래 중 하나를 선택해주세요.
       </p>
       <button onClick={onChooseCreate} style={onboardingChoiceButtonStyle}>
         <span style={onboardingChoiceTitleStyle}>새 워크스페이스 만들기</span>
-        <span style={onboardingChoiceDescStyle}>내가 관리자가 되어 참여자를 초대할게요</span>
+        <span style={onboardingChoiceDescStyle}>매니저로 시작해서 참여자를 초대해요</span>
       </button>
       <button onClick={onChooseJoin} style={onboardingChoiceButtonStyle}>
-        <span style={onboardingChoiceTitleStyle}>초대코드가 있어요</span>
-        <span style={onboardingChoiceDescStyle}>다른 분이 만든 워크스페이스에 참여할게요</span>
+        <span style={onboardingChoiceTitleStyle}>초대코드로 참여하기</span>
+        <span style={onboardingChoiceDescStyle}>이미 받은 초대코드가 있어요</span>
       </button>
       {message && <div style={onboardingMessageStyle}>{message}</div>}
     </section>
@@ -1399,7 +1478,7 @@ function NoWorkspacePrompt({ onGoSettings }: { onGoSettings: () => void }) {
     <section style={emptyWorkspaceBoxStyle}>
       <h2 style={emptyWorkspaceTitleStyle}>워크스페이스가 없어요</h2>
       <p style={emptyWorkspaceTextStyle}>
-        가족, 친구, 팀 등 함께 미션을 관리할 워크스페이스를 만들거나 초대코드로 참여해보세요.
+        설정 탭에서 워크스페이스를 만들거나 초대코드로 참여해주세요.
       </p>
       <button onClick={onGoSettings} style={emptyWorkspaceButtonStyle}>설정으로 이동</button>
     </section>
@@ -1417,7 +1496,7 @@ const emptyWorkspaceTitleStyle: CSSProperties = { margin: "0 0 8px", fontSize: 2
 const emptyWorkspaceTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 14 };
 const emptyWorkspaceButtonStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "none", background: "#4f46e5", color: "#fff", fontWeight: 800, cursor: "pointer" };
 const messageBoxStyle = (message: string): CSSProperties => {
-  const ok = message.includes("완료") || message.includes("성공") || message.includes("생성") || message.includes("참여");
+  const ok = message.includes("완료") || message.includes("성공") || message.includes("신청") || message.includes("승인");
   return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 };
 };
 
