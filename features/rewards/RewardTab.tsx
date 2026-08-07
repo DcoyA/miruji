@@ -21,6 +21,7 @@ type RewardTabProps = {
   onRequestRedeem: (reward: Reward) => void;
   onConfirmRedeem: (reward: Reward) => void;
   onRejectRedeem: (reward: Reward) => void;
+  onDeleteReward: (reward: Reward) => void;
 };
 
 export default function RewardTab({
@@ -42,6 +43,7 @@ export default function RewardTab({
   onRequestRedeem,
   onConfirmRedeem,
   onRejectRedeem,
+  onDeleteReward,
 }: RewardTabProps) {
   const visibleRewards = isManager
     ? rewards
@@ -122,7 +124,12 @@ export default function RewardTab({
                   )}
 
                   {reward.status === "approved" && isManager && (
-                    <span style={rewardSubTextStyle}>대상 참여자의 신청 대기중</span>
+                    <div style={reviewButtonRowStyle}>
+                      <span style={rewardSubTextStyle}>대상 참여자의 신청 대기중</span>
+                      <button onClick={() => onDeleteReward(reward)} disabled={loading} style={rejectButtonStyle}>
+                        삭제
+                      </button>
+                    </div>
                   )}
                 </div>
               );
