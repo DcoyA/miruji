@@ -28,19 +28,23 @@ import type {
   Reward,
   RewardTransaction,
   Task,
+  TaskTemplate,
   Workspace,
 } from "@/types/app";
 
 const memberSelect =
   "id, profile_id, display_name, role, is_virtual, requires_account, status";
 const taskSelect =
-  "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points";
+  "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points, template_id";
+const taskTemplateSelect =
+  "id, workspace_id, title, description, assigned_member_id, verification_type, reward_points, rollover_enabled, repeat_type, repeat_weekdays, is_active";
 const rewardSelect =
   "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status";
 const rewardTxSelect =
   "id, member_id, amount, transaction_type, source_type, source_id";
 
 type MemberRole = "manager" | "member";
+type RepeatType = "none" | "daily" | "weekly";
 
 type InviteAcceptResult = {
   workspace_id?: string;
@@ -70,6 +74,7 @@ export default function Home() {
 
   const [members, setMembers] = useState<Member[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [rewardTransactions, setRewardTransactions] = useState<RewardTransaction[]>([]);
 
@@ -82,6 +87,8 @@ export default function Home() {
   const [newTaskAssignedMemberId, setNewTaskAssignedMemberId] = useState("");
   const [newTaskVerificationType, setNewTaskVerificationType] = useState("none");
   const [newTaskRewardPoints, setNewTaskRewardPoints] = useState(1);
+  const [newTaskRepeatType, setNewTaskRepeatType] = useState<RepeatType>("none");
+  const [newTaskRepeatWeekdays, setNewTaskRepeatWeekdays] = useState<number[]>([]);
 
   const [newRewardTitle, setNewRewardTitle] = useState("");
   const [newRewardDescription, setNewRewardDescription] = useState("");
@@ -376,6 +383,7 @@ export default function Home() {
     setOnboardingStep("choice");
     setMembers([]);
     setTasks([]);
+    setTemplates([]);
     setRewards([]);
     setRewardTransactions([]);
     setWorkspaceName("");
@@ -385,6 +393,8 @@ export default function Home() {
     setNewTaskAssignedMemberId("");
     setNewTaskVerificationType("none");
     setNewTaskRewardPoints(1);
+    setNewTaskRepeatType("none");
+    setNewTaskRepeatWeekdays([]);
     setNewRewardTitle("");
     setNewRewardDescription("");
     setNewRewardTargetMemberId("");
@@ -727,9 +737,10 @@ export default function Home() {
     const monthStart = toDateKey(startOfMonth(currentMonth));
     const monthEnd = toDateKey(endOfMonth(currentMonth));
 
-    const [membersResult, tasksResult, rewardsResult, rewardTransactionsResult] = await Promise.all([
+    const [membersResult, tasksResult, templatesResult, rewardsResult, rewardTransactionsResult] = await Promise.all([
       supabase.from("workspace_members").select(memberSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
       supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd).order("due_date", { ascending: true }),
+      supabase.from("task_templates").select(taskTemplateSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
       supabase.from("rewards").select(rewardSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
       supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
     ]);
@@ -741,6 +752,11 @@ export default function Home() {
 
     if (tasksResult.error) {
       setMessage(`미션 불러오기 실패: ${tasksResult.error.message}`);
+      return;
+    }
+
+    if (templatesResult.error) {
+      setMessage(`반복 미션 불러오기 실패: ${templatesResult.error.message}`);
       return;
     }
 
@@ -756,8 +772,15 @@ export default function Home() {
 
     setMembers((membersResult.data || []) as Member[]);
     setTasks((tasksResult.data || []) as Task[]);
+    setTemplates((templatesResult.data || []) as TaskTemplate[]);
     setRewards((rewardsResult.data || []) as Reward[]);
     setRewardTransactions((rewardTransactionsResult.data || []) as RewardTransaction[]);
+  }
+
+  function toggleRepeatWeekday(day: number) {
+    setNewTaskRepeatWeekdays((prev) =>
+      prev.includes(day) ? prev.filter((item) => item !== day) : [...prev, day].sort((a, b) => a - b)
+    );
   }
 
   async function createTask() {
@@ -781,42 +804,171 @@ export default function Home() {
       return;
     }
 
+    if (newTaskRepeatType === "weekly" && newTaskRepeatWeekdays.length === 0) {
+      setMessage("반복할 요일을 선택해주세요.");
+      return;
+    }
+
     setLoading(true);
     setMessage("");
 
     const creatorMemberId = currentMember?.id || members.find((member) => member.role === "owner" || member.role === "manager")?.id || null;
 
-    const { data, error } = await supabase
-      .from("tasks")
-      .insert({
-        workspace_id: workspace.id,
-        title: newTaskTitle.trim(),
-        description: newTaskDescription.trim() || null,
-        task_type: "custom",
-        status: "todo",
-        due_date: selectedDate,
-        assigned_member_id: newTaskAssignedMemberId,
-        verification_type: newTaskVerificationType,
-        verification_required: newTaskVerificationType !== "none",
-        reward_points: newTaskRewardPoints,
-        rollover_enabled: true,
-        created_by_member_id: creatorMemberId,
-      })
-      .select(taskSelect)
-      .single();
+    if (newTaskRepeatType === "none") {
+      const { data, error } = await supabase
+        .from("tasks")
+        .insert({
+          workspace_id: workspace.id,
+          title: newTaskTitle.trim(),
+          description: newTaskDescription.trim() || null,
+          task_type: "custom",
+          status: "todo",
+          due_date: selectedDate,
+          assigned_member_id: newTaskAssignedMemberId,
+          verification_type: newTaskVerificationType,
+          verification_required: newTaskVerificationType !== "none",
+          reward_points: newTaskRewardPoints,
+          rollover_enabled: true,
+          created_by_member_id: creatorMemberId,
+        })
+        .select(taskSelect)
+        .single();
 
-    if (error) {
-      setMessage(`미션 생성 실패: ${error.message}`);
-      setLoading(false);
-      return;
+      if (error) {
+        setMessage(`미션 생성 실패: ${error.message}`);
+        setLoading(false);
+        return;
+      }
+
+      setTasks((prev) => [...prev, data as Task]);
+      setMessage("미션 생성 완료");
+    } else {
+      const { data: templateData, error: templateError } = await supabase
+        .from("task_templates")
+        .insert({
+          workspace_id: workspace.id,
+          title: newTaskTitle.trim(),
+          description: newTaskDescription.trim() || null,
+          assigned_member_id: newTaskAssignedMemberId,
+          verification_type: newTaskVerificationType,
+          reward_points: newTaskRewardPoints,
+          rollover_enabled: true,
+          repeat_type: newTaskRepeatType,
+          repeat_weekdays: newTaskRepeatType === "weekly" ? newTaskRepeatWeekdays : [],
+          is_active: true,
+          created_by_member_id: creatorMemberId,
+        })
+        .select(taskTemplateSelect)
+        .single();
+
+      if (templateError) {
+        setMessage(`반복 미션 생성 실패: ${templateError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      setTemplates((prev) => [...prev, templateData as TaskTemplate]);
+
+      const { error: generateError } = await supabase.rpc("generate_recurring_tasks");
+
+      if (generateError) {
+        setMessage(`반복 미션은 등록됐지만 오늘 일정 생성에 실패했습니다: ${generateError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      await loadWorkspaceData(workspace.id);
+      setMessage("반복 미션 생성 완료");
     }
 
-    setTasks((prev) => [...prev, data as Task]);
     setNewTaskTitle("");
     setNewTaskDescription("");
     setNewTaskVerificationType("none");
     setNewTaskRewardPoints(1);
-    setMessage("미션 생성 완료");
+    setNewTaskRepeatType("none");
+    setNewTaskRepeatWeekdays([]);
+    setLoading(false);
+  }
+
+  async function toggleTemplateActive(template: TaskTemplate) {
+    if (!isManager) {
+      setMessage("매니저/오너만 가능합니다.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("task_templates")
+      .update({ is_active: !template.is_active })
+      .eq("id", template.id)
+      .select(taskTemplateSelect)
+      .single();
+
+    if (error) {
+      setMessage(`반복 미션 상태 변경 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    const updated = data as TaskTemplate;
+    setTemplates((prev) => prev.map((item) => (item.id === template.id ? updated : item)));
+    setMessage(`${template.title} ${updated.is_active ? "재개" : "일시중지"}`);
+    setLoading(false);
+  }
+
+  async function deleteTemplate(template: TaskTemplate) {
+    if (!isManager) {
+      setMessage("매니저/오너만 가능합니다.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `"${template.title}" 반복 미션을 삭제하시겠습니까? 이미 생성된 미션 기록은 남습니다.`
+    );
+    if (!confirmed) return;
+
+    setLoading(true);
+    setMessage("");
+
+    const { error } = await supabase.from("task_templates").delete().eq("id", template.id);
+
+    if (error) {
+      setMessage(`삭제 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setTemplates((prev) => prev.filter((item) => item.id !== template.id));
+    setMessage(`${template.title} 삭제 완료`);
+    setLoading(false);
+  }
+
+  async function rolloverNow() {
+    if (!workspace) {
+      setMessage("워크스페이스가 없습니다.");
+      return;
+    }
+
+    if (!isManager) {
+      setMessage("매니저/오너만 가능합니다.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { error } = await supabase.rpc("rollover_overdue_tasks");
+
+    if (error) {
+      setMessage(`정리 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    await loadWorkspaceData(workspace.id);
+    setMessage("지난 미션을 정리했습니다.");
     setLoading(false);
   }
 
@@ -1288,6 +1440,7 @@ export default function Home() {
           selectedDate={selectedDate}
           members={activeMembers}
           tasks={selectedTasks}
+          templates={templates}
           currentMember={currentMember}
           isManager={isManager}
           title={newTaskTitle}
@@ -1295,16 +1448,23 @@ export default function Home() {
           assignedMemberId={newTaskAssignedMemberId}
           verificationType={newTaskVerificationType}
           rewardPoints={newTaskRewardPoints}
+          repeatType={newTaskRepeatType}
+          repeatWeekdays={newTaskRepeatWeekdays}
           loading={loading}
           onTitleChange={setNewTaskTitle}
           onDescriptionChange={setNewTaskDescription}
           onAssignedMemberIdChange={setNewTaskAssignedMemberId}
           onVerificationTypeChange={setNewTaskVerificationType}
           onRewardPointsChange={setNewTaskRewardPoints}
+          onRepeatTypeChange={setNewTaskRepeatType}
+          onToggleRepeatWeekday={toggleRepeatWeekday}
           onCreate={createTask}
           onSubmitTask={submitTask}
           onApproveTask={approveTask}
           onRejectTask={rejectTask}
+          onToggleTemplateActive={toggleTemplateActive}
+          onDeleteTemplate={deleteTemplate}
+          onRolloverNow={rolloverNow}
         />
       )}
 
@@ -1496,7 +1656,7 @@ const emptyWorkspaceTitleStyle: CSSProperties = { margin: "0 0 8px", fontSize: 2
 const emptyWorkspaceTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 14 };
 const emptyWorkspaceButtonStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "none", background: "#4f46e5", color: "#fff", fontWeight: 800, cursor: "pointer" };
 const messageBoxStyle = (message: string): CSSProperties => {
-  const ok = message.includes("완료") || message.includes("성공") || message.includes("신청") || message.includes("승인");
+  const ok = message.includes("완료") || message.includes("성공") || message.includes("신청") || message.includes("승인") || message.includes("정리");
   return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 };
 };
 
