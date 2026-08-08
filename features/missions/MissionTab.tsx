@@ -38,6 +38,7 @@ type MissionTabProps = {
 };
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
+const REWARD_PRESETS = [1, 3, 5, 10];
 
 export default function MissionTab({
   selectedDate,
@@ -81,9 +82,9 @@ export default function MissionTab({
       {isManager ? (
         <section style={createBoxStyle}>
           <div style={createHeaderRowStyle}>
-            <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션 추가</h2>
+            <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 할 일 추가</h2>
             <button onClick={onRolloverNow} disabled={loading} style={rolloverButtonStyle}>
-              지난 미션 정리하기
+              지난 할 일 정리하기
             </button>
           </div>
 
@@ -107,7 +108,7 @@ export default function MissionTab({
             onChange={(event) => onAssignedMemberIdChange(event.target.value)}
             style={inputStyle}
           >
-            <option value="">미션 받을 참여자 선택</option>
+            <option value="">할 일을 받을 참여자 선택</option>
             {members.map((member) => (
               <option key={member.id} value={member.id}>
                 {member.display_name}
@@ -127,14 +128,28 @@ export default function MissionTab({
             <option value="audio">음성 인증</option>
           </select>
 
+          <label style={fieldLabelStyle}>완료하면 받을 스티커 개수</label>
+          <div style={presetRowStyle}>
+            {REWARD_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => onRewardPointsChange(preset)}
+                style={rewardPoints === preset ? presetButtonActiveStyle : presetButtonStyle}
+              >
+                {preset}개
+              </button>
+            ))}
+          </div>
           <input
             type="number"
             min={0}
             value={rewardPoints}
             onChange={(event) => onRewardPointsChange(Number(event.target.value))}
-            placeholder="스티커 개수"
+            placeholder="직접 입력"
             style={inputStyle}
           />
+          <p style={fieldHintStyle}>참여자가 이 할 일을 완료하고 승인받으면 스티커를 받아요.</p>
 
           <div style={repeatLabelStyle}>반복 설정</div>
           <select
@@ -166,19 +181,19 @@ export default function MissionTab({
           )}
 
           <button onClick={onCreate} disabled={createDisabled} style={primaryButtonStyle(createDisabled)}>
-            {loading ? "생성 중..." : repeatType === "none" ? "미션 만들기" : "반복 미션 만들기"}
+            {loading ? "생성 중..." : repeatType === "none" ? "할 일 만들기" : "반복 할 일 만들기"}
           </button>
         </section>
       ) : (
         <section style={createBoxStyle}>
-          <h2 style={sectionTitleStyle}>내 미션</h2>
-          <p style={subTextStyle}>참여자는 본인에게 배정된 미션만 확인합니다.</p>
+          <h2 style={sectionTitleStyle}>내 할 일</h2>
+          <p style={subTextStyle}>참여자는 본인에게 배정된 할 일만 확인합니다.</p>
         </section>
       )}
 
       {isManager && templates.length > 0 && (
         <section style={templateSectionStyle}>
-          <h2 style={sectionTitleStyle}>반복 미션 관리</h2>
+          <h2 style={sectionTitleStyle}>반복 할 일 관리</h2>
           <div style={templateListStyle}>
             {templates.map((template) => (
               <div key={template.id} style={templateCardStyle}>
@@ -212,10 +227,10 @@ export default function MissionTab({
       )}
 
       <section style={dayTaskSectionStyle}>
-        <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션 목록</h2>
+        <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 할 일 목록</h2>
 
         {visibleTasks.length === 0 ? (
-          <div style={emptyStateStyle}>이 날짜에 표시할 미션이 없습니다.</div>
+          <div style={emptyStateStyle}>이 날짜에 표시할 할 일이 없습니다.</div>
         ) : (
           <TaskList
             tasks={visibleTasks}
@@ -270,6 +285,48 @@ const inputStyle: CSSProperties = {
   marginBottom: 12,
   outline: "none",
   fontSize: 15,
+};
+
+const fieldLabelStyle: CSSProperties = {
+  display: "block",
+  fontSize: 13,
+  fontWeight: 800,
+  color: "#334155",
+  marginBottom: 6,
+};
+
+const fieldHintStyle: CSSProperties = {
+  fontSize: 12,
+  color: "#64748b",
+  marginTop: -6,
+  marginBottom: 14,
+  lineHeight: 1.5,
+};
+
+const presetRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 6,
+  marginBottom: 10,
+  flexWrap: "wrap",
+};
+
+const presetButtonStyle: CSSProperties = {
+  flex: 1,
+  minWidth: 50,
+  padding: "10px 0",
+  borderRadius: 12,
+  border: "1px solid #dbeafe",
+  background: "#fff",
+  color: "#4f46e5",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const presetButtonActiveStyle: CSSProperties = {
+  ...presetButtonStyle,
+  background: "#4f46e5",
+  borderColor: "#4f46e5",
+  color: "#fff",
 };
 
 const repeatLabelStyle: CSSProperties = {
