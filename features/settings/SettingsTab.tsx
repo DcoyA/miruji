@@ -126,7 +126,7 @@ export default function SettingsTab({
       </details>
 
       {hasWorkspace && isManager && (
-        <details style={accordionStyle} open>
+        <details style={accordionStyle}>
           <summary style={accordionSummaryStyle}>참여자 관리</summary>
           <div style={accordionBodyStyle}>
             <div style={{ marginBottom: 20 }}>
