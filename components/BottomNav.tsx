@@ -8,7 +8,7 @@ type BottomNavProps = {
 
 const items: { key: ActiveTab; label: string }[] = [
   { key: "calendar", label: "캘린더" },
-  { key: "missions", label: "미션" },
+  { key: "missions", label: "할 일" },
   { key: "rewards", label: "보상" },
   { key: "settings", label: "설정" },
 ];
