@@ -89,66 +89,71 @@ export default function SettingsTab({
         )}
       </section>
 
-      <section style={createBoxStyle}>
-        <h2 style={sectionTitleStyle}>초대코드로 참여하기</h2>
-        <p style={subTextStyle}>다른 사람이 만든 워크스페이스에 참여하려면 초대코드를 입력하세요.</p>
-        <input value={joinInviteCode} onChange={(event) => onJoinInviteCodeChange(event.target.value.toUpperCase())} placeholder="예) A1B2C3" style={inputStyle} />
-        <button onClick={onAcceptInvite} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "참여 중..." : "초대코드로 참여하기"}</button>
-      </section>
+      <details style={accordionStyle} open={!hasWorkspace}>
+        <summary style={accordionSummaryStyle}>초대코드로 참여하기</summary>
+        <div style={accordionBodyStyle}>
+          <p style={subTextStyle}>다른 사람이 만든 워크스페이스에 참여하려면 초대코드를 입력하세요.</p>
+          <input value={joinInviteCode} onChange={(event) => onJoinInviteCodeChange(event.target.value.toUpperCase())} placeholder="예) A1B2C3" style={inputStyle} />
+          <button onClick={onAcceptInvite} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "참여 중..." : "초대코드로 참여하기"}</button>
+        </div>
+      </details>
 
       {hasWorkspace && isManager && (
-        <>
-          <section style={createBoxStyle}>
-            <h2 style={sectionTitleStyle}>참여자 추가</h2>
-            <p style={subTextStyle}>이메일 유무에 따라 계정 연결 방식이 달라집니다.</p>
+        <details style={accordionStyle} open>
+          <summary style={accordionSummaryStyle}>참여자 관리</summary>
+          <div style={accordionBodyStyle}>
+            <div style={{ marginBottom: 20 }}>
+              <h3 style={subSectionTitleStyle}>참여자 추가</h3>
+              <p style={subTextStyle}>이메일 유무에 따라 계정 연결 방식이 달라집니다.</p>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={toggleLabelStyle}>이 참여자는 이메일이 있나요?</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => onNewMemberHasEmailChange(true)}
-                  style={newMemberHasEmail ? emailToggleActiveStyle : emailToggleInactiveStyle}
-                >
-                  네, 있어요
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onNewMemberHasEmailChange(false)}
-                  style={!newMemberHasEmail ? emailToggleActiveStyle : emailToggleInactiveStyle}
-                >
-                  아니요, 없어요
-                </button>
+              <div style={{ marginBottom: 14 }}>
+                <label style={toggleLabelStyle}>이 참여자는 이메일이 있나요?</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => onNewMemberHasEmailChange(true)}
+                    style={newMemberHasEmail ? emailToggleActiveStyle : emailToggleInactiveStyle}
+                  >
+                    네, 있어요
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNewMemberHasEmailChange(false)}
+                    style={!newMemberHasEmail ? emailToggleActiveStyle : emailToggleInactiveStyle}
+                  >
+                    아니요, 없어요
+                  </button>
+                </div>
+                <p style={toggleHintStyle}>
+                  {newMemberHasEmail
+                    ? "초대코드를 만들어서 전달하면, 상대가 코드를 입력해 본인 계정으로 연결할 수 있어요."
+                    : "계정을 만들지 않고 보호자가 직접 관리합니다. 초대코드는 생성되지 않아요."}
+                </p>
               </div>
-              <p style={toggleHintStyle}>
-                {newMemberHasEmail
-                  ? "초대코드를 만들어서 전달하면, 상대가 코드를 입력해 본인 계정으로 연결할 수 있어요."
-                  : "계정을 만들지 않고 보호자가 직접 관리합니다. 초대코드는 생성되지 않아요."}
-              </p>
+
+              <input value={newMemberName} onChange={(event) => onNewMemberNameChange(event.target.value)} placeholder="예) 첫째, 아빠, 엄마, 토끼" style={inputStyle} />
+              <select value={newMemberRole} onChange={(event) => onNewMemberRoleChange(event.target.value as MemberRole)} style={inputStyle}>
+                <option value="member">참여자</option>
+                <option value="manager">보호자/관리자</option>
+              </select>
+              <button onClick={onAddMember} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "추가 중..." : "참여자 추가"}</button>
             </div>
 
-            <input value={newMemberName} onChange={(event) => onNewMemberNameChange(event.target.value)} placeholder="예) 첫째, 아빠, 엄마, 토끼" style={inputStyle} />
-            <select value={newMemberRole} onChange={(event) => onNewMemberRoleChange(event.target.value as MemberRole)} style={inputStyle}>
-              <option value="member">참여자</option>
-              <option value="manager">보호자/관리자</option>
-            </select>
-            <button onClick={onAddMember} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "추가 중..." : "참여자 추가"}</button>
-          </section>
-
-          <MemberList
-            members={members}
-            currentMember={currentMember}
-            inviteCodes={inviteCodes}
-            loading={loading}
-            onCreateInvite={onCreateInvite}
-            onEnableAccount={onEnableAccount}
-            onRemoveMember={onRemoveMember}
-            onRestoreMember={onRestoreMember}
-            onTransferOwnership={onTransferOwnership}
-            onCancelInvite={onCancelInvite}
-            inviteExpiresAt={inviteExpiresAt}
-          />
-        </>
+            <MemberList
+              members={members}
+              currentMember={currentMember}
+              inviteCodes={inviteCodes}
+              loading={loading}
+              onCreateInvite={onCreateInvite}
+              onEnableAccount={onEnableAccount}
+              onRemoveMember={onRemoveMember}
+              onRestoreMember={onRestoreMember}
+              onTransferOwnership={onTransferOwnership}
+              onCancelInvite={onCancelInvite}
+              inviteExpiresAt={inviteExpiresAt}
+            />
+          </div>
+        </details>
       )}
 
       {hasWorkspace && !isManager && (
@@ -161,34 +166,39 @@ export default function SettingsTab({
         </section>
       )}
 
-      {(!hasWorkspace || isManager) && (
-        <section style={createBoxStyle}>
-          <h2 style={sectionTitleStyle}>{hasWorkspace ? "새 워크스페이스 만들기" : "첫 워크스페이스 만들기"}</h2>
+      <details style={accordionStyle}>
+        <summary style={accordionSummaryStyle}>{hasWorkspace ? "새 워크스페이스 만들기" : "첫 워크스페이스 만들기"}</summary>
+        <div style={accordionBodyStyle}>
           <p style={subTextStyle}>가족, 팀, 클래스처럼 별도 공간이 필요하면 새 워크스페이스를 만들 수 있습니다.</p>
           <input value={workspaceName} onChange={(event) => onWorkspaceNameChange(event.target.value)} placeholder="예) 우리집, 주말 프로젝트, 1학년 3반" style={inputStyle} />
           <textarea value={workspaceDescription} onChange={(event) => onWorkspaceDescriptionChange(event.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
           <button onClick={onCreateWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "워크스페이스 만들기"}</button>
-        </section>
-      )}
+        </div>
+      </details>
 
-      {hasWorkspace && currentMember?.role === "owner" && (
-        <section style={dangerBoxStyle}>
-          <h2 style={{ ...sectionTitleStyle, color: "#b91c1c" }}>워크스페이스 삭제</h2>
-          <p style={subTextStyle}>
-            워크스페이스를 삭제하면 모든 미션, 참여자, 보상 기록이 함께 삭제되며 되돌릴 수
-            없습니다. owner는 다른 참여자의 동의 없이 단독으로 삭제할 수 있습니다.
-          </p>
-          <button onClick={() => onDeleteWorkspace(workspace!)} style={dangerButtonStyle}>
-            워크스페이스 삭제하기
-          </button>
-        </section>
-      )}
+      <details style={dangerAccordionStyle}>
+        <summary style={dangerAccordionSummaryStyle}>위험 구역</summary>
+        <div style={accordionBodyStyle}>
+          {hasWorkspace && currentMember?.role === "owner" && (
+            <div style={{ marginBottom: 20 }}>
+              <h3 style={{ ...subSectionTitleStyle, color: "#b91c1c" }}>워크스페이스 삭제</h3>
+              <p style={subTextStyle}>
+                워크스페이스를 삭제하면 모든 미션, 참여자, 보상 기록이 함께 삭제되며 되돌릴 수
+                없습니다. owner는 다른 참여자의 동의 없이 단독으로 삭제할 수 있습니다.
+              </p>
+              <button onClick={() => onDeleteWorkspace(workspace!)} style={dangerButtonStyle}>
+                워크스페이스 삭제하기
+              </button>
+            </div>
+          )}
 
-      <section style={dangerBoxStyle}>
-        <h2 style={{ ...sectionTitleStyle, color: "#b91c1c" }}>회원 탈퇴</h2>
-        <p style={subTextStyle}>탈퇴하면 계정과 프로필 정보가 삭제되며 되돌릴 수 없습니다.</p>
-        <button onClick={onDeleteAccount} style={dangerButtonStyle}>탈퇴하기</button>
-      </section>
+          <div>
+            <h3 style={{ ...subSectionTitleStyle, color: "#b91c1c" }}>회원 탈퇴</h3>
+            <p style={subTextStyle}>탈퇴하면 계정과 프로필 정보가 삭제되며 되돌릴 수 없습니다.</p>
+            <button onClick={onDeleteAccount} style={dangerButtonStyle}>탈퇴하기</button>
+          </div>
+        </div>
+      </details>
     </>
   );
 }
@@ -218,12 +228,11 @@ function MemberList({
   onCancelInvite: (member: Member) => void;
   inviteExpiresAt: Record<string, string>;
 }) {
-
   const isOwner = currentMember?.role === "owner";
 
   return (
-    <section style={createBoxStyle}>
-      <h2 style={sectionTitleStyle}>참여자 목록</h2>
+    <div>
+      <h3 style={subSectionTitleStyle}>참여자 목록</h3>
       {members.length === 0 ? (
         <div style={emptyStateStyle}>아직 참여자가 없습니다.</div>
       ) : (
@@ -347,7 +356,7 @@ function MemberList({
           })}
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -363,6 +372,12 @@ function formatExpiryDate(iso: string) {
 
 const createBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18 };
 const dangerBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#fef2f2", border: "1px solid #fecaca", marginBottom: 18 };
+const accordionStyle: CSSProperties = { padding: 0, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18, overflow: "hidden" };
+const dangerAccordionStyle: CSSProperties = { padding: 0, borderRadius: 20, background: "#fef2f2", border: "1px solid #fecaca", marginBottom: 18, overflow: "hidden" };
+const accordionSummaryStyle: CSSProperties = { padding: 16, fontSize: 17, fontWeight: 800, cursor: "pointer", letterSpacing: "-0.02em", listStyle: "revert" };
+const dangerAccordionSummaryStyle: CSSProperties = { ...accordionSummaryStyle, color: "#b91c1c" };
+const accordionBodyStyle: CSSProperties = { padding: "0 16px 16px" };
+const subSectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em" };
 const sectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 20, letterSpacing: "-0.03em" };
 const subTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 20 };
 const inputStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #dbeafe", marginBottom: 12, outline: "none", fontSize: 15 };
