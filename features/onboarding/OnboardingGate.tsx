@@ -43,10 +43,10 @@ export default function OnboardingGate({
         <button onClick={onBack} style={onboardingBackButtonStyle}>
           ← 뒤로
         </button>
-        <h2 style={onboardingTitleStyle}>워크스페이스 만들기</h2>
+        <h2 style={onboardingTitleStyle}>모임 만들기</h2>
         <p style={onboardingTextStyle}>
-          가족, 학급, 팀 등 함께 미션을 관리할 공간의 이름을 정해주세요. 만든 사람은
-          자동으로 owner(소유자) 권한을 갖게 됩니다.
+          가족, 학급, 팀 등 함께 할 일을 관리할 공간의 이름을 정해주세요. 만든 사람은
+          자동으로 방장 권한을 갖게 됩니다.
         </p>
         <input
           value={workspaceName}
@@ -66,7 +66,7 @@ export default function OnboardingGate({
           disabled={loading}
           style={onboardingPrimaryButtonStyle(loading)}
         >
-          {loading ? "만드는 중..." : "워크스페이스 만들기"}
+          {loading ? "만드는 중..." : "모임 만들기"}
         </button>
         {message && <div style={onboardingMessageStyle}>{message}</div>}
       </section>
@@ -80,7 +80,7 @@ export default function OnboardingGate({
           ← 뒤로
         </button>
         <h2 style={onboardingTitleStyle}>초대 코드로 참여하기</h2>
-        <p style={onboardingTextStyle}>매니저에게 받은 초대 코드를 입력해주세요.</p>
+        <p style={onboardingTextStyle}>부방장에게 받은 초대 코드를 입력해주세요.</p>
         <input
           value={joinInviteCode}
           onChange={(event) => onJoinInviteCodeChange(event.target.value.toUpperCase())}
@@ -103,11 +103,11 @@ export default function OnboardingGate({
     <section style={onboardingBoxStyle}>
       <h1 style={onboardingWelcomeTitleStyle}>환영합니다!</h1>
       <p style={onboardingTextStyle}>
-        가족, 학급, 팀 등 누구나 함께 미션과 보상을 관리할 수 있는 워크스페이스가
+        가족, 학급, 팀 등 누구나 함께 할 일과 보상을 관리할 수 있는 모임이
         필요해요. 아래에서 하나를 선택해주세요.
       </p>
       <button onClick={onChooseCreate} style={onboardingChoiceButtonStyle}>
-        <span style={onboardingChoiceTitleStyle}>워크스페이스 만들기</span>
+        <span style={onboardingChoiceTitleStyle}>모임 만들기</span>
         <span style={onboardingChoiceDescStyle}>새로운 공간을 처음 만드는 경우</span>
       </button>
       <button onClick={onChooseJoin} style={onboardingChoiceButtonStyle}>
