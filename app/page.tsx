@@ -1758,14 +1758,14 @@ const accountBoxStyle: CSSProperties = {
   borderRadius: 20,
   padding: "14px 16px",
   marginBottom: 16,
-  boxShadow: "0 4px 16px rgba(15, 23, 42, 0.06)",
+  boxShadow: "0 4px 16px rgba(190, 24, 93, 0.08)",
 };
 
 const avatarStyle: CSSProperties = {
   width: 44,
   height: 44,
   borderRadius: "50%",
-  background: "linear-gradient(135deg, #34d399, #059669)",
+  background: "linear-gradient(135deg, #fb7185, #e11d48)",
   color: "#ffffff",
   display: "flex",
   alignItems: "center",
@@ -1792,8 +1792,8 @@ const roleBadgeStyle: CSSProperties = {
   alignSelf: "flex-start",
   padding: "3px 10px",
   borderRadius: 999,
-  background: "#ecfdf5",
-  color: "#047857",
+  background: "#ffe4e6",
+  color: "#be123c",
   fontSize: 11,
   fontWeight: 800,
 };
