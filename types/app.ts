@@ -67,6 +67,8 @@ export type RewardTransaction = {
   transaction_type: string;
   source_type: string;
   source_id: string | null;
+  memo: string | null;
+  created_at: string;
 };
 
 export type ActiveTab = "calendar" | "missions" | "rewards" | "settings";
