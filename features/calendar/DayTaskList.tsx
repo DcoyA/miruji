@@ -28,10 +28,10 @@ export default function DayTaskList({
 }: DayTaskListProps) {
   return (
     <section style={dayTaskSectionStyle}>
-      <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 미션</h2>
+      <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 할 일</h2>
 
       {tasks.length === 0 ? (
-        <div style={emptyStateStyle}>이 날짜에 등록된 미션이 없습니다.</div>
+        <div style={emptyStateStyle}>이 날짜에 등록된 할 일이 없습니다.</div>
       ) : (
         <TaskList
           tasks={tasks}
