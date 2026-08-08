@@ -37,7 +37,7 @@ const workspaceSwitcherStyle: CSSProperties = {
 
 const smallLabelStyle: CSSProperties = {
   display: "block",
-  color: "#047857",
+  color: "#be123c",
   fontSize: 12,
   fontWeight: 800,
   marginBottom: 4,
@@ -47,7 +47,7 @@ const selectStyle: CSSProperties = {
   width: "100%",
   padding: 14,
   borderRadius: 14,
-  border: "1px solid #dbeafe",
+  border: "1px solid #fbcfe8",
   background: "#fff",
   fontWeight: 700,
 };
