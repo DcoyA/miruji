@@ -48,8 +48,8 @@ export default function CalendarGrid({
               style={{
                 ...calendarDayStyle,
                 opacity: isCurrentMonth ? 1 : 0.35,
-                borderColor: isSelected ? "#4f46e5" : "#e2e8f0",
-                background: isSelected ? "#eef2ff" : "#fff",
+                borderColor: isSelected ? "#fb7185" : "#f1e4e2",
+                background: isSelected ? "#fff1f2" : "#fff",
               }}
             >
               <div style={dayNumberStyle}>{day.getDate()}</div>
@@ -70,7 +70,7 @@ export default function CalendarGrid({
 }
 
 const calendarBoxStyle: CSSProperties = {
-  border: "1px solid #e2e8f0",
+  border: "1px solid #f1e4e2",
   borderRadius: 20,
   padding: 12,
   marginBottom: 18,
@@ -97,7 +97,7 @@ const calendarGridStyle: CSSProperties = {
 
 const calendarDayStyle: CSSProperties = {
   minHeight: 54,
-  border: "1px solid #e2e8f0",
+  border: "1px solid #f1e4e2",
   borderRadius: 14,
   background: "#fff",
   padding: 6,
@@ -124,7 +124,7 @@ const pendingDotStyle: CSSProperties = {
   width: 6,
   height: 6,
   borderRadius: 999,
-  background: "#3b82f6",
+  background: "#fb7185",
 };
 
 const approvedDotStyle: CSSProperties = {
