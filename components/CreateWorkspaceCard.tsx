@@ -21,7 +21,7 @@ export default function CreateWorkspaceCard({
 }: CreateWorkspaceCardProps) {
   return (
     <section style={compact ? compactCreateBoxStyle : createBoxStyle}>
-      {!compact && <h2 style={sectionTitleStyle}>첫 워크스페이스 만들기</h2>}
+      {!compact && <h2 style={sectionTitleStyle}>첫 모임 만들기</h2>}
 
       <input
         value={name}
@@ -43,7 +43,7 @@ export default function CreateWorkspaceCard({
         disabled={loading}
         style={primaryButtonStyle(loading)}
       >
-        {loading ? "생성 중..." : "워크스페이스 만들기"}
+        {loading ? "생성 중..." : "모임 만들기"}
       </button>
     </section>
   );
