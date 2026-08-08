@@ -93,7 +93,7 @@ export default function TaskList({
 function statusBadgeStyle(status: string): CSSProperties {
   const colors: Record<string, { bg: string; text: string }> = {
     todo: { bg: "#fef3c7", text: "#92400e" },
-    submitted: { bg: "#dbeafe", text: "#1d4ed8" },
+    submitted: { bg: "#ffe4e6", text: "#be123c" },
     approved: { bg: "#dcfce7", text: "#15803d" },
     rejected: { bg: "#fee2e2", text: "#b91c1c" },
     rolled_over: { bg: "#fde68a", text: "#b45309" },
@@ -123,8 +123,8 @@ const taskListStyle: CSSProperties = {
 const taskCardStyle: CSSProperties = {
   padding: 14,
   borderRadius: 18,
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
+  background: "#fff8f7",
+  boxShadow: "0 3px 12px rgba(219,39,119,0.06)",
   display: "flex",
   justifyContent: "space-between",
   gap: 12,
@@ -133,11 +133,12 @@ const taskCardStyle: CSSProperties = {
 const taskTitleStyle: CSSProperties = {
   fontWeight: 900,
   fontSize: 16,
+  color: "#3f1d24",
 };
 
 const taskSubTextStyle: CSSProperties = {
   marginTop: 5,
-  color: "#64748b",
+  color: "#9f6b75",
   fontSize: 13,
 };
 
@@ -150,12 +151,13 @@ const actionRowStyle: CSSProperties = {
 const submitButtonStyle: CSSProperties = {
   border: "none",
   borderRadius: 12,
-  background: "#4f46e5",
+  background: "linear-gradient(135deg, #fb7185, #e11d48)",
   color: "#fff",
   padding: "8px 12px",
   fontSize: 12,
   fontWeight: 800,
   cursor: "pointer",
+  boxShadow: "0 4px 10px rgba(225,29,72,0.30)",
 };
 
 const approveButtonStyle: CSSProperties = {
