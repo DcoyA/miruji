@@ -30,19 +30,22 @@ const topBarStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   gap: 12,
-  marginBottom: 16,
+  marginBottom: 22,
 };
 
 const eyebrowStyle: CSSProperties = {
-  color: "#4f46e5",
-  fontSize: 13,
+  color: "#e11d48",
+  fontSize: 12,
   fontWeight: 800,
+  letterSpacing: "0.02em",
 };
 
 const headerTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 30,
-  letterSpacing: "-0.04em",
+  margin: "2px 0 0",
+  fontSize: 32,
+  fontWeight: 800,
+  letterSpacing: "-0.03em",
+  color: "#3f1d24",
 };
 
 const logoutButtonStyle: CSSProperties = {
