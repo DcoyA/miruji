@@ -36,6 +36,9 @@ type SettingsTabProps = {
   onDeleteWorkspace: (workspace: Workspace) => void;
   onCancelInvite: (member: Member) => void;
   inviteExpiresAt: Record<string, string>;
+  myNickname: string;
+  onMyNicknameChange: (value: string) => void;
+  onSaveMyNickname: () => void;
 };
 
 export default function SettingsTab({
@@ -70,6 +73,9 @@ export default function SettingsTab({
   onDeleteWorkspace,
   onCancelInvite,
   inviteExpiresAt,
+  myNickname,
+  onMyNicknameChange,
+  onSaveMyNickname,
 }: SettingsTabProps) {
   const hasWorkspace = Boolean(workspace);
 
@@ -89,6 +95,26 @@ export default function SettingsTab({
           <div style={emptyStateStyle}>아직 참여 중인 모임이 없습니다.<br />초대코드를 입력하거나 새 모임을 만들어주세요.</div>
         )}
       </section>
+
+      {currentMember && (
+        <section style={createBoxStyle}>
+          <h2 style={sectionTitleStyle}>내 닉네임</h2>
+          <p style={subTextStyle}>다른 참여자에게 보여질 내 이름을 바꿀 수 있습니다.</p>
+          <input
+            value={myNickname}
+            onChange={(event) => onMyNicknameChange(event.target.value)}
+            placeholder="예) 아빠, 엄마, 첫째"
+            style={inputStyle}
+          />
+          <button
+            onClick={onSaveMyNickname}
+            disabled={loading || !myNickname.trim() || myNickname.trim() === currentMember.display_name}
+            style={primaryButtonStyle(loading)}
+          >
+            {loading ? "저장 중..." : "닉네임 저장"}
+          </button>
+        </section>
+      )}
 
       <details style={accordionStyle} open={!hasWorkspace}>
         <summary style={accordionSummaryStyle}>초대코드로 참여하기</summary>
@@ -370,28 +396,28 @@ function formatExpiryDate(iso: string) {
   return `${date.getMonth() + 1}월 ${date.getDate()}일`;
 }
 
-const createBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18 };
-const accordionStyle: CSSProperties = { padding: 0, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18, overflow: "hidden" };
+const createBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#fff8f7", marginBottom: 18, boxShadow: "0 4px 16px rgba(219,39,119,0.06)" };
+const accordionStyle: CSSProperties = { padding: 0, borderRadius: 20, background: "#fff8f7", marginBottom: 18, overflow: "hidden", boxShadow: "0 4px 16px rgba(219,39,119,0.06)" };
 const dangerAccordionStyle: CSSProperties = { padding: 0, borderRadius: 20, background: "#fef2f2", border: "1px solid #fecaca", marginBottom: 18, overflow: "hidden" };
-const accordionSummaryStyle: CSSProperties = { padding: 16, fontSize: 17, fontWeight: 800, cursor: "pointer", letterSpacing: "-0.02em", listStyle: "revert" };
+const accordionSummaryStyle: CSSProperties = { padding: 16, fontSize: 17, fontWeight: 800, cursor: "pointer", letterSpacing: "-0.02em", listStyle: "revert", color: "#3f1d24" };
 const dangerAccordionSummaryStyle: CSSProperties = { ...accordionSummaryStyle, color: "#b91c1c" };
 const accordionBodyStyle: CSSProperties = { padding: "0 16px 16px" };
-const subSectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em" };
-const sectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 20, letterSpacing: "-0.03em" };
-const subTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 20 };
-const inputStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #dbeafe", marginBottom: 12, outline: "none", fontSize: 15 };
-const settingLineStyle: CSSProperties = { padding: 12, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, marginTop: 8, color: "#334155" };
-const emptyStateStyle: CSSProperties = { padding: 18, borderRadius: 18, background: "#fff", color: "#64748b", textAlign: "center", lineHeight: 1.6 };
+const subSectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", color: "#3f1d24" };
+const sectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 20, letterSpacing: "-0.03em", color: "#3f1d24" };
+const subTextStyle: CSSProperties = { color: "#9f6b75", lineHeight: 1.6, marginBottom: 20 };
+const inputStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #fbcfe8", marginBottom: 12, outline: "none", fontSize: 15 };
+const settingLineStyle: CSSProperties = { padding: 12, background: "#fff", borderRadius: 14, marginTop: 8, color: "#5c3a41", boxShadow: "0 2px 8px rgba(219,39,119,0.05)" };
+const emptyStateStyle: CSSProperties = { padding: 18, borderRadius: 18, background: "#fff", color: "#9f6b75", textAlign: "center", lineHeight: 1.6 };
 const memberListStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 10 };
-const memberCardStyle: CSSProperties = { padding: 14, borderRadius: 18, background: "#fff", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 };
-const memberNameStyle: CSSProperties = { fontSize: 16, fontWeight: 900 };
-const memberMetaStyle: CSSProperties = { marginTop: 5, color: "#64748b", fontSize: 13 };
-const inviteCodeBoxStyle: CSSProperties = { marginTop: 8, padding: "6px 8px", borderRadius: 10, background: "#eef2ff", color: "#4338ca", fontSize: 13, fontWeight: 800 };
-const copyLinkButtonStyle: CSSProperties = { marginTop: 8, border: "none", borderRadius: 10, background: "#4338ca", color: "#fff", padding: "6px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer" };
-const smallButtonStyle: CSSProperties = { border: "none", borderRadius: 12, background: "#4f46e5", color: "#fff", padding: "9px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" };
-const toggleLabelStyle: CSSProperties = { display: "block", fontSize: 13, fontWeight: 800, color: "#334155", marginBottom: 6 };
-const toggleHintStyle: CSSProperties = { fontSize: 12, color: "#64748b", marginTop: 6, lineHeight: 1.5 };
-const emailToggleActiveStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#4f46e5", color: "#fff", fontWeight: 800, cursor: "pointer", fontSize: 13 };
-const emailToggleInactiveStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "1px solid #c7d2fe", background: "#eef2ff", color: "#4338ca", fontWeight: 800, cursor: "pointer", fontSize: 13 };
+const memberCardStyle: CSSProperties = { padding: 14, borderRadius: 18, background: "#fff", boxShadow: "0 2px 10px rgba(219,39,119,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 };
+const memberNameStyle: CSSProperties = { fontSize: 16, fontWeight: 900, color: "#3f1d24" };
+const memberMetaStyle: CSSProperties = { marginTop: 5, color: "#9f6b75", fontSize: 13 };
+const inviteCodeBoxStyle: CSSProperties = { marginTop: 8, padding: "6px 8px", borderRadius: 10, background: "#fce7f3", color: "#be185d", fontSize: 13, fontWeight: 800 };
+const copyLinkButtonStyle: CSSProperties = { marginTop: 8, border: "none", borderRadius: 10, background: "#db2777", color: "#fff", padding: "6px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer" };
+const smallButtonStyle: CSSProperties = { border: "none", borderRadius: 12, background: "#db2777", color: "#fff", padding: "9px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" };
+const toggleLabelStyle: CSSProperties = { display: "block", fontSize: 13, fontWeight: 800, color: "#5c3a41", marginBottom: 6 };
+const toggleHintStyle: CSSProperties = { fontSize: 12, color: "#9f6b75", marginTop: 6, lineHeight: 1.5 };
+const emailToggleActiveStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "linear-gradient(135deg, #ec4899, #db2777)", color: "#fff", fontWeight: 800, cursor: "pointer", fontSize: 13, boxShadow: "0 6px 14px rgba(219,39,119,0.35)" };
+const emailToggleInactiveStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "1px solid #fbcfe8", background: "#fff", color: "#db2777", fontWeight: 800, cursor: "pointer", fontSize: 13 };
 const dangerButtonStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "none", background: "#b91c1c", color: "#fff", fontWeight: 800, cursor: "pointer" };
-function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer" }; }
+function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#94a3b8" : "linear-gradient(135deg, #fb7185, #e11d48)", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer", boxShadow: loading ? "none" : "0 6px 14px rgba(225,29,72,0.30)" }; }
