@@ -1595,10 +1595,14 @@ export default function Home() {
       <AppHeader title={tabTitle(activeTab)} loading={loading} onSignOut={signOut} />
 
       <section style={accountBoxStyle}>
-        <div>
-          <div style={smallLabelStyle}>로그인 계정</div>
-          <strong>{profile.display_name}</strong>
-          {currentMember && <div style={memberRoleTextStyle}>{currentMember.display_name} · {roleLabel(currentMember.role)}</div>}
+        <div style={avatarStyle}>
+          {profile.display_name?.charAt(0)?.toUpperCase() || "?"}
+        </div>
+        <div style={accountInfoStyle}>
+          <strong style={accountNameStyle}>{profile.display_name}</strong>
+          {currentMember && (
+            <span style={roleBadgeStyle}>{roleLabel(currentMember.role)}</span>
+          )}
         </div>
         <a href="/dev" style={devLinkStyle}>dev</a>
       </section>
@@ -1746,10 +1750,61 @@ export default function Home() {
 
 const titleStyle: CSSProperties = { margin: "0 0 8px", fontSize: 30, letterSpacing: "-0.04em" };
 const subTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 20 };
-const accountBoxStyle: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 18, padding: 14, marginBottom: 16 };
-const smallLabelStyle: CSSProperties = { display: "block", color: "#047857", fontSize: 12, fontWeight: 800, marginBottom: 4 };
-const memberRoleTextStyle: CSSProperties = { marginTop: 4, color: "#047857", fontSize: 12, fontWeight: 800 };
-const devLinkStyle: CSSProperties = { color: "#4f46e5", fontSize: 13, fontWeight: 800, textDecoration: "none" };
+const accountBoxStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  background: "#ffffff",
+  borderRadius: 20,
+  padding: "14px 16px",
+  marginBottom: 16,
+  boxShadow: "0 4px 16px rgba(15, 23, 42, 0.06)",
+};
+
+const avatarStyle: CSSProperties = {
+  width: 44,
+  height: 44,
+  borderRadius: "50%",
+  background: "linear-gradient(135deg, #34d399, #059669)",
+  color: "#ffffff",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 800,
+  fontSize: 18,
+  flexShrink: 0,
+};
+
+const accountInfoStyle: CSSProperties = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+};
+
+const accountNameStyle: CSSProperties = {
+  fontSize: 15,
+  color: "#0f172a",
+};
+
+const roleBadgeStyle: CSSProperties = {
+  display: "inline-flex",
+  alignSelf: "flex-start",
+  padding: "3px 10px",
+  borderRadius: 999,
+  background: "#ecfdf5",
+  color: "#047857",
+  fontSize: 11,
+  fontWeight: 800,
+};
+
+const devLinkStyle: CSSProperties = {
+  color: "#94a3b8",
+  fontSize: 12,
+  fontWeight: 700,
+  textDecoration: "none",
+};
+
 const messageBoxStyle = (message: string): CSSProperties => {
   const ok = message.includes("완료") || message.includes("성공") || message.includes("신청") || message.includes("승인") || message.includes("정리");
   return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 };
