@@ -249,12 +249,11 @@ export default function MissionTab({
 }
 
 const createBoxStyle: CSSProperties = {
-  padding: 16,
-  borderRadius: 20,
+  padding: 20,
+  borderRadius: 22,
   background: "#fffbfc",
-  border: "1px solid #fde2e7",
-  marginBottom: 18,
-  boxShadow: "0 4px 16px rgba(219,39,119,0.06)",
+  marginBottom: 22,
+  boxShadow: "0 6px 20px rgba(219,39,119,0.08)",
 };
 
 const createHeaderRowStyle: CSSProperties = {
@@ -262,7 +261,7 @@ const createHeaderRowStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   gap: 8,
-  marginBottom: 10,
+  marginBottom: 14,
   flexWrap: "wrap",
 };
 
@@ -270,10 +269,11 @@ const sectionTitleStyle: CSSProperties = {
   margin: 0,
   fontSize: 20,
   letterSpacing: "-0.03em",
+  color: "#3f1d24",
 };
 
 const subTextStyle: CSSProperties = {
-  color: "#64748b",
+  color: "#9f6b75",
   lineHeight: 1.6,
   marginBottom: 20,
 };
@@ -292,13 +292,13 @@ const fieldLabelStyle: CSSProperties = {
   display: "block",
   fontSize: 13,
   fontWeight: 800,
-  color: "#334155",
+  color: "#5c3a41",
   marginBottom: 6,
 };
 
 const fieldHintStyle: CSSProperties = {
   fontSize: 12,
-  color: "#64748b",
+  color: "#9f6b75",
   marginTop: -6,
   marginBottom: 14,
   lineHeight: 1.5,
@@ -334,7 +334,7 @@ const presetButtonActiveStyle: CSSProperties = {
 const repeatLabelStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 800,
-  color: "#475569",
+  color: "#5c3a41",
   margin: "4px 0 8px",
 };
 
@@ -369,11 +369,12 @@ const dayTaskSectionStyle: CSSProperties = {
 };
 
 const emptyStateStyle: CSSProperties = {
-  padding: 18,
+  padding: 20,
   borderRadius: 18,
-  background: "#f8fafc",
-  color: "#64748b",
+  background: "#fff5f6",
+  color: "#9f6b75",
   textAlign: "center",
+  boxShadow: "0 2px 10px rgba(190, 24, 93, 0.05)",
 };
 
 const rolloverButtonStyle: CSSProperties = {
@@ -389,20 +390,20 @@ const rolloverButtonStyle: CSSProperties = {
 };
 
 const templateSectionStyle: CSSProperties = {
-  marginBottom: 24,
+  marginBottom: 28,
 };
 
 const templateListStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 10,
+  gap: 12,
 };
 
 const templateCardStyle: CSSProperties = {
-  padding: 14,
+  padding: 16,
   borderRadius: 18,
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
+  background: "#ffffff",
+  boxShadow: "0 3px 12px rgba(190, 24, 93, 0.06)",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
@@ -413,11 +414,12 @@ const templateCardStyle: CSSProperties = {
 const templateTitleStyle: CSSProperties = {
   fontWeight: 900,
   fontSize: 15,
+  color: "#3f1d24",
 };
 
 const taskSubTextStyleLocal: CSSProperties = {
   marginTop: 5,
-  color: "#64748b",
+  color: "#9f6b75",
   fontSize: 13,
 };
 
@@ -465,7 +467,7 @@ function primaryButtonStyle(disabled: boolean): CSSProperties {
     padding: 14,
     borderRadius: 14,
     border: "none",
-    background: disabled ? "#94a3b8" : "linear-gradient(135deg, #ec4899, #db2777)",
+    background: disabled ? "#e8b9c2" : "linear-gradient(135deg, #ec4899, #db2777)",
     color: "#fff",
     fontWeight: 800,
     cursor: disabled ? "not-allowed" : "pointer",
