@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Member, Workspace } from "@/types/app";
+import { roleLabel } from "@/lib/labels";
 
 type MemberRole = "manager" | "member";
 
@@ -76,23 +77,23 @@ export default function SettingsTab({
     <>
       <section style={createBoxStyle}>
         <h2 style={sectionTitleStyle}>설정</h2>
-        <p style={subTextStyle}>워크스페이스, 참여자, 초대코드를 관리합니다.</p>
+        <p style={subTextStyle}>모임, 참여자, 초대코드를 관리합니다.</p>
         {workspace ? (
           <>
-            <div style={settingLineStyle}>현재 워크스페이스: <strong>{workspace.name}</strong></div>
+            <div style={settingLineStyle}>현재 모임: <strong>{workspace.name}</strong></div>
             <div style={settingLineStyle}>내 역할: {currentMember ? roleLabel(currentMember.role) : "미연결"}</div>
-            <div style={settingLineStyle}>워크스페이스 수: {workspaces.length}</div>
+            <div style={settingLineStyle}>모임 수: {workspaces.length}</div>
             <div style={settingLineStyle}>참여자 수: {members.length}</div>
           </>
         ) : (
-          <div style={emptyStateStyle}>아직 참여 중인 워크스페이스가 없습니다.<br />초대코드를 입력하거나 새 워크스페이스를 만들어주세요.</div>
+          <div style={emptyStateStyle}>아직 참여 중인 모임이 없습니다.<br />초대코드를 입력하거나 새 모임을 만들어주세요.</div>
         )}
       </section>
 
       <details style={accordionStyle} open={!hasWorkspace}>
         <summary style={accordionSummaryStyle}>초대코드로 참여하기</summary>
         <div style={accordionBodyStyle}>
-          <p style={subTextStyle}>다른 사람이 만든 워크스페이스에 참여하려면 초대코드를 입력하세요.</p>
+          <p style={subTextStyle}>다른 사람이 만든 모임에 참여하려면 초대코드를 입력하세요.</p>
           <input value={joinInviteCode} onChange={(event) => onJoinInviteCodeChange(event.target.value.toUpperCase())} placeholder="예) A1B2C3" style={inputStyle} />
           <button onClick={onAcceptInvite} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "참여 중..." : "초대코드로 참여하기"}</button>
         </div>
@@ -127,14 +128,14 @@ export default function SettingsTab({
                 <p style={toggleHintStyle}>
                   {newMemberHasEmail
                     ? "초대코드를 만들어서 전달하면, 상대가 코드를 입력해 본인 계정으로 연결할 수 있어요."
-                    : "계정을 만들지 않고 보호자가 직접 관리합니다. 초대코드는 생성되지 않아요."}
+                    : "계정을 만들지 않고 부방장이 직접 관리합니다. 초대코드는 생성되지 않아요."}
                 </p>
               </div>
 
               <input value={newMemberName} onChange={(event) => onNewMemberNameChange(event.target.value)} placeholder="예) 첫째, 아빠, 엄마, 토끼" style={inputStyle} />
               <select value={newMemberRole} onChange={(event) => onNewMemberRoleChange(event.target.value as MemberRole)} style={inputStyle}>
                 <option value="member">참여자</option>
-                <option value="manager">보호자/관리자</option>
+                <option value="manager">부방장</option>
               </select>
               <button onClick={onAddMember} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "추가 중..." : "참여자 추가"}</button>
             </div>
@@ -167,12 +168,12 @@ export default function SettingsTab({
       )}
 
       <details style={accordionStyle}>
-        <summary style={accordionSummaryStyle}>{hasWorkspace ? "새 워크스페이스 만들기" : "첫 워크스페이스 만들기"}</summary>
+        <summary style={accordionSummaryStyle}>{hasWorkspace ? "새 모임 만들기" : "첫 모임 만들기"}</summary>
         <div style={accordionBodyStyle}>
-          <p style={subTextStyle}>가족, 팀, 클래스처럼 별도 공간이 필요하면 새 워크스페이스를 만들 수 있습니다.</p>
+          <p style={subTextStyle}>가족, 팀, 클래스처럼 별도 공간이 필요하면 새 모임을 만들 수 있습니다.</p>
           <input value={workspaceName} onChange={(event) => onWorkspaceNameChange(event.target.value)} placeholder="예) 우리집, 주말 프로젝트, 1학년 3반" style={inputStyle} />
           <textarea value={workspaceDescription} onChange={(event) => onWorkspaceDescriptionChange(event.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
-          <button onClick={onCreateWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "워크스페이스 만들기"}</button>
+          <button onClick={onCreateWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "모임 만들기"}</button>
         </div>
       </details>
 
@@ -181,13 +182,13 @@ export default function SettingsTab({
         <div style={accordionBodyStyle}>
           {hasWorkspace && currentMember?.role === "owner" && (
             <div style={{ marginBottom: 20 }}>
-              <h3 style={{ ...subSectionTitleStyle, color: "#b91c1c" }}>워크스페이스 삭제</h3>
+              <h3 style={{ ...subSectionTitleStyle, color: "#b91c1c" }}>모임 삭제</h3>
               <p style={subTextStyle}>
-                워크스페이스를 삭제하면 모든 미션, 참여자, 보상 기록이 함께 삭제되며 되돌릴 수
-                없습니다. owner는 다른 참여자의 동의 없이 단독으로 삭제할 수 있습니다.
+                모임을 삭제하면 모든 할 일, 참여자, 보상 기록이 함께 삭제되며 되돌릴 수
+                없습니다. 방장은 다른 참여자의 동의 없이 단독으로 삭제할 수 있습니다.
               </p>
               <button onClick={() => onDeleteWorkspace(workspace!)} style={dangerButtonStyle}>
-                워크스페이스 삭제하기
+                모임 삭제하기
               </button>
             </div>
           )}
@@ -305,7 +306,7 @@ function MemberList({
                       disabled={loading}
                       style={smallButtonStyle}
                     >
-                      소유권 넘기기
+                      방장 넘기기
                     </button>
                   )}
 
@@ -360,7 +361,6 @@ function MemberList({
   );
 }
 
-function roleLabel(role: string) { if (role === "owner") return "owner"; if (role === "manager") return "보호자"; return "참여자"; }
 function buildInviteLink(code: string) {
   if (typeof window === "undefined") return "";
   return `${window.location.origin}/join?code=${code}`;
@@ -371,7 +371,6 @@ function formatExpiryDate(iso: string) {
 }
 
 const createBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18 };
-const dangerBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#fef2f2", border: "1px solid #fecaca", marginBottom: 18 };
 const accordionStyle: CSSProperties = { padding: 0, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18, overflow: "hidden" };
 const dangerAccordionStyle: CSSProperties = { padding: 0, borderRadius: 20, background: "#fef2f2", border: "1px solid #fecaca", marginBottom: 18, overflow: "hidden" };
 const accordionSummaryStyle: CSSProperties = { padding: 16, fontSize: 17, fontWeight: 800, cursor: "pointer", letterSpacing: "-0.02em", listStyle: "revert" };
