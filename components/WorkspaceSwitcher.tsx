@@ -14,7 +14,7 @@ export default function WorkspaceSwitcher({
 }: WorkspaceSwitcherProps) {
   return (
     <section style={workspaceSwitcherStyle}>
-      <label style={smallLabelStyle}>워크스페이스</label>
+      <label style={smallLabelStyle}>모임</label>
 
       <select
         value={currentWorkspaceId}
