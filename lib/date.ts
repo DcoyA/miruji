@@ -40,3 +40,20 @@ export function formatKoreanDate(dateKey: string) {
   const [, month, day] = dateKey.split("-");
   return `${Number(month)}월 ${Number(day)}일`;
 }
+
+export function startOfWeek(date: Date) {
+  const clone = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  clone.setDate(clone.getDate() - clone.getDay());
+  return clone;
+}
+
+export function addDays(date: Date, amount: number) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + amount);
+}
+
+export function buildWeekDays(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const base = new Date(year, month - 1, day);
+  const start = startOfWeek(base);
+  return Array.from({ length: 7 }, (_, index) => addDays(start, index));
+}
