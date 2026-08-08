@@ -32,7 +32,7 @@ export default function WorkspaceSwitcher({
 }
 
 const workspaceSwitcherStyle: CSSProperties = {
-  marginBottom: 18,
+  marginBottom: 24,
 };
 
 const smallLabelStyle: CSSProperties = {
@@ -40,14 +40,15 @@ const smallLabelStyle: CSSProperties = {
   color: "#be123c",
   fontSize: 12,
   fontWeight: 800,
-  marginBottom: 4,
+  marginBottom: 6,
 };
 
 const selectStyle: CSSProperties = {
   width: "100%",
   padding: 14,
   borderRadius: 14,
-  border: "1px solid #fbcfe8",
+  border: "none",
   background: "#fff",
   fontWeight: 700,
+  boxShadow: "0 2px 10px rgba(190, 24, 93, 0.08)",
 };
