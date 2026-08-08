@@ -326,4 +326,12 @@ const historyRowStyle: CSSProperties = {
   boxShadow: "0 1px 4px rgba(154, 52, 18, 0.06)",
 };
 
+const createBoxStyle: CSSProperties = {
+  padding: 18,
+  borderRadius: 20,
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+  marginBottom: 18,
+};
+
 function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer" }; }
