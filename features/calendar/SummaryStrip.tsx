@@ -1,60 +1,54 @@
 import type { CSSProperties } from "react";
+import type { Workspace } from "@/types/app";
 
-type SummaryStripProps = {
-  monthTaskCount: number;
-  pendingCount: number;
-  approvedCount: number;
+type WorkspaceSwitcherProps = {
+  workspaces: Workspace[];
+  currentWorkspaceId: string;
+  onSelect: (id: string) => void;
 };
 
-export default function SummaryStrip({
-  monthTaskCount,
-  pendingCount,
-  approvedCount,
-}: SummaryStripProps) {
+export default function WorkspaceSwitcher({
+  workspaces,
+  currentWorkspaceId,
+  onSelect,
+}: WorkspaceSwitcherProps) {
   return (
-    <section style={summaryGridStyle}>
-      <div style={summaryCardStyle}>
-        <div style={summaryNumberStyle}>{monthTaskCount}</div>
-        <div style={summaryLabelStyle}>이번 달 할 일</div>
-      </div>
+    <section style={workspaceSwitcherStyle}>
+      <label style={smallLabelStyle}>모임</label>
 
-      <div style={summaryCardStyle}>
-        <div style={summaryNumberStyle}>{pendingCount}</div>
-        <div style={summaryLabelStyle}>승인 대기</div>
-      </div>
-
-      <div style={summaryCardStyle}>
-        <div style={summaryNumberStyle}>{approvedCount}</div>
-        <div style={summaryLabelStyle}>승인 완료</div>
-      </div>
+      <select
+        value={currentWorkspaceId}
+        onChange={(event) => onSelect(event.target.value)}
+        style={selectStyle}
+      >
+        {workspaces.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.name}
+          </option>
+        ))}
+      </select>
     </section>
   );
 }
 
-const summaryGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3, 1fr)",
-  gap: 8,
-  marginBottom: 14,
+const workspaceSwitcherStyle: CSSProperties = {
+  marginBottom: 24,
 };
 
-const summaryCardStyle: CSSProperties = {
-  padding: 12,
-  borderRadius: 16,
-  background: "#fff5f6",
-  border: "1px solid #fbcfe8",
-  textAlign: "center",
-};
-
-const summaryNumberStyle: CSSProperties = {
-  fontSize: 20,
-  fontWeight: 900,
-  color: "#e11d48",
-};
-
-const summaryLabelStyle: CSSProperties = {
-  marginTop: 4,
-  fontSize: 11,
-  color: "#9f6b75",
+const smallLabelStyle: CSSProperties = {
+  display: "block",
+  color: "#be123c",
+  fontSize: 12,
   fontWeight: 800,
+  marginBottom: 6,
+};
+
+const selectStyle: CSSProperties = {
+  width: "100%",
+  padding: 14,
+  borderRadius: 14,
+  border: "none",
+  background: "#fff",
+  fontWeight: 700,
+  boxShadow: "0 2px 10px rgba(190, 24, 93, 0.08)",
 };
