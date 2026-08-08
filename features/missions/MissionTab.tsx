@@ -251,9 +251,10 @@ export default function MissionTab({
 const createBoxStyle: CSSProperties = {
   padding: 16,
   borderRadius: 20,
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
+  background: "#fffbfc",
+  border: "1px solid #fde2e7",
   marginBottom: 18,
+  boxShadow: "0 4px 16px rgba(219,39,119,0.06)",
 };
 
 const createHeaderRowStyle: CSSProperties = {
@@ -281,7 +282,7 @@ const inputStyle: CSSProperties = {
   width: "100%",
   padding: 14,
   borderRadius: 14,
-  border: "1px solid #dbeafe",
+  border: "1px solid #fbcfe8",
   marginBottom: 12,
   outline: "none",
   fontSize: 15,
@@ -315,18 +316,19 @@ const presetButtonStyle: CSSProperties = {
   minWidth: 50,
   padding: "10px 0",
   borderRadius: 12,
-  border: "1px solid #dbeafe",
+  border: "1px solid #fbcfe8",
   background: "#fff",
-  color: "#4f46e5",
+  color: "#db2777",
   fontWeight: 800,
   cursor: "pointer",
 };
 
 const presetButtonActiveStyle: CSSProperties = {
   ...presetButtonStyle,
-  background: "#4f46e5",
-  borderColor: "#4f46e5",
+  background: "linear-gradient(135deg, #ec4899, #db2777)",
+  borderColor: "#db2777",
   color: "#fff",
+  boxShadow: "0 6px 14px rgba(219,39,119,0.35)",
 };
 
 const repeatLabelStyle: CSSProperties = {
@@ -348,17 +350,17 @@ const weekdayButtonStyle: CSSProperties = {
   minWidth: 36,
   padding: "8px 0",
   borderRadius: 10,
-  border: "1px solid #dbeafe",
+  border: "1px solid #fbcfe8",
   background: "#fff",
-  color: "#64748b",
+  color: "#be185d",
   fontWeight: 800,
   cursor: "pointer",
 };
 
 const weekdayButtonActiveStyle: CSSProperties = {
   ...weekdayButtonStyle,
-  background: "#4f46e5",
-  borderColor: "#4f46e5",
+  background: "linear-gradient(135deg, #ec4899, #db2777)",
+  borderColor: "#db2777",
   color: "#fff",
 };
 
@@ -377,9 +379,9 @@ const emptyStateStyle: CSSProperties = {
 const rolloverButtonStyle: CSSProperties = {
   padding: "8px 12px",
   borderRadius: 12,
-  border: "1px solid #dbeafe",
+  border: "1px solid #fbcfe8",
   background: "#fff",
-  color: "#4f46e5",
+  color: "#db2777",
   fontWeight: 800,
   fontSize: 12,
   cursor: "pointer",
@@ -463,9 +465,10 @@ function primaryButtonStyle(disabled: boolean): CSSProperties {
     padding: 14,
     borderRadius: 14,
     border: "none",
-    background: disabled ? "#94a3b8" : "#4f46e5",
+    background: disabled ? "#94a3b8" : "linear-gradient(135deg, #ec4899, #db2777)",
     color: "#fff",
     fontWeight: 800,
     cursor: disabled ? "not-allowed" : "pointer",
+    boxShadow: disabled ? "none" : "0 6px 14px rgba(219,39,119,0.35)",
   };
 }
