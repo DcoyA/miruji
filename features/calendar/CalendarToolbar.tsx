@@ -39,16 +39,18 @@ const calendarToolbarStyle: CSSProperties = {
   gridTemplateColumns: "44px 1fr 44px 64px",
   gap: 8,
   alignItems: "center",
-  marginBottom: 12,
+  marginBottom: 16,
 };
 
 const monthButtonStyle: CSSProperties = {
   height: 44,
-  border: "1px solid #e2e8f0",
+  border: "none",
   borderRadius: 14,
   background: "#fff",
+  boxShadow: "0 2px 8px rgba(190, 24, 93, 0.08)",
   fontSize: 24,
   fontWeight: 800,
+  color: "#be123c",
   cursor: "pointer",
 };
 
@@ -56,6 +58,7 @@ const monthTitleStyle: CSSProperties = {
   textAlign: "center",
   fontWeight: 900,
   fontSize: 18,
+  color: "#3f1d24",
 };
 
 const todayButtonStyle: CSSProperties = {
@@ -66,4 +69,5 @@ const todayButtonStyle: CSSProperties = {
   color: "#fff",
   fontWeight: 800,
   cursor: "pointer",
+  boxShadow: "0 4px 12px rgba(225,29,72,0.30)",
 };
