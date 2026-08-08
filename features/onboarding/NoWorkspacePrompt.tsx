@@ -7,9 +7,9 @@ type NoWorkspacePromptProps = {
 export default function NoWorkspacePrompt({ onGoSettings }: NoWorkspacePromptProps) {
   return (
     <section style={emptyWorkspaceBoxStyle}>
-      <h2 style={emptyWorkspaceTitleStyle}>워크스페이스가 없어요</h2>
+      <h2 style={emptyWorkspaceTitleStyle}>모임이 없어요</h2>
       <p style={emptyWorkspaceTextStyle}>
-        설정 탭에서 워크스페이스를 만들거나 초대 코드로 참여해주세요.
+        설정 탭에서 모임을 만들거나 초대 코드로 참여해주세요.
       </p>
       <button onClick={onGoSettings} style={emptyWorkspaceButtonStyle}>
         설정으로 이동
