@@ -15,7 +15,7 @@ export default function SummaryStrip({
     <section style={summaryGridStyle}>
       <div style={summaryCardStyle}>
         <div style={summaryNumberStyle}>{monthTaskCount}</div>
-        <div style={summaryLabelStyle}>이번 달 미션</div>
+        <div style={summaryLabelStyle}>이번 달 할 일</div>
       </div>
 
       <div style={summaryCardStyle}>
