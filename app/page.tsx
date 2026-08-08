@@ -453,12 +453,12 @@ export default function Home() {
   
   async function deleteWorkspace(targetWorkspace: Workspace) {
     if (currentMember?.role !== "owner") {
-      setMessage("owner만 워크스페이스를 삭제할 수 있습니다.");
+      setMessage("방장만 모임을 삭제할 수 있습니다.");
       return;
     }
   
     const confirmed = window.confirm(
-      `"${targetWorkspace.name}" 워크스페이스를 삭제하시겠습니까? 모든 미션, 참여자, 보상 데이터가 함께 삭제되며 되돌릴 수 없습니다. 다른 참여자의 동의는 필요하지 않습니다.`
+      `"${targetWorkspace.name}" 모임을 삭제하시겠습니까? 모든 할 일, 참여자, 보상 데이터가 함께 삭제되며 되돌릴 수 없습니다. 다른 참여자의 동의는 필요하지 않습니다.`
     );
     if (!confirmed) return;
   
@@ -468,18 +468,19 @@ export default function Home() {
     const { error } = await supabase.from("workspaces").delete().eq("id", targetWorkspace.id);
   
     if (error) {
-      setMessage(`워크스페이스 삭제 실패: ${error.message}`);
+      setMessage(`모임 삭제 실패: ${error.message}`);
       setLoading(false);
       return;
     }
   
     setWorkspaces((prev) => prev.filter((item) => item.id !== targetWorkspace.id));
     setWorkspace((prev) => (prev?.id === targetWorkspace.id ? null : prev));
-    setMessage(`${targetWorkspace.name} 워크스페이스가 삭제되었습니다.`);
+    setMessage(`${targetWorkspace.name} 모임이 삭제되었습니다.`);
     setLoading(false);
   
     await loadWorkspaces();
   }
+
   
   function resetState() {
     setWorkspaces([]);
