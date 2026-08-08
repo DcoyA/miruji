@@ -1748,8 +1748,14 @@ export default function Home() {
   );
 }
 
-const titleStyle: CSSProperties = { margin: "0 0 8px", fontSize: 30, letterSpacing: "-0.04em" };
-const subTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 20 };
+const titleStyle: CSSProperties = {
+  margin: "0 0 8px",
+  fontSize: 30,
+  letterSpacing: "-0.04em",
+  fontWeight: 800,
+  color: "#3f1d24",
+};
+const subTextStyle: CSSProperties = { color: "#9f6b75", lineHeight: 1.6, marginBottom: 20 };
 const accountBoxStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -1784,7 +1790,7 @@ const accountInfoStyle: CSSProperties = {
 
 const accountNameStyle: CSSProperties = {
   fontSize: 15,
-  color: "#0f172a",
+  color: "#3f1d24",
 };
 
 const roleBadgeStyle: CSSProperties = {
