@@ -1763,7 +1763,7 @@ const accountBoxStyle: CSSProperties = {
   background: "#ffffff",
   borderRadius: 20,
   padding: "14px 16px",
-  marginBottom: 16,
+  marginBottom: 20,
   boxShadow: "0 4px 16px rgba(190, 24, 93, 0.08)",
 };
 
