@@ -70,10 +70,11 @@ export default function CalendarGrid({
 }
 
 const calendarBoxStyle: CSSProperties = {
-  border: "1px solid #f1e4e2",
+  border: "1px solid #f6e8e6",
   borderRadius: 20,
-  padding: 12,
-  marginBottom: 18,
+  padding: 14,
+  marginBottom: 24,
+  boxShadow: "0 3px 14px rgba(190, 24, 93, 0.05)",
 };
 
 const weekHeaderGridStyle: CSSProperties = {
@@ -92,7 +93,7 @@ const weekHeaderStyle: CSSProperties = {
 const calendarGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(7, 1fr)",
-  gap: 6,
+  gap: 7,
 };
 
 const calendarDayStyle: CSSProperties = {
