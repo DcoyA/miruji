@@ -69,10 +69,10 @@ const bottomNavButtonStyle: CSSProperties = {
 
 const bottomNavActiveStyle: CSSProperties = {
   ...bottomNavButtonStyle,
-  background: "linear-gradient(135deg, #6d5bf6, #4f46e5)",
+  background: "linear-gradient(135deg, #fb7185, #e11d48)",
   color: "#ffffff",
   fontWeight: 800,
-  boxShadow: "0 6px 14px rgba(79, 70, 229, 0.35)",
+  boxShadow: "0 6px 14px rgba(225, 29, 72, 0.35)",
 };
 
 const iconStyle: CSSProperties = {
