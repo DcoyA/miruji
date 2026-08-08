@@ -1673,10 +1673,12 @@ export default function Home() {
           <DayTaskList
             selectedDate={selectedDate}
             tasks={selectedTasks}
+            monthTasks={tasks}
             members={activeMembers}
             currentMember={currentMember}
             isManager={isManager}
             loading={loading}
+            onSelectDate={setSelectedDate}
             onSubmitTask={submitTask}
             onApproveTask={approveTask}
             onRejectTask={rejectTask}
