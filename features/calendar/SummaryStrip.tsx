@@ -49,7 +49,7 @@ const summaryCardStyle: CSSProperties = {
 const summaryNumberStyle: CSSProperties = {
   fontSize: 20,
   fontWeight: 900,
-  color: "#4f46e5",
+  color: "#e11d48",
 };
 
 const summaryLabelStyle: CSSProperties = {
