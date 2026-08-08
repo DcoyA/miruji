@@ -62,7 +62,7 @@ const todayButtonStyle: CSSProperties = {
   height: 44,
   border: "none",
   borderRadius: 14,
-  background: "#4f46e5",
+  background: "linear-gradient(135deg, #fb7185, #e11d48)",
   color: "#fff",
   fontWeight: 800,
   cursor: "pointer",
