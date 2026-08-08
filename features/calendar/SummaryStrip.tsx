@@ -41,8 +41,8 @@ const summaryGridStyle: CSSProperties = {
 const summaryCardStyle: CSSProperties = {
   padding: 12,
   borderRadius: 16,
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
+  background: "#fff5f6",
+  border: "1px solid #fbcfe8",
   textAlign: "center",
 };
 
@@ -55,6 +55,6 @@ const summaryNumberStyle: CSSProperties = {
 const summaryLabelStyle: CSSProperties = {
   marginTop: 4,
   fontSize: 11,
-  color: "#64748b",
+  color: "#9f6b75",
   fontWeight: 800,
 };
