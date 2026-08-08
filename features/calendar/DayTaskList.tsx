@@ -61,7 +61,7 @@ const sectionTitleStyle: CSSProperties = {
 const emptyStateStyle: CSSProperties = {
   padding: 18,
   borderRadius: 18,
-  background: "#f8fafc",
-  color: "#64748b",
+  background: "#fff5f6",
+  color: "#9f6b75",
   textAlign: "center",
 };
