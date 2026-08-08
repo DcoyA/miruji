@@ -73,13 +73,19 @@ export default function RewardTab({
   return (
     <>
       {!isManager && (
-        <section style={createBoxStyle}>
-          <h2 style={sectionTitleStyle}>내 보상함</h2>
-          <div style={balanceBoxStyle}>{currentBalance}개</div>
+        <section style={walletCardStyle}>
+          <div style={walletHeaderStyle}>
+            <span style={walletEyebrowStyle}>내 보상함</span>
+            <span style={walletIconStyle}>⭐</span>
+          </div>
+          <div style={walletBalanceRowStyle}>
+            <span style={walletBalanceNumberStyle}>{currentBalance}</span>
+            <span style={walletBalanceUnitStyle}>개</span>
+          </div>
           <p style={subTextStyle}>
             참여자는 본인에게 배정된 보상만 확인하고 교환을 신청할 수 있습니다. 신청 후 부방장이 승인하면 스티커가 차감됩니다.
           </p>
-
+      
           {nextGoal && (
             <div style={goalBoxStyle}>
               <div style={goalTitleStyle}>다음 목표: {nextGoal.title}</div>
@@ -96,7 +102,7 @@ export default function RewardTab({
               </div>
             </div>
           )}
-
+      
           <div style={historyBoxStyle}>
             <div style={historyTitleStyle}>최근 내역</div>
             {myTransactions.length === 0 ? (
@@ -219,7 +225,6 @@ function formatShortDate(iso: string) {
   return `${date.getMonth() + 1}.${date.getDate()}`;
 }
 
-const createBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 18 };
 const rewardListSectionStyle: CSSProperties = { marginBottom: 80 };
 const sectionTitleStyle: CSSProperties = { margin: "0 0 10px", fontSize: 20, letterSpacing: "-0.03em" };
 const subTextStyle: CSSProperties = { color: "#64748b", lineHeight: 1.6, marginBottom: 20 };
@@ -235,23 +240,90 @@ const disabledRewardButtonStyle: CSSProperties = { width: "100%", padding: 12, b
 const redeemedBadgeStyle: CSSProperties = { width: "fit-content", padding: "6px 10px", borderRadius: 999, background: "#dcfce7", color: "#15803d", fontSize: 12, fontWeight: 800 };
 const requestedBadgeStyle: CSSProperties = { width: "fit-content", padding: "6px 10px", borderRadius: 999, background: "#dbeafe", color: "#1d4ed8", fontSize: 12, fontWeight: 800 };
 const reviewButtonRowStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
-const balanceBoxStyle: CSSProperties = { padding: 18, borderRadius: 18, background: "#eef2ff", color: "#4f46e5", fontSize: 28, fontWeight: 900, textAlign: "center", marginBottom: 12 };
 const fieldLabelStyle: CSSProperties = { display: "block", fontSize: 13, fontWeight: 800, color: "#334155", marginBottom: 6 };
 const fieldHintStyle: CSSProperties = { fontSize: 12, color: "#64748b", marginTop: -6, marginBottom: 14, lineHeight: 1.5 };
 const presetRowStyle: CSSProperties = { display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" };
 const presetButtonStyle: CSSProperties = { flex: 1, minWidth: 60, padding: "10px 0", borderRadius: 12, border: "1px solid #dbeafe", background: "#fff", color: "#4f46e5", fontWeight: 800, cursor: "pointer" };
 const presetButtonActiveStyle: CSSProperties = { ...presetButtonStyle, background: "#4f46e5", borderColor: "#4f46e5", color: "#fff" };
-const goalBoxStyle: CSSProperties = { padding: 14, borderRadius: 16, background: "#fff7ed", border: "1px solid #fed7aa", marginBottom: 14 };
 const goalTitleStyle: CSSProperties = { fontWeight: 800, color: "#9a3412", marginBottom: 8, fontSize: 14 };
 const progressTrackStyle: CSSProperties = { height: 10, borderRadius: 999, background: "#fed7aa", overflow: "hidden" };
 const progressFillStyle: CSSProperties = { height: "100%", borderRadius: 999, background: "#f97316" };
 const goalSubTextStyle: CSSProperties = { marginTop: 6, fontSize: 12, color: "#9a3412", fontWeight: 700 };
-const historyBoxStyle: CSSProperties = { marginTop: 4 };
 const historyTitleStyle: CSSProperties = { fontSize: 14, fontWeight: 800, color: "#334155", marginBottom: 8 };
 const historyEmptyStyle: CSSProperties = { fontSize: 13, color: "#94a3b8", padding: "8px 0" };
-const historyRowStyle: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #e2e8f0" };
 const historyMemoStyle: CSSProperties = { fontSize: 13, color: "#475569" };
 const historyDateStyle: CSSProperties = { fontSize: 11, color: "#94a3b8", marginTop: 2 };
 const historyAmountPlusStyle: CSSProperties = { color: "#15803d", fontWeight: 800 };
 const historyAmountMinusStyle: CSSProperties = { color: "#b91c1c", fontWeight: 800 };
+const walletCardStyle: CSSProperties = {
+  padding: 20,
+  borderRadius: 24,
+  background: "linear-gradient(135deg, #fff7ed, #ffedd5)",
+  border: "1px solid #fed7aa",
+  marginBottom: 18,
+  boxShadow: "0 8px 24px rgba(217, 119, 6, 0.12)",
+};
+
+const walletHeaderStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 4,
+};
+
+const walletEyebrowStyle: CSSProperties = {
+  fontSize: 13,
+  fontWeight: 800,
+  color: "#9a3412",
+};
+
+const walletIconStyle: CSSProperties = {
+  fontSize: 20,
+};
+
+const walletBalanceRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "baseline",
+  gap: 4,
+  marginBottom: 10,
+};
+
+const walletBalanceNumberStyle: CSSProperties = {
+  fontSize: 40,
+  fontWeight: 900,
+  color: "#c2410c",
+  letterSpacing: "-0.03em",
+};
+
+const walletBalanceUnitStyle: CSSProperties = {
+  fontSize: 16,
+  fontWeight: 800,
+  color: "#c2410c",
+};
+
+const goalBoxStyle: CSSProperties = {
+  padding: 14,
+  borderRadius: 16,
+  background: "#ffffff",
+  marginBottom: 14,
+  boxShadow: "0 2px 8px rgba(154, 52, 18, 0.08)",
+};
+
+const historyBoxStyle: CSSProperties = {
+  marginTop: 4,
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+};
+
+const historyRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "10px 12px",
+  borderRadius: 14,
+  background: "#ffffff",
+  boxShadow: "0 1px 4px rgba(154, 52, 18, 0.06)",
+};
+
 function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#94a3b8" : "#4f46e5", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer" }; }
