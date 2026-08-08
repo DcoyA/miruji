@@ -106,7 +106,7 @@ export default function Home() {
   const [joinInviteCode, setJoinInviteCode] = useState("");
   const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
   const [inviteExpiresAt, setInviteExpiresAt] = useState<Record<string, string>>({});
-
+  const [myNickname, setMyNickname] = useState("");
 
   useEffect(() => {
     initializeAuth();
@@ -162,6 +162,9 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingInviteCode, profile?.id, workspacesLoaded, loading]);
 
+  useEffect(() => {
+    if (currentMember) setMyNickname(currentMember.display_name);
+  }, [currentMember?.id, currentMember?.display_name]);
   
   const selectedTasks = useMemo(() => {
     return tasks.filter((task) => task.due_date === selectedDate);
@@ -849,6 +852,41 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function saveMyNickname() {
+    if (!workspace || !currentMember) {
+      setMessage("현재 참여 중인 멤버 정보가 없습니다.");
+      return;
+    }
+  
+    const trimmed = myNickname.trim();
+    if (!trimmed) {
+      setMessage("닉네임을 입력해주세요.");
+      return;
+    }
+  
+    if (trimmed === currentMember.display_name) return;
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { data, error } = await supabase
+      .from("workspace_members")
+      .update({ display_name: trimmed })
+      .eq("id", currentMember.id)
+      .select(memberSelect)
+      .single();
+  
+    if (error) {
+      setMessage(`닉네임 변경 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setMembers((prev) => prev.map((item) => (item.id === currentMember.id ? (data as Member) : item)));
+    setMessage(`닉네임을 "${trimmed}"으로 바꿨습니다.`);
+    setLoading(false);
+  }
+  
   async function acceptInviteCode(codeOverride?: string) {
     const codeToUse = (codeOverride ?? joinInviteCode).trim();
   
@@ -1737,6 +1775,9 @@ export default function Home() {
           onCancelInvite={cancelInvite}
           inviteExpiresAt={inviteExpiresAt}
           onDeleteWorkspace={deleteWorkspace}
+          myNickname={myNickname}
+          onMyNicknameChange={setMyNickname}
+          onSaveMyNickname={saveMyNickname}
         />
       )}
 
