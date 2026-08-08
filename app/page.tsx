@@ -161,10 +161,6 @@ export default function Home() {
     acceptInviteCode(codeToConsume);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingInviteCode, profile?.id, workspacesLoaded, loading]);
-
-  useEffect(() => {
-    if (currentMember) setMyNickname(currentMember.display_name);
-  }, [currentMember?.id, currentMember?.display_name]);
   
   const selectedTasks = useMemo(() => {
     return tasks.filter((task) => task.due_date === selectedDate);
@@ -175,6 +171,10 @@ export default function Home() {
     return members.find((member) => member.profile_id === profile.id) || null;
   }, [members, profile]);
 
+  useEffect(() => {
+    if (currentMember) setMyNickname(currentMember.display_name);
+  }, [currentMember?.id, currentMember?.display_name]);
+  
   const isManager =
     currentMember?.role === "owner" || currentMember?.role === "manager";
 
