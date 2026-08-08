@@ -19,7 +19,7 @@ import RewardTab from "@/features/rewards/RewardTab";
 import SettingsTab from "@/features/settings/SettingsTab";
 
 import { addMonths, endOfMonth, startOfMonth, toDateKey } from "@/lib/date";
-import { tabTitle } from "@/lib/labels";
+import { tabTitle, roleLabel } from "@/lib/labels";
 
 import OnboardingGate, { type OnboardingStep } from "@/features/onboarding/OnboardingGate";
 import NoWorkspacePrompt from "@/features/onboarding/NoWorkspacePrompt";
@@ -46,7 +46,7 @@ const taskTemplateSelect =
 const rewardSelect =
   "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status";
 const rewardTxSelect =
-  "id, member_id, amount, transaction_type, source_type, source_id";
+  "id, member_id, amount, transaction_type, source_type, source_id, memo, created_at";
 
 type MemberRole = "manager" | "member";
 type RepeatType = "none" | "daily" | "weekly";
@@ -1597,7 +1597,7 @@ export default function Home() {
         <div>
           <div style={smallLabelStyle}>로그인 계정</div>
           <strong>{profile.display_name}</strong>
-          {currentMember && <div style={memberRoleTextStyle}>{currentMember.display_name} · {currentMember.role}</div>}
+          {currentMember && <div style={memberRoleTextStyle}>{currentMember.display_name} · {roleLabel(currentMember.role)}</div>}
         </div>
         <a href="/dev" style={devLinkStyle}>dev</a>
       </section>
@@ -1678,6 +1678,7 @@ export default function Home() {
         <RewardTab
           members={activeMembers}
           rewards={rewards}
+          transactions={rewardTransactions}
           currentMember={currentMember}
           isManager={isManager}
           title={newRewardTitle}
