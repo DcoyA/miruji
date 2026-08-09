@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import type { Member, Workspace } from "@/types/app";
 import { roleLabel } from "@/lib/labels";
@@ -256,6 +257,18 @@ function MemberList({
   inviteExpiresAt: Record<string, string>;
 }) {
   const isOwner = currentMember?.role === "owner";
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  function handleCopyLink(memberId: string, code: string) {
+    const link = buildInviteLink(code);
+    if (!link || typeof navigator === "undefined" || !navigator.clipboard) return;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopiedId(memberId);
+      setTimeout(() => {
+        setCopiedId((prev) => (prev === memberId ? null : prev));
+      }, 1800);
+    });
+  }
 
   return (
     <div>
@@ -302,15 +315,10 @@ function MemberList({
                       <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
                         <button
                           type="button"
-                          onClick={() => {
-                            const link = buildInviteLink(inviteCodes[member.id]);
-                            if (link && typeof navigator !== "undefined") {
-                              navigator.clipboard.writeText(link);
-                            }
-                          }}
+                          onClick={() => handleCopyLink(member.id, inviteCodes[member.id])}
                           style={copyLinkButtonStyle}
                         >
-                          참여 링크 복사하기
+                          {copiedId === member.id ? "복사됨!" : "참여 링크 복사하기"}
                         </button>
                         <button
                           type="button"
