@@ -1835,7 +1835,7 @@ export default function Home() {
           onRestoreMember={restoreMember}
           joinInviteCode={joinInviteCode}
           onJoinInviteCodeChange={setJoinInviteCode}
-          onAcceptInvite={acceptInviteCode}
+          onAcceptInvite={() => acceptInviteCode()}
           onDeleteAccount={deleteAccount}
           onTransferOwnership={transferOwnership}
           onCancelInvite={cancelInvite}
