@@ -174,6 +174,30 @@ export default function Home() {
   useEffect(() => {
     if (currentMember) setMyNickname(currentMember.display_name);
   }, [currentMember?.id, currentMember?.display_name]);
+
+  useEffect(() => {
+    if (!workspace) return;
+  
+    const channel = supabase
+      .channel(`workspace-members-${workspace.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "workspace_members",
+          filter: `workspace_id=eq.${workspace.id}`,
+        },
+        () => {
+          loadWorkspaceData(workspace.id);
+        }
+      )
+      .subscribe();
+  
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [workspace?.id]);
   
   const isManager =
     currentMember?.role === "owner" || currentMember?.role === "manager";
