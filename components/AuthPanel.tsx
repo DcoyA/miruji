@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-type AuthMode = "signin" | "signup";
+type AuthMode = "signin" | "signup" | "forgot";
 
 type AuthPanelProps = {
   mode: AuthMode;
@@ -15,6 +15,7 @@ type AuthPanelProps = {
   onAgreedToTermsChange: (value: boolean) => void;
   onSignIn: () => void;
   onSignUp: () => void;
+  onSendPasswordReset: () => void;
 };
 
 export default function AuthPanel({
@@ -30,7 +31,44 @@ export default function AuthPanel({
   onAgreedToTermsChange,
   onSignIn,
   onSignUp,
+  onSendPasswordReset,
 }: AuthPanelProps) {
+  if (mode === "forgot") {
+    return (
+      <>
+        <h1 style={titleStyle}>미루지말자</h1>
+        <p style={subTextStyle}>
+          가입할 때 사용한 이메일로 비밀번호 재설정 링크를 보내드립니다.
+        </p>
+
+        <input
+          value={email}
+          onChange={(event) => onEmailChange(event.target.value)}
+          placeholder="이메일"
+          style={inputStyle}
+        />
+
+        <button
+          onClick={onSendPasswordReset}
+          disabled={loading}
+          style={primaryButtonStyle(loading)}
+        >
+          {loading ? "전송 중..." : "재설정 링크 보내기"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onModeChange("signin")}
+          style={backLinkButtonStyle}
+        >
+          ← 로그인으로 돌아가기
+        </button>
+
+        {message && <div style={messageBoxStyle(message)}>{message}</div>}
+      </>
+    );
+  }
+
   return (
     <>
       <h1 style={titleStyle}>미루지말자</h1>
@@ -69,6 +107,16 @@ export default function AuthPanel({
         style={inputStyle}
       />
 
+      {mode === "signin" && (
+        <button
+          type="button"
+          onClick={() => onModeChange("forgot")}
+          style={forgotLinkStyle}
+        >
+          비밀번호를 잊으셨나요?
+        </button>
+      )}
+
       {mode === "signup" && (
         <label style={agreementRowStyle}>
           <input
@@ -89,7 +137,7 @@ export default function AuthPanel({
           </span>
         </label>
       )}
-      
+
       {mode === "signin" ? (
         <button
           onClick={onSignIn}
@@ -153,6 +201,34 @@ const secondaryButtonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
+const forgotLinkStyle: CSSProperties = {
+  display: "block",
+  width: "100%",
+  textAlign: "right",
+  background: "none",
+  border: "none",
+  color: "#4338ca",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+  marginBottom: 14,
+  padding: 0,
+};
+
+const backLinkButtonStyle: CSSProperties = {
+  display: "block",
+  width: "100%",
+  textAlign: "center",
+  background: "none",
+  border: "none",
+  color: "#4338ca",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+  marginTop: 14,
+  padding: 0,
+};
+
 const agreementRowStyle: CSSProperties = {
   display: "flex",
   alignItems: "flex-start",
@@ -186,7 +262,8 @@ function messageBoxStyle(message: string): CSSProperties {
   const ok =
     message.includes("완료") ||
     message.includes("성공") ||
-    message.includes("불러오기");
+    message.includes("불러오기") ||
+    message.includes("보냈습니다");
 
   return {
     marginTop: 14,
