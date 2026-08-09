@@ -315,7 +315,7 @@ const presetButtonStyle: CSSProperties = {
   flex: 1,
   minWidth: 50,
   padding: "10px 0",
-  borderRadius: 12,
+  borderRadius: 999,
   border: "1px solid #fbcfe8",
   background: "#fff",
   color: "#db2777",
@@ -349,7 +349,7 @@ const weekdayButtonStyle: CSSProperties = {
   flex: 1,
   minWidth: 36,
   padding: "8px 0",
-  borderRadius: 10,
+  borderRadius: 999,
   border: "1px solid #fbcfe8",
   background: "#fff",
   color: "#be185d",
@@ -359,6 +359,7 @@ const weekdayButtonStyle: CSSProperties = {
 
 const weekdayButtonActiveStyle: CSSProperties = {
   ...weekdayButtonStyle,
+  borderRadius: 999,
   background: "linear-gradient(135deg, #ec4899, #db2777)",
   borderColor: "#db2777",
   color: "#fff",
