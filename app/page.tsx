@@ -439,7 +439,7 @@ export default function Home() {
     if (!response.ok) {
       if (result.error === "SOLE_OWNER") {
         setMessage(
-          "혼자 owner인 워크스페이스가 있어 탈퇴할 수 없습니다. 설정 탭에서 다른 참여자에게 소유권을 넘기거나, 해당 워크스페이스를 삭제한 뒤 다시 시도해주세요."
+          "혼자 owner인 모임이 있어 탈퇴할 수 없습니다. 설정 탭에서 다른 참여자에게 소유권을 넘기거나, 해당 모임을 삭제한 뒤 다시 시도해주세요."
         );
       } else {
         setMessage("계정 삭제에 실패했습니다. 다시 시도해주세요.");
