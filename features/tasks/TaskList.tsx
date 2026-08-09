@@ -32,6 +32,7 @@ export default function TaskList({
           (task.status === "todo" || task.status === "rolled_over" || task.status === "rejected");
 
         const canReview = isManager && task.status === "submitted";
+        const isDone = task.status === "approved";
 
         return (
           <div key={task.id} style={taskCardStyle}>
@@ -80,14 +81,34 @@ export default function TaskList({
               )}
             </div>
 
-            <span style={statusBadgeStyle(task.status)}>
-              {statusLabel(task.status)}
-            </span>
+            <div style={rightColumnStyle}>
+              <span style={checkIconStyle(isDone)}>{isDone ? "✓" : ""}</span>
+              <span style={statusBadgeStyle(task.status)}>
+                {statusLabel(task.status)}
+              </span>
+            </div>
           </div>
         );
       })}
     </div>
   );
+}
+
+function checkIconStyle(done: boolean): CSSProperties {
+  return {
+    width: 26,
+    height: 26,
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 15,
+    fontWeight: 900,
+    color: done ? "#fff" : "transparent",
+    background: done ? "#16a34a" : "#fff",
+    border: done ? "none" : "2px solid #e8b9c2",
+    boxShadow: done ? "0 3px 8px rgba(22,163,74,0.35)" : "none",
+  };
 }
 
 function statusBadgeStyle(status: string): CSSProperties {
@@ -128,6 +149,13 @@ const taskCardStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   gap: 12,
+};
+
+const rightColumnStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 8,
 };
 
 const taskTitleStyle: CSSProperties = {
