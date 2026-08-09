@@ -263,12 +263,12 @@ export default function Home() {
 
   async function signUp() {
     if (!authEmail.trim() || !authPassword.trim()) {
-      setMessage("이메일과 비밀번호를 입력해주세요.");
+      setMessage("이메일과 비밀번호를 모두 입력해주세요.");
       return;
     }
 
     if (!agreedToTerms) {
-      setMessage("이용약관과 개인정보처리방침에 동의해주세요.");
+      setMessage("이용약관 및 개인정보처리방침에 동의해주세요.");
       return;
     }
 
@@ -293,7 +293,12 @@ export default function Home() {
     });
 
     if (error) {
-      setMessage(`가입 실패: ${error.message}`);
+      console.error("signUp error", error);
+      const detail =
+        error.message && error.message.trim() && error.message !== "{}"
+          ? error.message
+          : `오류 코드: ${(error as any).status ?? error.name ?? "알 수 없음"}`;
+      setMessage(`가입 실패: ${detail}`);
       setLoading(false);
       return;
     }
@@ -301,7 +306,7 @@ export default function Home() {
     const isAlreadyRegistered = data.user && (data.user.identities?.length ?? 0) === 0;
 
     if (isAlreadyRegistered) {
-      setMessage("이미 가입된 이메일입니다. 로그인해주세요.");
+      setMessage("이미 가입된 계정입니다. 로그인해주세요.");
       setLoading(false);
       return;
     }
