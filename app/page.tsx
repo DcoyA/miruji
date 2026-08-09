@@ -1686,7 +1686,7 @@ export default function Home() {
           onCreateWorkspace={createWorkspace}
           joinInviteCode={joinInviteCode}
           onJoinInviteCodeChange={setJoinInviteCode}
-          onAcceptInvite={acceptInviteCode}
+          onAcceptInvite={() => acceptInviteCode()}
         />
       </Shell>
     );
