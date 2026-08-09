@@ -1701,7 +1701,7 @@ export default function Home() {
           {profile.display_name?.charAt(0)?.toUpperCase() || "?"}
         </div>
         <div style={accountInfoStyle}>
-          <strong style={accountNameStyle}>{profile.display_name}</strong>
+          <strong style={accountNameStyle}>{currentMember?.display_name || profile.display_name}</strong>
           {currentMember && (
             <span style={roleBadgeStyle}>{roleLabel(currentMember.role)}</span>
           )}
