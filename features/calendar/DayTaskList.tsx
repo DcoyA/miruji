@@ -21,6 +21,8 @@ type DayTaskListProps = {
   onSubmitTask: (task: Task) => void;
   onApproveTask: (task: Task) => void;
   onRejectTask: (task: Task) => void;
+  onCancelTask: (task: Task) => void;
+  onDeleteTask: (task: Task) => void;
 };
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -38,6 +40,8 @@ export default function DayTaskList({
   onSubmitTask,
   onApproveTask,
   onRejectTask,
+  onCancelTask,
+  onDeleteTask,
 }: DayTaskListProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [expanded, setExpanded] = useState(false);
@@ -185,6 +189,8 @@ export default function DayTaskList({
                 onSubmit={onSubmitTask}
                 onApprove={onApproveTask}
                 onReject={onRejectTask}
+                onCancel={onCancelTask}
+                onDelete={onDeleteTask}
               />
             )
           ) : (
@@ -230,6 +236,8 @@ export default function DayTaskList({
                           onSubmit={onSubmitTask}
                           onApprove={onApproveTask}
                           onReject={onRejectTask}
+                          onCancel={onCancelTask}
+                          onDelete={onDeleteTask}
                         />
                       </div>
                     )}
