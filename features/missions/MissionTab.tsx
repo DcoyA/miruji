@@ -35,6 +35,9 @@ type MissionTabProps = {
   onToggleTemplateActive: (template: TaskTemplate) => void;
   onDeleteTemplate: (template: TaskTemplate) => void;
   onRolloverNow: () => void;
+  onSelectedDateChange: (dateKey: string) => void;
+  onCancelTask: (task: Task) => void;
+  onDeleteTask: (task: Task) => void;
 };
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -69,6 +72,9 @@ export default function MissionTab({
   onToggleTemplateActive,
   onDeleteTemplate,
   onRolloverNow,
+  onSelectedDateChange,
+  onCancelTask,
+  onDeleteTask,
 }: MissionTabProps) {
   const visibleTasks = isManager
     ? tasks
@@ -83,9 +89,17 @@ export default function MissionTab({
         <section style={createBoxStyle}>
           <div style={createHeaderRowStyle}>
             <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 할 일 추가</h2>
-            <button onClick={onRolloverNow} disabled={loading} style={rolloverButtonStyle}>
-              지난 할 일 정리하기
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(event) => onSelectedDateChange(event.target.value)}
+                style={dateInputStyle}
+              />
+              <button onClick={onRolloverNow} disabled={loading} style={rolloverButtonStyle}>
+                지난 할 일 정리하기
+              </button>
+            </div>
           </div>
 
           <input
@@ -241,6 +255,8 @@ export default function MissionTab({
             onSubmit={onSubmitTask}
             onApprove={onApproveTask}
             onReject={onRejectTask}
+            onCancel={onCancelTask}
+            onDelete={onDeleteTask}
           />
         )}
       </section>
@@ -460,6 +476,14 @@ const deleteButtonStyle: CSSProperties = {
   fontSize: 12,
   fontWeight: 800,
   cursor: "pointer",
+};
+
+const dateInputStyle: CSSProperties = {
+  padding: "8px 10px",
+  borderRadius: 12,
+  border: "1px solid #fbcfe8",
+  fontSize: 13,
+  color: "#3f1d24",
 };
 
 function primaryButtonStyle(disabled: boolean): CSSProperties {
