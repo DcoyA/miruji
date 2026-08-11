@@ -382,6 +382,7 @@ function panelStyle(expanded: boolean): CSSProperties {
     right: 0,
     bottom: 0,
     height: "88vh",
+    maxHeight: "88dvh",
     background: "#fff",
     borderRadius: "24px 24px 0 0",
     boxShadow: "0 -10px 40px rgba(63,29,36,0.25)",
@@ -392,6 +393,7 @@ function panelStyle(expanded: boolean): CSSProperties {
     flexDirection: "column",
     maxWidth: 480,
     margin: "0 auto",
+    paddingTop: "env(safe-area-inset-top)",
   };
 }
 

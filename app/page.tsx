@@ -1327,43 +1327,87 @@ export default function Home() {
       setMessage("워크스페이스가 없습니다.");
       return;
     }
-
+  
     if (currentMember?.id !== reward.target_member_id) {
       setMessage("본인에게 배정된 보상만 신청할 수 있습니다.");
       return;
     }
-
+  
     if (reward.status !== "approved") {
-      setMessage("이미 신청되었거나 교환 완료된 보상입니다.");
+      setMessage("신청할 수 없는 상태입니다.");
       return;
     }
-
+  
     const balance = balanceByMemberId(reward.target_member_id);
     if (balance < reward.cost_points) {
-      setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`);
+      setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 보유 ${balance}개`);
       return;
     }
-
+  
     setLoading(true);
     setMessage("");
-
+  
+    // 방장이 자기 자신의 보상을 신청하는 경우: 별도 승인 단계 없이 즉시 교환 처리
+    if (isManager) {
+      const { data: spendData, error: spendError } = await supabase
+        .from("reward_transactions")
+        .insert({
+          workspace_id: workspace.id,
+          member_id: reward.target_member_id,
+          amount: -reward.cost_points,
+          transaction_type: "spend",
+          source_type: "reward",
+          source_id: reward.id,
+          memo: `${reward.title} 교환`,
+          created_by_member_id: currentMember?.id || null,
+        })
+        .select(rewardTxSelect)
+        .single();
+  
+      if (spendError) {
+        setMessage(`스티커 차감 실패: ${spendError.message}`);
+        setLoading(false);
+        return;
+      }
+  
+      const { data: updatedReward, error: rewardError } = await supabase
+        .from("rewards")
+        .update({ status: "redeemed", redeemed_at: new Date().toISOString() })
+        .eq("id", reward.id)
+        .select(rewardSelect)
+        .single();
+  
+      if (rewardError) {
+        setMessage(`보상 상태 변경 실패: ${rewardError.message}`);
+        setLoading(false);
+        return;
+      }
+  
+      setRewardTransactions((prev) => [...prev, spendData as RewardTransaction]);
+      setRewards((prev) => prev.map((item) => (item.id === reward.id ? (updatedReward as Reward) : item)));
+      setMessage(`교환 완료: ${reward.title}`);
+      setLoading(false);
+      return;
+    }
+  
     const { data, error } = await supabase
       .from("rewards")
       .update({ status: "requested" })
       .eq("id", reward.id)
       .select(rewardSelect)
       .single();
-
+  
     if (error) {
-      setMessage(`교환 신청 실패: ${error.message}`);
+      setMessage(`신청 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-
+  
     setRewards((prev) => prev.map((item) => (item.id === reward.id ? (data as Reward) : item)));
-    setMessage(`${reward.title} 교환을 신청했습니다. 매니저 승인을 기다려주세요.`);
+    setMessage(`${reward.title} 교환을 신청했습니다. 방장 승인을 기다려주세요.`);
     setLoading(false);
   }
+
 
   async function confirmRedeem(reward: Reward) {
     if (!workspace) {
