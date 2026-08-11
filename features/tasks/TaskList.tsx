@@ -11,6 +11,8 @@ type TaskListProps = {
   onSubmit: (task: Task) => void;
   onApprove: (task: Task) => void;
   onReject: (task: Task) => void;
+  onCancel?: (task: Task) => void;
+  onDelete?: (task: Task) => void;
 };
 
 export default function TaskList({
@@ -22,6 +24,8 @@ export default function TaskList({
   onSubmit,
   onApprove,
   onReject,
+  onCancel,
+  onDelete,
 }: TaskListProps) {
   return (
     <div style={taskListStyle}>
@@ -32,7 +36,24 @@ export default function TaskList({
           (task.status === "todo" || task.status === "rolled_over" || task.status === "rejected");
 
         const canReview = isManager && task.status === "submitted";
+
+        const canCancel =
+          !isManager &&
+          task.assigned_member_id === currentMember?.id &&
+          task.status === "submitted";
+
+        const canDelete =
+          isManager || (!!currentMember?.id && task.created_by_member_id === currentMember.id);
+
         const isDone = task.status === "approved";
+
+        function handleSubmitClick() {
+          const confirmed = window.confirm(
+            "제출하시겠습니까? 제출 후에는 승인 전까지 회수할 수 있습니다."
+          );
+          if (!confirmed) return;
+          onSubmit(task);
+        }
 
         return (
           <div key={task.id} style={taskCardStyle}>
@@ -48,15 +69,24 @@ export default function TaskList({
                 {task.reward_points}개
               </div>
 
-              {(canSubmit || canReview) && (
+              {(canSubmit || canReview || canCancel || canDelete) && (
                 <div style={actionRowStyle}>
                   {canSubmit && (
                     <button
-                      onClick={() => onSubmit(task)}
+                      onClick={handleSubmitClick}
                       disabled={loading}
                       style={submitButtonStyle}
                     >
                       제출하기
+                    </button>
+                  )}
+                  {canCancel && onCancel && (
+                    <button
+                      onClick={() => onCancel(task)}
+                      disabled={loading}
+                      style={cancelButtonStyle}
+                    >
+                      회수하기
                     </button>
                   )}
                   {canReview && (
@@ -76,6 +106,15 @@ export default function TaskList({
                         반려
                       </button>
                     </>
+                  )}
+                  {canDelete && onDelete && (
+                    <button
+                      onClick={() => onDelete(task)}
+                      disabled={loading}
+                      style={deleteButtonStyle}
+                    >
+                      삭제
+                    </button>
                   )}
                 </div>
               )}
@@ -174,6 +213,7 @@ const actionRowStyle: CSSProperties = {
   display: "flex",
   gap: 6,
   marginTop: 10,
+  flexWrap: "wrap",
 };
 
 const submitButtonStyle: CSSProperties = {
@@ -186,6 +226,17 @@ const submitButtonStyle: CSSProperties = {
   fontWeight: 800,
   cursor: "pointer",
   boxShadow: "0 4px 10px rgba(225,29,72,0.30)",
+};
+
+const cancelButtonStyle: CSSProperties = {
+  border: "1px solid #fbcfe8",
+  borderRadius: 12,
+  background: "#fff",
+  color: "#db2777",
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
 };
 
 const approveButtonStyle: CSSProperties = {
@@ -203,6 +254,17 @@ const rejectButtonStyle: CSSProperties = {
   border: "none",
   borderRadius: 12,
   background: "#b91c1c",
+  color: "#fff",
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const deleteButtonStyle: CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  background: "#4b5563",
   color: "#fff",
   padding: "8px 12px",
   fontSize: 12,
