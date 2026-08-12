@@ -1977,6 +1977,7 @@ export default function Home() {
             onDeleteTask={deleteTask}
             onAddTask={() => setActiveTab("missions")}
             onSubmitWithEvidence={submitTaskWithEvidence}
+            onSubmitWithText={submitTaskWithText}
           />
         </>
       )}
@@ -2015,6 +2016,7 @@ export default function Home() {
           onCancelTask={cancelSubmission}
           onDeleteTask={deleteTask}
           onSubmitWithEvidence={submitTaskWithEvidence}
+          onSubmitWithText={submitTaskWithText}
         />
       )}
 
@@ -2116,6 +2118,7 @@ export default function Home() {
                   loading={loading}
                   onSubmit={submitTask}
                   onSubmitWithEvidence={submitTaskWithEvidence}
+                  onSubmitWithText={submitTaskWithText}
                   onApprove={approveTask}
                   onReject={rejectTask}
                   onCancel={cancelSubmission}
