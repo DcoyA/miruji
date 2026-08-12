@@ -69,7 +69,6 @@ export default function MissionTab({
   onVerificationTypeChange,
   onDueTimeChange,
   onRewardPointsChange,
-  onRewardPointsChange,
   onRepeatTypeChange,
   onToggleRepeatWeekday,
   onCreate,
