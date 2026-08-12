@@ -29,6 +29,7 @@ export type Task = {
   description: string | null;
   status: string;
   due_date: string | null;
+  due_time: string | null;
   assigned_member_id: string | null;
   verification_type: string;
   reward_points: number;
@@ -50,6 +51,7 @@ export type TaskTemplate = {
   repeat_type: string;
   repeat_weekdays: number[];
   is_active: boolean;
+  due_time: string | null;
 };
 
 export type Reward = {
