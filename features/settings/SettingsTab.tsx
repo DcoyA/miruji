@@ -79,6 +79,17 @@ export default function SettingsTab({
   onSaveMyNickname,
 }: SettingsTabProps) {
   const hasWorkspace = Boolean(workspace);
+  const [appShareCopied, setAppShareCopied] = useState(false);
+
+  function handleShareApp() {
+    const link = typeof window !== "undefined" ? window.location.origin : "";
+    const text = `미루지 – 가족/팀과 함께 할 일을 관리하고 스티커로 보상받는 앱\n${link}`;
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setAppShareCopied(true);
+      setTimeout(() => setAppShareCopied(false), 1800);
+    });
+  }
 
   return (
     <>
@@ -95,6 +106,14 @@ export default function SettingsTab({
         ) : (
           <div style={emptyStateStyle}>아직 참여 중인 모임이 없습니다.<br />초대코드를 입력하거나 새 모임을 만들어주세요.</div>
         )}
+      </section>
+
+      <section style={createBoxStyle}>
+        <h2 style={sectionTitleStyle}>친구에게 공유하기</h2>
+        <p style={subTextStyle}>미루지가 마음에 드셨다면 주변에 알려주세요.</p>
+        <button type="button" onClick={handleShareApp} style={primaryButtonStyle(false)}>
+          {appShareCopied ? "복사됨! 원하는 곳에 붙여넣어 보내보세요" : "친구에게 공유하기"}
+        </button>
       </section>
 
       {currentMember && (
