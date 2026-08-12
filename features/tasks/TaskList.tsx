@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
 import type { Member, Task } from "@/types/app";
 import { memberNameById, statusLabel, verificationLabel } from "@/lib/labels";
@@ -10,10 +11,29 @@ type TaskListProps = {
   loading: boolean;
   onSubmit: (task: Task) => void;
   onSubmitWithEvidence?: (task: Task, file: File) => void;
+  onSubmitWithText?: (task: Task, text: string) => void;
   onApprove: (task: Task) => void;
   onReject: (task: Task) => void;
   onCancel?: (task: Task) => void;
   onDelete?: (task: Task) => void;
+};
+
+const FILE_ACCEPT_BY_TYPE: Record<string, string> = {
+  photo: "image/*",
+  video: "video/*",
+  audio: "audio/*",
+};
+
+const FILE_LABEL_BY_TYPE: Record<string, string> = {
+  photo: "사진 첨부 후 제출",
+  video: "영상 첨부 후 제출",
+  audio: "음성 파일 첨부 후 제출",
+};
+
+const EVIDENCE_LINK_LABEL_BY_TYPE: Record<string, string> = {
+  photo: "첨부한 사진 보기",
+  video: "첨부한 영상 보기",
+  audio: "첨부한 음성 듣기",
 };
 
 export default function TaskList({
@@ -24,11 +44,14 @@ export default function TaskList({
   loading,
   onSubmit,
   onSubmitWithEvidence,
+  onSubmitWithText,
   onApprove,
   onReject,
   onCancel,
   onDelete,
 }: TaskListProps) {
+  const [textDrafts, setTextDrafts] = useState<Record<string, string>>({});
+
   return (
     <div style={taskListStyle}>
       {tasks.map((task) => {
@@ -38,7 +61,8 @@ export default function TaskList({
           isAssignee &&
           (task.status === "todo" || task.status === "rolled_over" || task.status === "rejected");
 
-        const needsPhoto = task.verification_type === "photo";
+        const needsFile = task.verification_type === "photo" || task.verification_type === "video" || task.verification_type === "audio";
+        const needsText = task.verification_type === "text";
 
         const canReview = isManager && task.status === "submitted";
 
@@ -57,17 +81,37 @@ export default function TaskList({
           onSubmit(task);
         }
 
-        function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+        function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
           const file = event.target.files?.[0];
           event.target.value = "";
           if (!file) return;
 
           const confirmed = window.confirm(
-            "선택한 사진을 첨부해서 제출하시겠습니까? 제출 후에는 승인 전까지 회수할 수 있습니다."
+            "선택한 파일을 첨부해서 제출하시겠습니까? 제출 후에는 승인 전까지 회수할 수 있습니다."
           );
           if (!confirmed) return;
 
           onSubmitWithEvidence?.(task, file);
+        }
+
+        function handleTextChange(event: ChangeEvent<HTMLTextAreaElement>) {
+          setTextDrafts((prev) => ({ ...prev, [task.id]: event.target.value }));
+        }
+
+        function handleTextSubmitClick() {
+          const draft = (textDrafts[task.id] || "").trim();
+          if (!draft) {
+            window.alert("인증 내용을 입력해 주세요.");
+            return;
+          }
+
+          const confirmed = window.confirm(
+            "입력한 내용으로 제출하시겠습니까? 제출 후에는 승인 전까지 회수할 수 있습니다."
+          );
+          if (!confirmed) return;
+
+          onSubmitWithText?.(task, draft);
+          setTextDrafts((prev) => ({ ...prev, [task.id]: "" }));
         }
 
         return (
@@ -85,26 +129,53 @@ export default function TaskList({
               </div>
 
               {task.evidence_url && (
-                <a href={task.evidence_url} target="_blank" rel="noreferrer" style={evidenceLinkStyle}>
-                  첨부한 사진 보기
+                <a
+                  href={task.evidence_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={evidenceLinkStyle}
+                >
+                  {EVIDENCE_LINK_LABEL_BY_TYPE[task.verification_type] || "첨부 파일 보기"}
                 </a>
+              )}
+
+              {task.evidence_text && (
+                <div style={evidenceTextStyle}>제출 내용: {task.evidence_text}</div>
+              )}
+
+              {canSubmit && needsText && (
+                <div style={textSubmitBoxStyle}>
+                  <textarea
+                    value={textDrafts[task.id] || ""}
+                    onChange={handleTextChange}
+                    placeholder="인증 내용을 입력하세요 (예: 오늘 몇 시에 완료했어요)"
+                    rows={2}
+                    disabled={loading}
+                    style={textAreaStyle}
+                  />
+                </div>
               )}
 
               {(canSubmit || canReview || canCancel || canDelete) && (
                 <div style={actionRowStyle}>
-                  {canSubmit && needsPhoto && (
+                  {canSubmit && needsFile && (
                     <label style={submitButtonStyle}>
-                      사진 첨부 후 제출
+                      {FILE_LABEL_BY_TYPE[task.verification_type] || "파일 첨부 후 제출"}
                       <input
                         type="file"
-                        accept="image/*"
-                        onChange={handlePhotoChange}
+                        accept={FILE_ACCEPT_BY_TYPE[task.verification_type] || "*/*"}
+                        onChange={handleFileChange}
                         disabled={loading}
                         style={hiddenFileInputStyle}
                       />
                     </label>
                   )}
-                  {canSubmit && !needsPhoto && (
+                  {canSubmit && needsText && (
+                    <button onClick={handleTextSubmitClick} disabled={loading} style={submitButtonStyle}>
+                      텍스트 제출
+                    </button>
+                  )}
+                  {canSubmit && !needsFile && !needsText && (
                     <button onClick={handleSubmitClick} disabled={loading} style={submitButtonStyle}>
                       제출하기
                     </button>
@@ -210,6 +281,28 @@ const evidenceLinkStyle: CSSProperties = {
   fontWeight: 700,
   color: "#db2777",
   textDecoration: "underline",
+};
+
+const evidenceTextStyle: CSSProperties = {
+  marginTop: 6,
+  fontSize: 13,
+  color: "#3f1d24",
+  background: "#fff0f2",
+  borderRadius: 10,
+  padding: "8px 10px",
+  whiteSpace: "pre-wrap",
+};
+
+const textSubmitBoxStyle: CSSProperties = { marginTop: 10 };
+
+const textAreaStyle: CSSProperties = {
+  width: "100%",
+  padding: 10,
+  borderRadius: 12,
+  border: "1px solid #fbcfe8",
+  outline: "none",
+  fontSize: 13,
+  resize: "vertical",
 };
 
 const actionRowStyle: CSSProperties = { display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" };
