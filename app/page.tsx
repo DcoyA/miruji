@@ -181,18 +181,31 @@ export default function Home() {
     if (!workspace) return;
   
     const channel = supabase
-      .channel(`workspace-members-${workspace.id}`)
+      .channel(`workspace-sync-${workspace.id}`)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "workspace_members",
-          filter: `workspace_id=eq.${workspace.id}`,
-        },
-        () => {
-          loadWorkspaceData(workspace.id);
-        }
+        { event: "*", schema: "public", table: "workspace_members", filter: `workspace_id=eq.${workspace.id}` },
+        () => loadWorkspaceData(workspace.id)
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks", filter: `workspace_id=eq.${workspace.id}` },
+        () => loadWorkspaceData(workspace.id)
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "task_templates", filter: `workspace_id=eq.${workspace.id}` },
+        () => loadWorkspaceData(workspace.id)
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rewards", filter: `workspace_id=eq.${workspace.id}` },
+        () => loadWorkspaceData(workspace.id)
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "reward_transactions", filter: `workspace_id=eq.${workspace.id}` },
+        () => loadWorkspaceData(workspace.id)
       )
       .subscribe();
   
