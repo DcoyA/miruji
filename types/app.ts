@@ -33,6 +33,8 @@ export type Task = {
   verification_type: string;
   reward_points: number;
   template_id: string | null;
+  created_by_member_id: string | null;
+  evidence_url: string | null;
 };
 
 export type TaskTemplate = {

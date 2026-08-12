@@ -4,29 +4,35 @@ type SummaryStripProps = {
   monthTaskCount: number;
   pendingCount: number;
   approvedCount: number;
+  onClickMonth: () => void;
+  onClickPending: () => void;
+  onClickApproved: () => void;
 };
 
 export default function SummaryStrip({
   monthTaskCount,
   pendingCount,
   approvedCount,
+  onClickMonth,
+  onClickPending,
+  onClickApproved,
 }: SummaryStripProps) {
   return (
     <section style={summaryGridStyle}>
-      <div style={summaryCardStyle}>
+      <button type="button" onClick={onClickMonth} style={summaryCardStyle}>
         <div style={summaryNumberStyle}>{monthTaskCount}</div>
         <div style={summaryLabelStyle}>이번 달 할 일</div>
-      </div>
+      </button>
 
-      <div style={summaryCardStyle}>
+      <button type="button" onClick={onClickPending} style={summaryCardStyle}>
         <div style={summaryNumberStyle}>{pendingCount}</div>
         <div style={summaryLabelStyle}>승인 대기</div>
-      </div>
+      </button>
 
-      <div style={summaryCardStyle}>
+      <button type="button" onClick={onClickApproved} style={summaryCardStyle}>
         <div style={summaryNumberStyle}>{approvedCount}</div>
         <div style={summaryLabelStyle}>승인 완료</div>
-      </div>
+      </button>
     </section>
   );
 }
@@ -44,6 +50,8 @@ const summaryCardStyle: CSSProperties = {
   background: "#fff",
   boxShadow: "0 3px 12px rgba(190, 24, 93, 0.08)",
   textAlign: "center",
+  border: "none",
+  cursor: "pointer",
 };
 
 const summaryNumberStyle: CSSProperties = {

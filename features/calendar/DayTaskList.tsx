@@ -21,6 +21,10 @@ type DayTaskListProps = {
   onSubmitTask: (task: Task) => void;
   onApproveTask: (task: Task) => void;
   onRejectTask: (task: Task) => void;
+  onCancelTask: (task: Task) => void;
+  onDeleteTask: (task: Task) => void;
+  onAddTask: () => void;
+  onSubmitWithEvidence?: (task: Task, file: File) => void;
 };
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -38,6 +42,10 @@ export default function DayTaskList({
   onSubmitTask,
   onApproveTask,
   onRejectTask,
+  onCancelTask,
+  onDeleteTask,
+  onAddTask,
+  onSubmitWithEvidence,
 }: DayTaskListProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [expanded, setExpanded] = useState(false);
@@ -82,21 +90,26 @@ export default function DayTaskList({
           <h2 style={sectionTitleStyle}>
             {viewMode === "day" ? `${formatKoreanDate(selectedDate)} 할 일` : "이번 주 할 일"}
           </h2>
-          <div style={toggleGroupStyle}>
-            <button
-              type="button"
-              onClick={() => setViewMode("day")}
-              style={viewMode === "day" ? toggleButtonActiveStyle : toggleButtonStyle}
-            >
-              일간
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button type="button" onClick={onAddTask} style={addTaskButtonStyle}>
+              + 추가
             </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("week")}
-              style={viewMode === "week" ? toggleButtonActiveStyle : toggleButtonStyle}
-            >
-              주간
-            </button>
+            <div style={toggleGroupStyle}>
+              <button
+                type="button"
+                onClick={() => setViewMode("day")}
+                style={viewMode === "day" ? toggleButtonActiveStyle : toggleButtonStyle}
+              >
+                일간
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("week")}
+                style={viewMode === "week" ? toggleButtonActiveStyle : toggleButtonStyle}
+              >
+                주간
+              </button>
+            </div>
           </div>
         </div>
 
@@ -149,6 +162,10 @@ export default function DayTaskList({
             {viewMode === "day" ? `${formatKoreanDate(selectedDate)} 할 일` : "이번 주 할 일"}
           </h2>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button type="button" onClick={onAddTask} style={addTaskButtonStyle}>
+              + 추가
+            </button>
+          
             <div style={toggleGroupStyle}>
               <button
                 type="button"
@@ -183,8 +200,11 @@ export default function DayTaskList({
                 isManager={isManager}
                 loading={loading}
                 onSubmit={onSubmitTask}
+                onSubmitWithEvidence={onSubmitWithEvidence}
                 onApprove={onApproveTask}
                 onReject={onRejectTask}
+                onCancel={onCancelTask}
+                onDelete={onDeleteTask}
               />
             )
           ) : (
@@ -228,8 +248,11 @@ export default function DayTaskList({
                           isManager={isManager}
                           loading={loading}
                           onSubmit={onSubmitTask}
+                          onSubmitWithEvidence={onSubmitWithEvidence}
                           onApprove={onApproveTask}
                           onReject={onRejectTask}
+                          onCancel={onCancelTask}
+                          onDelete={onDeleteTask}
                         />
                       </div>
                     )}
@@ -468,3 +491,16 @@ const weekDayCountOverdueStyle: CSSProperties = { fontSize: 14, fontWeight: 800,
 const weekDayCountEmptyStyle: CSSProperties = { fontSize: 14, fontWeight: 700, color: "#d8b4bc" };
 
 const weekDayTaskListStyle: CSSProperties = { padding: "0 14px 14px" };
+
+const addTaskButtonStyle: CSSProperties = {
+  border: "none",
+  borderRadius: 999,
+  background: "linear-gradient(135deg, #fb7185, #e11d48)",
+  color: "#fff",
+  padding: "8px 14px",
+  fontSize: 13,
+  fontWeight: 800,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+

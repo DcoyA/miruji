@@ -16,6 +16,7 @@ import DayTaskList from "@/features/calendar/DayTaskList";
 import SummaryStrip from "@/features/calendar/SummaryStrip";
 import MissionTab from "@/features/missions/MissionTab";
 import RewardTab from "@/features/rewards/RewardTab";
+import TaskList from "@/features/tasks/TaskList";
 import SettingsTab from "@/features/settings/SettingsTab";
 
 import { addMonths, endOfMonth, startOfMonth, toDateKey } from "@/lib/date";
@@ -40,7 +41,7 @@ import type {
 const memberSelect =
   "id, profile_id, display_name, role, is_virtual, requires_account, status";
 const taskSelect =
-  "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points, template_id";
+  "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url";
 const taskTemplateSelect =
   "id, workspace_id, title, description, assigned_member_id, verification_type, reward_points, rollover_enabled, repeat_type, repeat_weekdays, is_active";
 const rewardSelect =
@@ -198,7 +199,11 @@ export default function Home() {
       supabase.removeChannel(channel);
     };
   }, [workspace?.id]);
-  
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab]);
+
   const isManager =
     currentMember?.role === "owner" || currentMember?.role === "manager";
 
@@ -211,6 +216,15 @@ export default function Home() {
   const pendingCount = tasks.filter((task) => task.status === "submitted").length;
   const approvedCount = tasks.filter((task) => task.status === "approved").length;
 
+  const [summaryFilter, setSummaryFilter] = useState<"all" | "pending" | "approved" | null>(null);
+
+  const summaryFilteredTasks = useMemo(() => {
+    if (summaryFilter === "pending") return tasks.filter((task) => task.status === "submitted");
+    if (summaryFilter === "approved") return tasks.filter((task) => task.status === "approved");
+    if (summaryFilter === "all") return tasks;
+    return [];
+  }, [tasks, summaryFilter]);
+  
   async function initializeAuth() {
     setAuthLoading(true);
     const { data } = await supabase.auth.getUser();
@@ -1517,8 +1531,8 @@ export default function Home() {
   }
 
   async function submitTask(task: Task) {
-    if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+     if (!workspace) {
+      setMessage("작업 공간이 없습니다.");
       return;
     }
 
@@ -1553,6 +1567,126 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function submitTaskWithEvidence(task: Task, file: File) {
+    if (!workspace) {
+      setMessage("작업 공간이 없습니다.");
+      return;
+    }
+  
+    if (task.status !== "todo" && task.status !== "rolled_over" && task.status !== "rejected") {
+      setMessage("이미 제출되었거나 처리된 할 일입니다.");
+      return;
+    }
+  
+    if (!isManager && task.assigned_member_id !== currentMember?.id) {
+      setMessage("본인에게 배정된 할 일만 제출할 수 있습니다.");
+      return;
+    }
+  
+    setLoading(true);
+    setMessage("");
+  
+    const filePath = `${workspace.id}/${task.id}-${Date.now()}-${file.name}`;
+  
+    const { error: uploadError } = await supabase.storage
+      .from("task-evidence")
+      .upload(filePath, file, { upsert: false });
+  
+    if (uploadError) {
+      setMessage(`사진 업로드 실패: ${uploadError.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    const { data: publicUrlData } = supabase.storage.from("task-evidence").getPublicUrl(filePath);
+  
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ status: "submitted", evidence_url: publicUrlData.publicUrl })
+      .eq("id", task.id)
+      .select(taskSelect)
+      .single();
+  
+    if (error) {
+      setMessage(`제출 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
+    setMessage(`${task.title} 사진과 함께 제출했습니다.`);
+    setLoading(false);
+  }
+
+  
+  async function cancelSubmission(task: Task) {
+  if (!workspace) {
+    setMessage("워크스페이스를 불러오지 못했습니다.");
+    return;
+  }
+
+  if (task.status !== "submitted") {
+    setMessage("제출된 할 일만 회수할 수 있습니다.");
+    return;
+  }
+
+  if (!isManager && task.assigned_member_id !== currentMember?.id) {
+    setMessage("본인에게 배정된 할 일만 회수할 수 있습니다.");
+    return;
+  }
+
+  setLoading(true);
+  setMessage("");
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ status: "todo" })
+    .eq("id", task.id)
+    .select(taskSelect)
+    .single();
+
+  if (error) {
+    setMessage(`회수 실패: ${error.message}`);
+    setLoading(false);
+    return;
+  }
+
+  setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
+  setMessage(`${task.title} 제출을 회수했습니다.`);
+  setLoading(false);
+}
+
+  async function deleteTask(task: Task) {
+    if (!workspace) {
+      setMessage("워크스페이스를 불러오지 못했습니다.");
+      return;
+    }
+  
+    const canDelete = isManager || task.created_by_member_id === currentMember?.id;
+    if (!canDelete) {
+      setMessage("할 일을 만든 사람 또는 관리자만 삭제할 수 있습니다.");
+      return;
+    }
+  
+    const confirmed = window.confirm(`"${task.title}" 할 일을 삭제하시겠습니까? 승인된 내역도 함께 삭제됩니다.`);
+    if (!confirmed) return;
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+  
+    if (error) {
+      setMessage(`삭제 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setTasks((prev) => prev.filter((item) => item.id !== task.id));
+    setMessage(`${task.title} 삭제 완료`);
+    setLoading(false);
+  }
+  
   async function approveTask(task: Task) {
     if (!workspace) {
       setMessage("워크스페이스가 없습니다.");
@@ -1766,7 +1900,14 @@ export default function Home() {
 
       {workspace && activeTab === "calendar" && (
         <>
-          <SummaryStrip monthTaskCount={monthTaskCount} pendingCount={pendingCount} approvedCount={approvedCount} />
+          <SummaryStrip
+            monthTaskCount={monthTaskCount}
+            pendingCount={pendingCount}
+            approvedCount={approvedCount}
+            onClickMonth={() => setSummaryFilter("all")}
+            onClickPending={() => setSummaryFilter("pending")}
+            onClickApproved={() => setSummaryFilter("approved")}
+          />
           <CalendarToolbar
             currentMonth={currentMonth}
             onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))}
@@ -1790,6 +1931,10 @@ export default function Home() {
             onSubmitTask={submitTask}
             onApproveTask={approveTask}
             onRejectTask={rejectTask}
+            onCancelTask={cancelSubmission}
+            onDeleteTask={deleteTask}
+            onAddTask={() => setActiveTab("missions")}
+            onSubmitWithEvidence={submitTaskWithEvidence}
           />
         </>
       )}
@@ -1824,6 +1969,10 @@ export default function Home() {
           onToggleTemplateActive={toggleTemplateActive}
           onDeleteTemplate={deleteTemplate}
           onRolloverNow={rolloverNow}
+          onSelectedDateChange={setSelectedDate}
+          onCancelTask={cancelSubmission}
+          onDeleteTask={deleteTask}
+          onSubmitWithEvidence={submitTaskWithEvidence}
         />
       )}
 
@@ -1894,6 +2043,47 @@ export default function Home() {
       {!workspace && activeTab !== "settings" && <NoWorkspacePrompt onGoSettings={() => setActiveTab("settings")} />}
 
       {message && <div style={messageBoxStyle(message)}>{message}</div>}
+      {summaryFilter && (
+        <div style={summaryModalBackdropStyle} onClick={() => setSummaryFilter(null)}>
+          <div style={summaryModalPanelStyle} onClick={(event) => event.stopPropagation()}>
+            <div style={summaryModalHeaderStyle}>
+              <h2 style={summaryModalTitleStyle}>
+                {summaryFilter === "all"
+                  ? "이번 달 할 일"
+                  : summaryFilter === "pending"
+                  ? "승인 대기"
+                  : "승인 완료"}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setSummaryFilter(null)}
+                style={summaryModalCloseButtonStyle}
+              >
+                닫기
+              </button>
+            </div>
+            <div style={summaryModalBodyStyle}>
+              {summaryFilteredTasks.length === 0 ? (
+                <div style={subTextStyle}>해당하는 할 일이 없습니다.</div>
+              ) : (
+                <TaskList
+                  tasks={summaryFilteredTasks}
+                  members={activeMembers}
+                  currentMember={currentMember}
+                  isManager={isManager}
+                  loading={loading}
+                  onSubmit={submitTask}
+                  onSubmitWithEvidence={submitTaskWithEvidence}
+                  onApprove={approveTask}
+                  onReject={rejectTask}
+                  onCancel={cancelSubmission}
+                  onDelete={deleteTask}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <BottomNav activeTab={activeTab} onChange={setActiveTab} />
     </Shell>
   );
@@ -1965,4 +2155,57 @@ const devLinkStyle: CSSProperties = {
 const messageBoxStyle = (message: string): CSSProperties => {
   const ok = message.includes("완료") || message.includes("성공") || message.includes("신청") || message.includes("승인") || message.includes("정리");
   return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 };
+};
+
+const summaryModalBackdropStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(63,29,36,0.45)",
+  zIndex: 50,
+  display: "flex",
+  alignItems: "flex-end",
+  justifyContent: "center",
+};
+
+const summaryModalPanelStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 480,
+  maxHeight: "80dvh",
+  background: "#fff",
+  borderRadius: "24px 24px 0 0",
+  display: "flex",
+  flexDirection: "column",
+  paddingTop: "env(safe-area-inset-top)",
+};
+
+const summaryModalHeaderStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "16px 18px 12px",
+  borderBottom: "1px solid #f6e8e6",
+};
+
+const summaryModalTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 20,
+  letterSpacing: "-0.03em",
+  color: "#3f1d24",
+};
+
+const summaryModalCloseButtonStyle: CSSProperties = {
+  border: "1px solid #f1d9dd",
+  background: "#fff",
+  color: "#9f6b75",
+  borderRadius: 999,
+  padding: "6px 14px",
+  fontWeight: 800,
+  fontSize: 13,
+  cursor: "pointer",
+};
+
+const summaryModalBodyStyle: CSSProperties = {
+  flex: 1,
+  overflowY: "auto",
+  padding: "14px 18px 28px",
 };
