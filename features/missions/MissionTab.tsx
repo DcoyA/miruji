@@ -17,6 +17,7 @@ type MissionTabProps = {
   description: string;
   assignedMemberId: string;
   verificationType: string;
+  dueTime: string;
   rewardPoints: number;
   repeatType: RepeatType;
   repeatWeekdays: number[];
@@ -25,6 +26,7 @@ type MissionTabProps = {
   onDescriptionChange: (value: string) => void;
   onAssignedMemberIdChange: (value: string) => void;
   onVerificationTypeChange: (value: string) => void;
+  onDueTimeChange: (value: string) => void;
   onRewardPointsChange: (value: number) => void;
   onRepeatTypeChange: (value: RepeatType) => void;
   onToggleRepeatWeekday: (day: number) => void;
@@ -145,6 +147,15 @@ export default function MissionTab({
             <option value="video">영상 인증</option>
             <option value="audio">음성 인증</option>
           </select>
+          
+          <label style={fieldLabelStyle}>마감 시간 (선택)</label>
+          <input
+            type="time"
+            value={dueTime}
+            onChange={(event) => onDueTimeChange(event.target.value)}
+            style={inputStyle}
+          />
+          <p style={fieldHintStyle}>입력하지 않으면 하루 종일로 표시됩니다.</p>
 
           <label style={fieldLabelStyle}>완료하면 받을 스티커 개수</label>
           <div style={presetRowStyle}>
