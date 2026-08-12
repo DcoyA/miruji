@@ -128,6 +128,10 @@ export default function TaskList({
                 {task.reward_points}개
               </div>
 
+              <div style={taskSubTextStyle}>
+                마감: {task.due_time ? task.due_time.slice(0, 5) : "하루 종일"}
+              </div>
+
               {task.evidence_url && (
                 <a
                   href={task.evidence_url}
