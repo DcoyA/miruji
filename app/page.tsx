@@ -2040,6 +2040,8 @@ export default function Home() {
           description={newTaskDescription}
           assignedMemberId={newTaskAssignedMemberId}
           verificationType={newTaskVerificationType}
+          dueTime={newTaskDueTime}
+          onDueTimeChange={setNewTaskDueTime}
           rewardPoints={newTaskRewardPoints}
           repeatType={newTaskRepeatType}
           repeatWeekdays={newTaskRepeatWeekdays}
