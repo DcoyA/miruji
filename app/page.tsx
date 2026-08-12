@@ -41,9 +41,9 @@ import type {
 const memberSelect =
   "id, profile_id, display_name, role, is_virtual, requires_account, status";
 const taskSelect =
-  "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url, evidence_text";
+  "id, workspace_id, title, description, status, due_date, due_time, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url, evidence_text";
 const taskTemplateSelect =
-  "id, workspace_id, title, description, assigned_member_id, verification_type, reward_points, rollover_enabled, repeat_type, repeat_weekdays, is_active";
+  "id, workspace_id, title, description, assigned_member_id, verification_type, reward_points, rollover_enabled, repeat_type, repeat_weekdays, is_active, due_time";
 const rewardSelect =
   "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status";
 const rewardTxSelect =
@@ -91,6 +91,7 @@ export default function Home() {
   const [newTaskDescription, setNewTaskDescription] = useState("");
   const [newTaskAssignedMemberId, setNewTaskAssignedMemberId] = useState("");
   const [newTaskVerificationType, setNewTaskVerificationType] = useState("none");
+  const [newTaskDueTime, setNewTaskDueTime] = useState("");
   const [newTaskRewardPoints, setNewTaskRewardPoints] = useState(1);
   const [newTaskRepeatType, setNewTaskRepeatType] = useState<RepeatType>("none");
   const [newTaskRepeatWeekdays, setNewTaskRepeatWeekdays] = useState<number[]>([]);
@@ -1100,6 +1101,7 @@ export default function Home() {
           due_date: selectedDate,
           assigned_member_id: newTaskAssignedMemberId,
           verification_type: newTaskVerificationType,
+          due_time: newTaskDueTime || null,
           verification_required: newTaskVerificationType !== "none",
           reward_points: newTaskRewardPoints,
           rollover_enabled: true,
@@ -1125,6 +1127,7 @@ export default function Home() {
           description: newTaskDescription.trim() || null,
           assigned_member_id: newTaskAssignedMemberId,
           verification_type: newTaskVerificationType,
+          due_time: newTaskDueTime || null,
           reward_points: newTaskRewardPoints,
           rollover_enabled: true,
           repeat_type: newTaskRepeatType,
@@ -1161,6 +1164,7 @@ export default function Home() {
     setNewTaskRewardPoints(1);
     setNewTaskRepeatType("none");
     setNewTaskRepeatWeekdays([]);
+    setNewTaskDueTime("");
     setLoading(false);
   }
 
