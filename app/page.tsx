@@ -41,7 +41,7 @@ import type {
 const memberSelect =
   "id, profile_id, display_name, role, is_virtual, requires_account, status";
 const taskSelect =
-  "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url";
+  "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url, evidence_text";
 const taskTemplateSelect =
   "id, workspace_id, title, description, assigned_member_id, verification_type, reward_points, rollover_enabled, repeat_type, repeat_weekdays, is_active";
 const rewardSelect =
@@ -1582,7 +1582,49 @@ export default function Home() {
       setMessage("본인에게 배정된 할 일만 제출할 수 있습니다.");
       return;
     }
+
+  async function submitTaskWithText(task: Task, text: string) {
+    if (!workspace) {
+      setMessage("워크스페이스 정보가 없습니다.");
+      return;
+    }
   
+    if (task.status !== "todo" && task.status !== "rolled_over" && task.status !== "rejected") {
+      setMessage("지금 상태에서는 제출할 수 없습니다.");
+      return;
+    }
+  
+    if (!isManager && task.assigned_member_id !== currentMember?.id) {
+      setMessage("본인에게 배정된 할 일만 제출할 수 있습니다.");
+      return;
+    }
+  
+    if (!text.trim()) {
+      setMessage("인증 내용을 입력해 주세요.");
+      return;
+    }
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ status: "submitted", evidence_text: text.trim() })
+      .eq("id", task.id)
+      .select(taskSelect)
+      .single();
+  
+    if (error) {
+      setMessage(`제출 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
+    setMessage(`${task.title} 제출 완료.`);
+    setLoading(false);
+  }
+    
     setLoading(true);
     setMessage("");
   
