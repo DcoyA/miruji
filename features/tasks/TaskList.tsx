@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ChangeEvent } from "react";
 import type { Member, Task } from "@/types/app";
 import { memberNameById, statusLabel, verificationLabel } from "@/lib/labels";
 
@@ -9,6 +9,7 @@ type TaskListProps = {
   isManager: boolean;
   loading: boolean;
   onSubmit: (task: Task) => void;
+  onSubmitWithEvidence?: (task: Task, file: File) => void;
   onApprove: (task: Task) => void;
   onReject: (task: Task) => void;
   onCancel?: (task: Task) => void;
@@ -22,6 +23,7 @@ export default function TaskList({
   isManager,
   loading,
   onSubmit,
+  onSubmitWithEvidence,
   onApprove,
   onReject,
   onCancel,
@@ -35,6 +37,8 @@ export default function TaskList({
         const canSubmit =
           isAssignee &&
           (task.status === "todo" || task.status === "rolled_over" || task.status === "rejected");
+
+        const needsPhoto = task.verification_type === "photo";
 
         const canReview = isManager && task.status === "submitted";
 
@@ -53,6 +57,19 @@ export default function TaskList({
           onSubmit(task);
         }
 
+        function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (!file) return;
+
+          const confirmed = window.confirm(
+            "선택한 사진을 첨부해서 제출하시겠습니까? 제출 후에는 승인 전까지 회수할 수 있습니다."
+          );
+          if (!confirmed) return;
+
+          onSubmitWithEvidence?.(task, file);
+        }
+
         return (
           <div key={task.id} style={taskCardStyle}>
             <div style={{ flex: 1 }}>
@@ -67,50 +84,48 @@ export default function TaskList({
                 {task.reward_points}개
               </div>
 
+              {task.evidence_url && (
+                <a href={task.evidence_url} target="_blank" rel="noreferrer" style={evidenceLinkStyle}>
+                  첨부한 사진 보기
+                </a>
+              )}
+
               {(canSubmit || canReview || canCancel || canDelete) && (
                 <div style={actionRowStyle}>
-                  {canSubmit && (
-                    <button
-                      onClick={handleSubmitClick}
-                      disabled={loading}
-                      style={submitButtonStyle}
-                    >
+                  {canSubmit && needsPhoto && (
+                    <label style={submitButtonStyle}>
+                      사진 첨부 후 제출
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoChange}
+                        disabled={loading}
+                        style={hiddenFileInputStyle}
+                      />
+                    </label>
+                  )}
+                  {canSubmit && !needsPhoto && (
+                    <button onClick={handleSubmitClick} disabled={loading} style={submitButtonStyle}>
                       제출하기
                     </button>
                   )}
                   {canCancel && onCancel && (
-                    <button
-                      onClick={() => onCancel(task)}
-                      disabled={loading}
-                      style={cancelButtonStyle}
-                    >
+                    <button onClick={() => onCancel(task)} disabled={loading} style={cancelButtonStyle}>
                       회수하기
                     </button>
                   )}
                   {canReview && (
                     <>
-                      <button
-                        onClick={() => onApprove(task)}
-                        disabled={loading}
-                        style={approveButtonStyle}
-                      >
+                      <button onClick={() => onApprove(task)} disabled={loading} style={approveButtonStyle}>
                         승인
                       </button>
-                      <button
-                        onClick={() => onReject(task)}
-                        disabled={loading}
-                        style={rejectButtonStyle}
-                      >
+                      <button onClick={() => onReject(task)} disabled={loading} style={rejectButtonStyle}>
                         반려
                       </button>
                     </>
                   )}
                   {canDelete && onDelete && (
-                    <button
-                      onClick={() => onDelete(task)}
-                      disabled={loading}
-                      style={deleteButtonStyle}
-                    >
+                    <button onClick={() => onDelete(task)} disabled={loading} style={deleteButtonStyle}>
                       삭제
                     </button>
                   )}
@@ -120,9 +135,7 @@ export default function TaskList({
 
             <div style={rightColumnStyle}>
               <span style={checkIconStyle(isDone)}>{isDone ? "✓" : ""}</span>
-              <span style={statusBadgeStyle(task.status)}>
-                {statusLabel(task.status)}
-              </span>
+              <span style={statusBadgeStyle(task.status)}>{statusLabel(task.status)}</span>
             </div>
           </div>
         );
@@ -172,11 +185,7 @@ function statusBadgeStyle(status: string): CSSProperties {
   };
 }
 
-const taskListStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
-};
+const taskListStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 10 };
 
 const taskCardStyle: CSSProperties = {
   padding: 14,
@@ -188,33 +197,28 @@ const taskCardStyle: CSSProperties = {
   gap: 12,
 };
 
-const rightColumnStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: 8,
+const rightColumnStyle: CSSProperties = { display: "flex", flexDirection: "column", alignItems: "center", gap: 8 };
+
+const taskTitleStyle: CSSProperties = { fontWeight: 900, fontSize: 16, color: "#3f1d24" };
+
+const taskSubTextStyle: CSSProperties = { marginTop: 5, color: "#9f6b75", fontSize: 13 };
+
+const evidenceLinkStyle: CSSProperties = {
+  display: "inline-block",
+  marginTop: 6,
+  fontSize: 12,
+  fontWeight: 700,
+  color: "#db2777",
+  textDecoration: "underline",
 };
 
-const taskTitleStyle: CSSProperties = {
-  fontWeight: 900,
-  fontSize: 16,
-  color: "#3f1d24",
-};
-
-const taskSubTextStyle: CSSProperties = {
-  marginTop: 5,
-  color: "#9f6b75",
-  fontSize: 13,
-};
-
-const actionRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 6,
-  marginTop: 10,
-  flexWrap: "wrap",
-};
+const actionRowStyle: CSSProperties = { display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" };
 
 const submitButtonStyle: CSSProperties = {
+  position: "relative",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
   border: "none",
   borderRadius: 12,
   background: "linear-gradient(135deg, #fb7185, #e11d48)",
@@ -224,6 +228,15 @@ const submitButtonStyle: CSSProperties = {
   fontWeight: 800,
   cursor: "pointer",
   boxShadow: "0 4px 10px rgba(225,29,72,0.30)",
+};
+
+const hiddenFileInputStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+  opacity: 0,
+  cursor: "pointer",
 };
 
 const cancelButtonStyle: CSSProperties = {
