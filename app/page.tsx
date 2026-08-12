@@ -1531,11 +1531,8 @@ export default function Home() {
   }
 
   async function submitTask(task: Task) {
-    const confirmed = window.confirm("제출하시겠습니까? 제출 후에는 승인 전까지 회수할 수 있습니다.");
-    if (!confirmed) return;
-   
-    if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+     if (!workspace) {
+      setMessage("작업 공간이 없습니다.");
       return;
     }
 
