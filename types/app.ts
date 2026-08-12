@@ -35,6 +35,7 @@ export type Task = {
   template_id: string | null;
   created_by_member_id: string | null;
   evidence_url: string | null;
+  evidence_text: string | null;
 };
 
 export type TaskTemplate = {
