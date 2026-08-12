@@ -41,7 +41,7 @@ import type {
 const memberSelect =
   "id, profile_id, display_name, role, is_virtual, requires_account, status";
 const taskSelect =
-  "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id";
+  "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url";
 const taskTemplateSelect =
   "id, workspace_id, title, description, assigned_member_id, verification_type, reward_points, rollover_enabled, repeat_type, repeat_weekdays, is_active";
 const rewardSelect =
@@ -1567,6 +1567,58 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function submitTaskWithEvidence(task: Task, file: File) {
+    if (!workspace) {
+      setMessage("작업 공간이 없습니다.");
+      return;
+    }
+  
+    if (task.status !== "todo" && task.status !== "rolled_over" && task.status !== "rejected") {
+      setMessage("이미 제출되었거나 처리된 할 일입니다.");
+      return;
+    }
+  
+    if (!isManager && task.assigned_member_id !== currentMember?.id) {
+      setMessage("본인에게 배정된 할 일만 제출할 수 있습니다.");
+      return;
+    }
+  
+    setLoading(true);
+    setMessage("");
+  
+    const filePath = `${workspace.id}/${task.id}-${Date.now()}-${file.name}`;
+  
+    const { error: uploadError } = await supabase.storage
+      .from("task-evidence")
+      .upload(filePath, file, { upsert: false });
+  
+    if (uploadError) {
+      setMessage(`사진 업로드 실패: ${uploadError.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    const { data: publicUrlData } = supabase.storage.from("task-evidence").getPublicUrl(filePath);
+  
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ status: "submitted", evidence_url: publicUrlData.publicUrl })
+      .eq("id", task.id)
+      .select(taskSelect)
+      .single();
+  
+    if (error) {
+      setMessage(`제출 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
+    setMessage(`${task.title} 사진과 함께 제출했습니다.`);
+    setLoading(false);
+  }
+
+  
   async function cancelSubmission(task: Task) {
   if (!workspace) {
     setMessage("워크스페이스를 불러오지 못했습니다.");
@@ -1881,6 +1933,8 @@ export default function Home() {
             onRejectTask={rejectTask}
             onCancelTask={cancelSubmission}
             onDeleteTask={deleteTask}
+            onAddTask={() => setActiveTab("missions")}
+            onSubmitWithEvidence={submitTaskWithEvidence}
           />
         </>
       )}
@@ -1918,6 +1972,7 @@ export default function Home() {
           onSelectedDateChange={setSelectedDate}
           onCancelTask={cancelSubmission}
           onDeleteTask={deleteTask}
+          onSubmitWithEvidence={submitTaskWithEvidence}
         />
       )}
 
@@ -2018,6 +2073,7 @@ export default function Home() {
                   isManager={isManager}
                   loading={loading}
                   onSubmit={submitTask}
+                  onSubmitWithEvidence={submitTaskWithEvidence}
                   onApprove={approveTask}
                   onReject={rejectTask}
                   onCancel={cancelSubmission}
