@@ -36,12 +36,9 @@ export default function TaskList({
           isAssignee &&
           (task.status === "todo" || task.status === "rolled_over" || task.status === "rejected");
 
-        const canReview = isManager && task.status === "submitted" && !isAssignee;
+        const canReview = isManager && task.status === "submitted";
 
-        const canCancel =
-          !isManager &&
-          task.assigned_member_id === currentMember?.id &&
-          task.status === "submitted";
+        const canCancel = isAssignee && task.status === "submitted";
 
         const canDelete =
           isManager || (!!currentMember?.id && task.created_by_member_id === currentMember.id);
