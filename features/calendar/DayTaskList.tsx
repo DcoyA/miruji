@@ -186,6 +186,7 @@ export default function DayTaskList({
               닫기
             </button>
           </div>
+        </div>
 
         <div style={panelBodyStyle}>
           {viewMode === "day" ? (
