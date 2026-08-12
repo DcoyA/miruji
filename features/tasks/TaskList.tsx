@@ -30,12 +30,13 @@ export default function TaskList({
   return (
     <div style={taskListStyle}>
       {tasks.map((task) => {
+        const isAssignee = task.assigned_member_id === currentMember?.id;
+
         const canSubmit =
-          !isManager &&
-          task.assigned_member_id === currentMember?.id &&
+          isAssignee &&
           (task.status === "todo" || task.status === "rolled_over" || task.status === "rejected");
 
-        const canReview = isManager && task.status === "submitted";
+        const canReview = isManager && task.status === "submitted" && !isAssignee;
 
         const canCancel =
           !isManager &&
