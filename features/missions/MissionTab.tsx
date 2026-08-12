@@ -39,6 +39,7 @@ type MissionTabProps = {
   onCancelTask: (task: Task) => void;
   onDeleteTask: (task: Task) => void;
   onSubmitWithEvidence?: (task: Task, file: File) => void;
+  onSubmitWithText?: (task: Task, text: string) => void;
 };
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -77,6 +78,7 @@ export default function MissionTab({
   onCancelTask,
   onDeleteTask,
   onSubmitWithEvidence,
+  onSubmitWithText,
 }: MissionTabProps) {
   const visibleTasks = isManager
     ? tasks
@@ -256,6 +258,7 @@ export default function MissionTab({
             loading={loading}
             onSubmit={onSubmitTask}
             onSubmitWithEvidence={onSubmitWithEvidence}
+            onSubmitWithText={onSubmitWithText}
             onApprove={onApproveTask}
             onReject={onRejectTask}
             onCancel={onCancelTask}
