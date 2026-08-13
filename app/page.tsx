@@ -207,16 +207,7 @@ export default function Home() {
         { event: "*", schema: "public", table: "reward_transactions", filter: `workspace_id=eq.${workspace.id}` },
         () => loadWorkspaceData(workspace.id)
       )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "tasks", filter: `workspace_id=eq.${workspace.id}` },
-        (payload) => {
-          console.log("[realtime] tasks event received:", payload);
-          loadWorkspaceData(workspace.id);
-        }
-      )
       .subscribe((status) => {
-        console.log("[realtime] subscription status:", status);
       });
   
     return () => {
