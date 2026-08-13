@@ -36,6 +36,7 @@ import type {
   Task,
   TaskTemplate,
   Workspace,
+  WorkspaceInvite,
 } from "@/types/app";
 
 const memberSelect =
@@ -109,15 +110,19 @@ export default function Home() {
   const [newRewardDescription, setNewRewardDescription] = useState("");
   const [newRewardTargetMemberId, setNewRewardTargetMemberId] = useState("");
   const [newRewardCostPoints, setNewRewardCostPoints] = useState(1);
-
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberRole, setNewMemberRole] = useState<MemberRole>("member");
-  const [newMemberHasEmail, setNewMemberHasEmail] = useState(true);
-  const [inviteCodes, setInviteCodes] = useState<Record<string, string>>({});
+
   const [joinInviteCode, setJoinInviteCode] = useState("");
   const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
-  const [inviteExpiresAt, setInviteExpiresAt] = useState<Record<string, string>>({});
   const [myNickname, setMyNickname] = useState("");
+
+  const [inviteRole, setInviteRole] = useState<MemberRole>("member");
+  const [inviteSuggestedName, setInviteSuggestedName] = useState("");
+  const [pendingInvites, setPendingInvites] = useState<WorkspaceInvite[]>([]);
+  const [profileRecoveryEmail, setProfileRecoveryEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+
 
   useEffect(() => {
     initializeAuth();
@@ -138,6 +143,10 @@ export default function Home() {
     return () => data.subscription.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (profile) setProfileRecoveryEmail(profile.recovery_email || "");
+  }, [profile?.id, profile?.recovery_email]);
 
   useEffect(() => {
     const saved = window.localStorage.getItem("miruji_saved_username");
@@ -280,7 +289,7 @@ export default function Home() {
   
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
+      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed, recovery_email")
       .eq("auth_user_id", authUserId)
       .maybeSingle();
   
@@ -307,7 +316,7 @@ export default function Home() {
         recovery_email: meta.recovery_email || null,
         onboarding_completed: false,
       })
-      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
+      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed, recovery_email")
       .single();
   
     if (createError) {
@@ -664,7 +673,8 @@ export default function Home() {
     setNewMemberName("");
     setNewMemberRole("member");
     setNewMemberHasEmail(true);
-    setInviteCodes({});
+    setPendingInvites([]);
+    setInviteSuggestedName("");
     setJoinInviteCode("");
     setAgreedToTerms(false);
   }
@@ -748,7 +758,7 @@ export default function Home() {
     setLoading(false);
   }
 
-  async function addMember() {
+  async function addVirtualMember() {
     if (!workspace) {
       setMessage("워크스페이스가 없습니다.");
       return;
@@ -775,7 +785,7 @@ export default function Home() {
         role: newMemberRole,
         status: "active",
         is_virtual: true,
-        requires_account: newMemberHasEmail,
+        requires_account: false,
         created_by: profile?.id || null,
       })
       .select(memberSelect)
@@ -799,72 +809,50 @@ export default function Home() {
     return Math.random().toString(36).slice(2, 8).toUpperCase();
   }
 
-  async function createInviteForMember(member: Member) {
+  async function createInvite() {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
-
+  
     if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
-
-    if (!member.is_virtual) {
-      setMessage("이미 실제 계정과 연결된 참여자입니다.");
-      return;
-    }
-
-    if (!member.requires_account) {
-      setMessage("먼저 '실제 계정으로 전환하기'를 눌러주세요.");
-      return;
-    }
-
+  
     setLoading(true);
     setMessage("");
-
-    const manager = members.find((item) => item.role === "owner" || item.role === "manager");
-    const inviteCode = makeInviteCode();
-
-    const { error } = await supabase.from("workspace_invites").insert({
-      workspace_id: workspace.id,
-      target_member_id: member.id,
-      invite_code: inviteCode,
-      role: member.role,
-      status: "pending",
-      created_by_member_id: manager?.id || null,
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  
+    const { data, error } = await supabase.rpc("create_workspace_invite", {
+      target_workspace_id: workspace.id,
+      member_role: inviteRole,
+      suggested_display_name: inviteSuggestedName.trim() || null,
     });
-
+  
     if (error) {
       setMessage(`초대코드 생성 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-
-    setInviteCodes((prev) => ({ ...prev, [member.id]: inviteCode }));
-    setMessage(`초대코드 생성 완료: ${inviteCode}`);
-    setInviteExpiresAt((prev) => ({
-      ...prev,
-      [member.id]: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    }));
+  
+    await loadWorkspaceData(workspace.id);
+    setInviteSuggestedName("");
+    setMessage(`초대코드 생성 완료: ${data?.[0]?.invite_code ?? ""}`);
     setLoading(false);
   }
 
-  async function cancelInvite(member: Member) {
+  async function cancelPendingInvite(invite: WorkspaceInvite) {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
   
     if (!isManager) {
-      setMessage("보호자/관리자만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
   
-    const confirmed = window.confirm(
-      `${member.display_name}에게 발급한 초대코드를 취소하시겠습니까?`
-    );
+    const confirmed = window.confirm("이 초대코드를 취소할까요?");
     if (!confirmed) return;
   
     setLoading(true);
@@ -873,8 +861,7 @@ export default function Home() {
     const { error } = await supabase
       .from("workspace_invites")
       .update({ status: "cancelled" })
-      .eq("workspace_id", workspace.id)
-      .eq("target_member_id", member.id)
+      .eq("id", invite.id)
       .eq("status", "pending");
   
     if (error) {
@@ -883,54 +870,11 @@ export default function Home() {
       return;
     }
   
-    setInviteCodes((prev) => {
-      const next = { ...prev };
-      delete next[member.id];
-      return next;
-    });
-    setInviteExpiresAt((prev) => {
-      const next = { ...prev };
-      delete next[member.id];
-      return next;
-    });
-    setMessage(`${member.display_name}의 초대코드를 취소했습니다.`);
+    setPendingInvites((prev) => prev.filter((item) => item.id !== invite.id));
+    setMessage("초대코드를 취소했습니다.");
     setLoading(false);
   }
   
-  async function enableAccountForMember(member: Member) {
-    if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
-      return;
-    }
-
-    if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
-      return;
-    }
-
-    if (!member.is_virtual || member.requires_account) return;
-
-    setLoading(true);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("workspace_members")
-      .update({ requires_account: true })
-      .eq("id", member.id)
-      .select(memberSelect)
-      .single();
-
-    if (error) {
-      setMessage(`전환 처리 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
-    setMessage(`${member.display_name} 계정 전환 준비 완료. 초대코드를 생성해주세요.`);
-    setLoading(false);
-  }
-
   async function removeMember(member: Member) {
     if (!workspace) {
       setMessage("워크스페이스가 없습니다.");
@@ -1083,16 +1027,69 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function saveRecoveryEmail() {
+    if (!profile) return;
+  
+    const trimmed = profileRecoveryEmail.trim();
+    if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setMessage("올바른 이메일 형식이 아닙니다.");
+      return;
+    }
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ recovery_email: trimmed || null })
+      .eq("id", profile.id)
+      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed, recovery_email")
+      .single();
+  
+    if (error) {
+      setMessage(`이메일 저장 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setProfile(data as Profile);
+    setMessage("복구용 이메일을 저장했습니다.");
+    setLoading(false);
+  }
+  
+  async function changePassword() {
+    if (!newPassword.trim() || newPassword.trim().length < 6) {
+      setMessage("비밀번호는 6자 이상이어야 합니다.");
+      return;
+    }
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { error } = await supabase.auth.updateUser({ password: newPassword.trim() });
+  
+    if (error) {
+      setMessage(`비밀번호 변경 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setNewPassword("");
+    setMessage("비밀번호를 변경했습니다.");
+    setLoading(false);
+  }
+  
   async function loadWorkspaceData(workspaceId: string) {
     const monthStart = toDateKey(startOfMonth(currentMonth));
     const monthEnd = toDateKey(endOfMonth(currentMonth));
 
-    const [membersResult, tasksResult, templatesResult, rewardsResult, rewardTransactionsResult] = await Promise.all([
+    const [membersResult, tasksResult, templatesResult, rewardsResult, rewardTransactionsResult, invitesResult] = await Promise.all([
       supabase.from("workspace_members").select(memberSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
       supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd).order("due_date", { ascending: true }),
       supabase.from("task_templates").select(taskTemplateSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
       supabase.from("rewards").select(rewardSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
       supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
+      supabase.from("workspace_invites").select("id, invite_code, role, suggested_name, status, expires_at").eq("workspace_id", workspaceId).eq("status", "pending").order("created_at", { ascending: false }),
     ]);
 
     if (membersResult.error) {
@@ -2146,14 +2143,9 @@ export default function Home() {
           onCreateWorkspace={createWorkspace}
           newMemberName={newMemberName}
           newMemberRole={newMemberRole}
-          newMemberHasEmail={newMemberHasEmail}
           onNewMemberNameChange={setNewMemberName}
           onNewMemberRoleChange={setNewMemberRole}
-          onNewMemberHasEmailChange={setNewMemberHasEmail}
           onAddMember={addMember}
-          inviteCodes={inviteCodes}
-          onCreateInvite={createInviteForMember}
-          onEnableAccount={enableAccountForMember}
           onRemoveMember={removeMember}
           onRestoreMember={restoreMember}
           joinInviteCode={joinInviteCode}
@@ -2162,11 +2154,24 @@ export default function Home() {
           onDeleteAccount={deleteAccount}
           onTransferOwnership={transferOwnership}
           onCancelInvite={cancelInvite}
-          inviteExpiresAt={inviteExpiresAt}
           onDeleteWorkspace={deleteWorkspace}
           myNickname={myNickname}
           onMyNicknameChange={setMyNickname}
           onSaveMyNickname={saveMyNickname}
+          inviteRole={inviteRole}
+          onInviteRoleChange={setInviteRole}
+          inviteSuggestedName={inviteSuggestedName}
+          onInviteSuggestedNameChange={setInviteSuggestedName}
+          onCreateInvite={createInvite}
+          pendingInvites={pendingInvites}
+          onCancelPendingInvite={cancelPendingInvite}
+          recoveryEmail={profileRecoveryEmail}
+          onRecoveryEmailChange={setProfileRecoveryEmail}
+          onSaveRecoveryEmail={saveRecoveryEmail}
+          newPassword={newPassword}
+          onNewPasswordChange={setNewPassword}
+          onChangePassword={changePassword}
+          onAddMember={addVirtualMember}
         />
       )}
 
