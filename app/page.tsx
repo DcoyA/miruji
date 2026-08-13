@@ -58,6 +58,12 @@ type InviteAcceptResult = {
   status?: string;
 };
 
+const FAKE_EMAIL_DOMAIN = "users.miruji.app";
+
+function usernameToEmail(username: string) {
+  return `${username.trim().toLowerCase()}@${FAKE_EMAIL_DOMAIN}`;
+}
+
 export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -459,8 +465,8 @@ export default function Home() {
   }
 
   async function requestPasswordReset() {
-    if (!authEmail.trim()) {
-      setMessage("이메일을 입력해주세요.");
+    if (!authRecoveryEmail.trim()) {
+      setMessage("등록된 복구 이메일이 없습니다. 관리자에게 문의해주세요.");
       return;
     }
 
@@ -472,7 +478,7 @@ export default function Home() {
         ? window.location.origin
         : "https://miruji-omega.vercel.app";
 
-    const { error } = await supabase.auth.resetPasswordForEmail(authEmail.trim(), {
+    const { error } = await supabase.auth.resetPasswordForEmail(authRecoveryEmail.trim(), {
       redirectTo: `${appUrl}/auth/reset`,
     });
 
@@ -514,7 +520,6 @@ export default function Home() {
 
     resetState();
     setProfile(null);
-    setAuthEmail("");
     setAuthPassword("");
     setAuthMode("signin");
     setLoading(false);
@@ -1698,48 +1703,6 @@ export default function Home() {
       setMessage("본인에게 배정된 할 일만 제출할 수 있습니다.");
       return;
     }
-
-  async function submitTaskWithText(task: Task, text: string) {
-    if (!workspace) {
-      setMessage("워크스페이스 정보가 없습니다.");
-      return;
-    }
-  
-    if (task.status !== "todo" && task.status !== "rolled_over" && task.status !== "rejected") {
-      setMessage("지금 상태에서는 제출할 수 없습니다.");
-      return;
-    }
-  
-    if (!isManager && task.assigned_member_id !== currentMember?.id) {
-      setMessage("본인에게 배정된 할 일만 제출할 수 있습니다.");
-      return;
-    }
-  
-    if (!text.trim()) {
-      setMessage("인증 내용을 입력해 주세요.");
-      return;
-    }
-  
-    setLoading(true);
-    setMessage("");
-  
-    const { data, error } = await supabase
-      .from("tasks")
-      .update({ status: "submitted", evidence_text: text.trim() })
-      .eq("id", task.id)
-      .select(taskSelect)
-      .single();
-  
-    if (error) {
-      setMessage(`제출 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-  
-    setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
-    setMessage(`${task.title} 제출 완료.`);
-    setLoading(false);
-  }
     
     setLoading(true);
     setMessage("");
