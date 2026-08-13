@@ -1964,19 +1964,24 @@ export default function Home() {
     return (
       <Shell>
         <AuthPanel
-            mode={authMode}
-            email={authEmail}
-            password={authPassword}
-            loading={loading}
-            message={message}
-            agreedToTerms={agreedToTerms}
-            onModeChange={setAuthMode}
-            onEmailChange={setAuthEmail}
-            onPasswordChange={setAuthPassword}
-            onAgreedToTermsChange={setAgreedToTerms}
-            onSignIn={signIn}
-            onSignUp={signUp}
-            onSendPasswordReset={requestPasswordReset}
+          mode={authMode}
+          username={authUsername}
+          password={authPassword}
+          recoveryEmail={authRecoveryEmail}
+          loading={loading}
+          message={message}
+          agreedToTerms={agreedToTerms}
+          isHuman={isHuman}
+          rememberUsername={rememberUsername}
+          onModeChange={setAuthMode}
+          onUsernameChange={setAuthUsername}
+          onPasswordChange={setAuthPassword}
+          onRecoveryEmailChange={setAuthRecoveryEmail}
+          onAgreedToTermsChange={setAgreedToTerms}
+          onIsHumanChange={setIsHuman}
+          onRememberUsernameChange={setRememberUsername}
+          onSignIn={signIn}
+          onSignUp={signUp}
         />
       </Shell>
     );
