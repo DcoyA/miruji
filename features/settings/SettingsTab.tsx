@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { CSSProperties } from "react";
 import type { Member, Workspace } from "@/types/app";
 import { roleLabel } from "@/lib/labels";
+import { supabase } from "@/lib/supabase/client";
 
 type MemberRole = "manager" | "member";
 
@@ -91,6 +92,68 @@ export default function SettingsTab({
     });
   }
 
+  const [notifStatus, setNotifStatus] = useState<string | null>(null);
+
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  async function handleEnableNotifications() {
+    try {
+      if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+        setNotifStatus("이 브라우저는 알림 기능을 지원하지 않습니다.");
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setNotifStatus("알림 권한이 허용되지 않았습니다.");
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+
+      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+
+      const { data: userData } = await supabase.auth.getUser();
+      const profileId = userData?.user?.id;
+      if (!profileId) {
+        setNotifStatus("로그인 정보를 확인할 수 없습니다.");
+        return;
+      }
+
+      const tokenPayload = JSON.stringify(subscription.toJSON());
+
+      const { error } = await supabase
+        .from("device_tokens")
+        .upsert(
+          { profile_id: profileId, platform: "web-push", token: tokenPayload, last_seen_at: new Date().toISOString() },
+          { onConflict: "profile_id,platform" }
+        );
+
+      if (error) {
+        setNotifStatus(`알림 등록 실패: ${error.message}`);
+        return;
+      }
+
+      setNotifStatus("알림이 활성화되었습니다.");
+    } catch (err) {
+      setNotifStatus("알림 활성화 중 오류가 발생했습니다.");
+    }
+  }
+  
   return (
     <>
       <section style={createBoxStyle}>
@@ -114,6 +177,15 @@ export default function SettingsTab({
         <button type="button" onClick={handleShareApp} style={primaryButtonStyle(false)}>
           {appShareCopied ? "복사됨! 원하는 곳에 붙여넣어 보내보세요" : "친구에게 공유하기"}
         </button>
+      </section>
+
+      <section style={createBoxStyle}>
+        <h2 style={sectionTitleStyle}>알림 받기</h2>
+        <p style={subTextStyle}>할 일 등록, 제출, 승인 소식을 알림으로 받아보세요.</p>
+        <button type="button" onClick={handleEnableNotifications} style={primaryButtonStyle(false)}>
+          알림 켜기
+        </button>
+        {notifStatus && <p style={subTextStyle}>{notifStatus}</p>}
       </section>
 
       {currentMember && (
