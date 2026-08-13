@@ -4,6 +4,16 @@ export type Profile = {
   display_name: string;
   avatar_url: string | null;
   onboarding_completed: boolean;
+  recovery_email: string | null;
+};
+
+export type WorkspaceInvite = {
+  id: string;
+  invite_code: string;
+  role: string;
+  suggested_name: string | null;
+  status: string;
+  expires_at: string;
 };
 
 export type Workspace = {
