@@ -64,7 +64,10 @@ export default function Home() {
   const [message, setMessage] = useState("");
 
   const [authMode, setAuthMode] = useState<"signin" | "signup" | "forgot">("signin");
-  const [authEmail, setAuthEmail] = useState("");
+  const [authUsername, setAuthUsername] = useState("");
+  const [authRecoveryEmail, setAuthRecoveryEmail] = useState("");
+  const [isHuman, setIsHuman] = useState(false);
+  const [rememberUsername, setRememberUsername] = useState(true);
   const [authPassword, setAuthPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -130,6 +133,12 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const saved = window.localStorage.getItem("miruji_saved_username");
+    if (saved) setAuthUsername(saved);
+  }, []);
+
+  
   useEffect(() => {
     if (workspace?.id) loadWorkspaceData(workspace.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -257,19 +266,23 @@ export default function Home() {
 
   async function loadProfile(authUserId: string): Promise<Profile | null> {
     const { data: userData } = await supabase.auth.getUser();
-    const fallbackName = userData.user?.email?.split("@")[0] || "";
-
+    const meta = (userData.user?.user_metadata || {}) as {
+      username?: string;
+      recovery_email?: string;
+    };
+    const fallbackName = meta.username || userData.user?.email?.split("@")[0] || "";
+  
     const { data, error } = await supabase
       .from("profiles")
       .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
       .eq("auth_user_id", authUserId)
       .maybeSingle();
-
+  
     if (error) {
-      setMessage(`프로필 불러오기 실패: ${error.message}`);
+      setMessage(`프로필 조회 실패: ${error.message}`);
       return null;
     }
-
+  
     if (data) {
       const loaded = {
         ...(data as Profile),
@@ -278,22 +291,24 @@ export default function Home() {
       setProfile(loaded);
       return loaded;
     }
-
+  
     const { data: created, error: createError } = await supabase
       .from("profiles")
       .insert({
         auth_user_id: authUserId,
         display_name: fallbackName,
+        username: meta.username || null,
+        recovery_email: meta.recovery_email || null,
         onboarding_completed: false,
       })
       .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
       .single();
-
+  
     if (createError) {
       setMessage(`프로필 생성 실패: ${createError.message}`);
       return null;
     }
-
+  
     const createdProfile = created as Profile;
     setProfile(createdProfile);
     return createdProfile;
@@ -315,89 +330,130 @@ export default function Home() {
   }
 
   async function signUp() {
-    if (!authEmail.trim() || !authPassword.trim()) {
-      setMessage("이메일과 비밀번호를 모두 입력해주세요.");
+    const trimmedUsername = authUsername.trim();
+  
+    if (!trimmedUsername || !authPassword.trim()) {
+      setMessage("아이디와 비밀번호를 입력해주세요.");
       return;
     }
-
+  
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(trimmedUsername)) {
+      setMessage("아이디는 영문, 숫자, 언더바(_)만 사용해 3~20자로 입력해주세요.");
+      return;
+    }
+  
+    if (authPassword.trim().length < 6) {
+      setMessage("비밀번호는 6자 이상 입력해주세요.");
+      return;
+    }
+  
+    if (authRecoveryEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authRecoveryEmail.trim())) {
+      setMessage("복구용 이메일 형식이 올바르지 않습니다.");
+      return;
+    }
+  
     if (!agreedToTerms) {
       setMessage("이용약관 및 개인정보처리방침에 동의해주세요.");
       return;
     }
-
+  
+    if (!isHuman) {
+      setMessage("사람입니다 체크박스를 선택해주세요.");
+      return;
+    }
+  
     setLoading(true);
     setMessage("");
-
-    const appUrl =
-      typeof window !== "undefined"
-        ? window.location.origin
-        : "https://miruji-git-main-iamborghini5757-1567s-projects.vercel.app";
-
+  
+    const { data: availability, error: availabilityError } = await supabase.rpc(
+      "is_username_available",
+      { check_username: trimmedUsername }
+    );
+  
+    if (availabilityError) {
+      setMessage(`아이디 확인 실패: ${availabilityError.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    if (availability === false) {
+      setMessage("이미 사용 중인 아이디입니다.");
+      setLoading(false);
+      return;
+    }
+  
     const { data, error } = await supabase.auth.signUp({
-      email: authEmail.trim(),
+      email: usernameToEmail(trimmedUsername),
       password: authPassword.trim(),
       options: {
-        emailRedirectTo: `${appUrl}/auth/callback`,
         data: {
-          display_name: authEmail.split("@")[0],
-          app_name: "",
+          username: trimmedUsername,
+          display_name: trimmedUsername,
+          recovery_email: authRecoveryEmail.trim() || null,
         },
       },
     });
-
+  
     if (error) {
       console.error("signUp error", error);
-      const detail =
-        error.message && error.message.trim() && error.message !== "{}"
-          ? error.message
-          : `오류 코드: ${(error as any).status ?? error.name ?? "알 수 없음"}`;
-      setMessage(`가입 실패: ${detail}`);
+      setMessage(`회원가입 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-
+  
     const isAlreadyRegistered = data.user && (data.user.identities?.length ?? 0) === 0;
-
     if (isAlreadyRegistered) {
-      setMessage("이미 가입된 계정입니다. 로그인해주세요.");
+      setMessage("이미 가입된 아이디입니다. 로그인해주세요.");
       setLoading(false);
       return;
     }
-
-    setMessage("가입 완료. 이메일 인증 후 로그인해주세요.");
+  
+    if (rememberUsername) {
+      window.localStorage.setItem("miruji_saved_username", trimmedUsername);
+    }
+  
+    setMessage("회원가입이 완료되었습니다.");
     setLoading(false);
   }
 
   async function signIn() {
-    if (!authEmail.trim() || !authPassword.trim()) {
-      setMessage("이메일과 비밀번호를 입력해주세요.");
+    const trimmedUsername = authUsername.trim();
+  
+    if (!trimmedUsername || !authPassword.trim()) {
+      setMessage("아이디와 비밀번호를 입력해주세요.");
       return;
     }
-
+  
     setLoading(true);
     setMessage("");
-
+  
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: authEmail.trim(),
+      email: usernameToEmail(trimmedUsername),
       password: authPassword.trim(),
     });
-
+  
     if (error) {
       setMessage(`로그인 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-
+  
     if (!data.user) {
       setMessage("로그인에 실패했습니다.");
       setLoading(false);
       return;
     }
-
+  
+    if (rememberUsername) {
+      window.localStorage.setItem("miruji_saved_username", trimmedUsername);
+    } else {
+      window.localStorage.removeItem("miruji_saved_username");
+    }
+  
     const loadedProfile = await loadProfile(data.user.id);
     if (loadedProfile) {
       await loadWorkspaces();
-      setMessage("로그인 완료");
+      setMessage("로그인 성공");
     }
     setLoading(false);
   }
