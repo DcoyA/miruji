@@ -4,57 +4,53 @@ type AuthMode = "signin" | "signup" | "forgot";
 
 type AuthPanelProps = {
   mode: AuthMode;
-  email: string;
+  username: string;
   password: string;
+  recoveryEmail: string;
   loading: boolean;
   message: string;
   agreedToTerms: boolean;
+  isHuman: boolean;
+  rememberUsername: boolean;
   onModeChange: (mode: AuthMode) => void;
-  onEmailChange: (value: string) => void;
+  onUsernameChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
+  onRecoveryEmailChange: (value: string) => void;
   onAgreedToTermsChange: (value: boolean) => void;
+  onIsHumanChange: (value: boolean) => void;
+  onRememberUsernameChange: (value: boolean) => void;
   onSignIn: () => void;
   onSignUp: () => void;
-  onSendPasswordReset: () => void;
 };
 
 export default function AuthPanel({
   mode,
-  email,
+  username,
   password,
+  recoveryEmail,
   loading,
   message,
   agreedToTerms,
+  isHuman,
+  rememberUsername,
   onModeChange,
-  onEmailChange,
+  onUsernameChange,
   onPasswordChange,
+  onRecoveryEmailChange,
   onAgreedToTermsChange,
+  onIsHumanChange,
+  onRememberUsernameChange,
   onSignIn,
   onSignUp,
-  onSendPasswordReset,
 }: AuthPanelProps) {
   if (mode === "forgot") {
     return (
       <>
         <h1 style={titleStyle}>미루지말자</h1>
         <p style={subTextStyle}>
-          가입할 때 사용한 이메일로 비밀번호 재설정 링크를 보내드립니다.
+          비밀번호를 잊으셨다면 워크스페이스 관리자(부모/방장)에게 문의해 초기화를 요청해주세요.
+          가입 시 복구용 이메일을 등록해두셨다면, 곧 이메일로 재설정하는 기능이 추가될 예정입니다.
         </p>
-
-        <input
-          value={email}
-          onChange={(event) => onEmailChange(event.target.value)}
-          placeholder="이메일"
-          style={inputStyle}
-        />
-
-        <button
-          onClick={onSendPasswordReset}
-          disabled={loading}
-          style={primaryButtonStyle(loading)}
-        >
-          {loading ? "전송 중..." : "재설정 링크 보내기"}
-        </button>
 
         <button
           type="button"
@@ -93,19 +89,41 @@ export default function AuthPanel({
       </div>
 
       <input
-        value={email}
-        onChange={(event) => onEmailChange(event.target.value)}
-        placeholder="이메일"
+        value={username}
+        onChange={(event) => onUsernameChange(event.target.value)}
+        placeholder="아이디"
+        autoComplete="username"
         style={inputStyle}
       />
+
+      {mode === "signup" && (
+        <input
+          value={recoveryEmail}
+          onChange={(event) => onRecoveryEmailChange(event.target.value)}
+          placeholder="복구용 이메일 (선택, 비번 분실 시 사용)"
+          autoComplete="email"
+          style={inputStyle}
+        />
+      )}
 
       <input
         value={password}
         onChange={(event) => onPasswordChange(event.target.value)}
         placeholder="비밀번호"
         type="password"
+        autoComplete={mode === "signup" ? "new-password" : "current-password"}
         style={inputStyle}
       />
+
+      <label style={agreementRowStyle}>
+        <input
+          type="checkbox"
+          checked={rememberUsername}
+          onChange={(event) => onRememberUsernameChange(event.target.checked)}
+          style={{ marginTop: 2 }}
+        />
+        <span>아이디 저장</span>
+      </label>
 
       {mode === "signin" && (
         <button
@@ -118,24 +136,36 @@ export default function AuthPanel({
       )}
 
       {mode === "signup" && (
-        <label style={agreementRowStyle}>
-          <input
-            type="checkbox"
-            checked={agreedToTerms}
-            onChange={(event) => onAgreedToTermsChange(event.target.checked)}
-            style={{ marginTop: 2 }}
-          />
-          <span>
-            <a href="/legal/terms" target="_blank" rel="noopener noreferrer" style={legalLinkStyle}>
-              이용약관
-            </a>
-            {" 및 "}
-            <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" style={legalLinkStyle}>
-              개인정보처리방침
-            </a>
-            에 동의합니다.
-          </span>
-        </label>
+        <>
+          <label style={agreementRowStyle}>
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(event) => onAgreedToTermsChange(event.target.checked)}
+              style={{ marginTop: 2 }}
+            />
+            <span>
+              <a href="/legal/terms" target="_blank" rel="noopener noreferrer" style={legalLinkStyle}>
+                이용약관
+              </a>
+              {" 및 "}
+              <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" style={legalLinkStyle}>
+                개인정보처리방침
+              </a>
+              에 동의합니다.
+            </span>
+          </label>
+
+          <label style={agreementRowStyle}>
+            <input
+              type="checkbox"
+              checked={isHuman}
+              onChange={(event) => onIsHumanChange(event.target.checked)}
+              style={{ marginTop: 2 }}
+            />
+            <span>사람입니다.</span>
+          </label>
+        </>
       )}
 
       {mode === "signin" ? (
@@ -149,8 +179,8 @@ export default function AuthPanel({
       ) : (
         <button
           onClick={onSignUp}
-          disabled={loading}
-          style={primaryButtonStyle(loading)}
+          disabled={loading || !isHuman}
+          style={primaryButtonStyle(loading || !isHuman)}
         >
           {loading ? "가입 중..." : "회원가입"}
         </button>
