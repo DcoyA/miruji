@@ -128,11 +128,25 @@ export default function SettingsTab({
       });
 
       const { data: userData } = await supabase.auth.getUser();
-      const profileId = userData?.user?.id;
-      if (!profileId) {
+      const authUserId = userData?.user?.id;
+      if (!authUserId) {
         setNotifStatus("로그인 정보를 확인할 수 없습니다.");
         return;
       }
+
+      const { data: profileRow, error: profileError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_user_id", authUserId)
+        .single();
+
+      if (profileError || !profileRow) {
+        setNotifStatus("프로필 정보를 확인할 수 없습니다.");
+        return;
+      }
+
+      const profileId = profileRow.id;
+
 
       const tokenPayload = JSON.stringify(subscription.toJSON());
 
