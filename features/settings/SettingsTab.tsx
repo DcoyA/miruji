@@ -37,6 +37,7 @@ type SettingsTabProps = {
   onAcceptInvite: () => void;
   onDeleteAccount: () => void;
   onTransferOwnership: (member: Member) => void;
+  onUpdateMemberRole: (member: Member, newRole: MemberRole) => void;
   onDeleteWorkspace: (workspace: Workspace) => void;
   myNickname: string;
   onMyNicknameChange: (value: string) => void;
@@ -80,6 +81,7 @@ export default function SettingsTab({
   onAcceptInvite,
   onDeleteAccount,
   onTransferOwnership,
+  onUpdateMemberRole,
   onDeleteWorkspace,
   myNickname,
   onMyNicknameChange,
@@ -105,15 +107,9 @@ export default function SettingsTab({
     });
   }
 
-  function buildInviteLink(code: string) {
-    if (typeof window === "undefined") return "";
-    return `${window.location.origin}/join?code=${code}`;
-  }
-
-  function handleCopyInviteLink(inviteId: string, code: string) {
-    const link = buildInviteLink(code);
-    if (!link || typeof navigator === "undefined" || !navigator.clipboard) return;
-    navigator.clipboard.writeText(link).then(() => {
+  function handleCopyInviteCode(inviteId: string, code: string) {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    navigator.clipboard.writeText(code).then(() => {
       setCopiedInviteId(inviteId);
       setTimeout(() => {
         setCopiedInviteId((prev) => (prev === inviteId ? null : prev));
@@ -309,6 +305,21 @@ export default function SettingsTab({
         <details style={accordionStyle}>
           <summary style={accordionSummaryStyle}>참여자 관리</summary>
           <div style={accordionBodyStyle}>
+            <MemberList
+              members={members}
+              currentMember={currentMember}
+              loading={loading}
+              onRemoveMember={onRemoveMember}
+              onRestoreMember={onRestoreMember}
+              onTransferOwnership={onTransferOwnership}
+              onUpdateMemberRole={onUpdateMemberRole}
+            />
+          </div>
+        </details>
+      
+        <details style={accordionStyle}>
+          <summary style={accordionSummaryStyle}>초대하기</summary>
+          <div style={accordionBodyStyle}>
             <div style={{ marginBottom: 22 }}>
               <h3 style={subSectionTitleStyle}>초대코드 발급</h3>
               <p style={subTextStyle}>코드를 만들어 전달하면, 상대가 코드로 직접 가입해 참여자가 됩니다.</p>
@@ -318,12 +329,8 @@ export default function SettingsTab({
                 placeholder="별명 힌트 (선택, 예: 첫째)"
                 style={inputStyle}
               />
-              <select value={inviteRole} onChange={(event) => onInviteRoleChange(event.target.value as MemberRole)} style={inputStyle}>
-                <option value="member">참여자</option>
-                <option value="manager">부방장</option>
-              </select>
               <button onClick={onCreateInvite} disabled={loading} style={primaryButtonStyle(loading)}>
-                {loading ? "생성 중..." : "초대코드 발급"}
+                {loading ? "발급 중..." : "초대코드 발급"}
               </button>
 
               {pendingInvites.length > 0 && (
@@ -336,8 +343,8 @@ export default function SettingsTab({
                       </div>
                       <div style={{ fontSize: 12, marginTop: 4 }}>{formatExpiryDate(invite.expires_at)}까지</div>
                       <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                        <button type="button" onClick={() => handleCopyInviteLink(invite.id, invite.invite_code)} style={copyLinkButtonStyle}>
-                          {copiedInviteId === invite.id ? "복사됨!" : "참여 링크 복사"}
+                        <button type="button" onClick={() => handleCopyInviteCode(invite.id, invite.invite_code)} style={copyLinkButtonStyle}>
+                          {copiedInviteId === invite.id ? "복사됐어요!" : "초대코드 복사"}
                         </button>
                         <button type="button" onClick={() => onCancelPendingInvite(invite)} disabled={loading} style={{ ...copyLinkButtonStyle, background: "#b91c1c" }}>
                           취소
@@ -359,16 +366,6 @@ export default function SettingsTab({
               </select>
               <button onClick={onAddMember} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "추가 중..." : "참여자 추가"}</button>
             </div>
-
-            <MemberList
-              members={members}
-              currentMember={currentMember}
-              loading={loading}
-              onRemoveMember={onRemoveMember}
-              onRestoreMember={onRestoreMember}
-              onTransferOwnership={onTransferOwnership}
-            />
-          </div>
         </details>
       )}
 
@@ -426,6 +423,7 @@ function MemberList({
   onRemoveMember,
   onRestoreMember,
   onTransferOwnership,
+  onUpdateMemberRole,
 }: {
   members: Member[];
   currentMember: Member | null;
@@ -433,7 +431,9 @@ function MemberList({
   onRemoveMember: (member: Member) => void;
   onRestoreMember: (member: Member) => void;
   onTransferOwnership: (member: Member) => void;
+  onUpdateMemberRole: (member: Member, newRole: MemberRole) => void;
 }) {
+
   const isOwner = currentMember?.role === "owner";
 
   return (
@@ -475,6 +475,18 @@ function MemberList({
                     </button>
                   )}
 
+                  {!isRemoved && member.role !== "owner" && member.id !== currentMember?.id && (
+                    member.role === "member" ? (
+                      <button onClick={() => onUpdateMemberRole(member, "manager")} disabled={loading} style={smallButtonStyle}>
+                        부방장으로 승격
+                      </button>
+                    ) : (
+                      <button onClick={() => onUpdateMemberRole(member, "member")} disabled={loading} style={smallButtonStyle}>
+                        참여자로 변경
+                      </button>
+                    )
+                  )}
+                  
                   {isRemoved ? (
                     <button onClick={() => onRestoreMember(member)} disabled={loading} style={smallButtonStyle}>
                       복구하기
