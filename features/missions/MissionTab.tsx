@@ -216,8 +216,6 @@ export default function MissionTab({
           {loading ? "생성 중..." : repeatType === "none" ? "할 일 만들기" : "반복 할 일 만들기"}
         </button>
       </section>
-      ) : (
-        <section style={createBoxStyle}>
 
       {isManager && templates.length > 0 && (
         <section style={templateSectionStyle}>
