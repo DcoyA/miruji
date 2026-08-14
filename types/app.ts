@@ -4,6 +4,16 @@ export type Profile = {
   display_name: string;
   avatar_url: string | null;
   onboarding_completed: boolean;
+  recovery_email: string | null;
+};
+
+export type WorkspaceInvite = {
+  id: string;
+  invite_code: string;
+  role: string;
+  suggested_name: string | null;
+  status: string;
+  expires_at: string;
 };
 
 export type Workspace = {
@@ -29,12 +39,14 @@ export type Task = {
   description: string | null;
   status: string;
   due_date: string | null;
+  due_time: string | null;
   assigned_member_id: string | null;
   verification_type: string;
   reward_points: number;
   template_id: string | null;
   created_by_member_id: string | null;
   evidence_url: string | null;
+  evidence_text: string | null;
 };
 
 export type TaskTemplate = {
@@ -49,6 +61,7 @@ export type TaskTemplate = {
   repeat_type: string;
   repeat_weekdays: number[];
   is_active: boolean;
+  due_time: string | null;
 };
 
 export type Reward = {

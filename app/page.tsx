@@ -36,18 +36,21 @@ import type {
   Task,
   TaskTemplate,
   Workspace,
+  WorkspaceInvite,
 } from "@/types/app";
 
 const memberSelect =
   "id, profile_id, display_name, role, is_virtual, requires_account, status";
 const taskSelect =
-  "id, workspace_id, title, description, status, due_date, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url";
+  "id, workspace_id, title, description, status, due_date, due_time, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url, evidence_text";
 const taskTemplateSelect =
-  "id, workspace_id, title, description, assigned_member_id, verification_type, reward_points, rollover_enabled, repeat_type, repeat_weekdays, is_active";
+  "id, workspace_id, title, description, assigned_member_id, verification_type, reward_points, rollover_enabled, repeat_type, repeat_weekdays, is_active, due_time";
 const rewardSelect =
   "id, workspace_id, title, description, requested_by_member_id, target_member_id, cost_points, status";
 const rewardTxSelect =
   "id, member_id, amount, transaction_type, source_type, source_id, memo, created_at";
+const profileSelect =
+  "id, auth_user_id, display_name, avatar_url, onboarding_completed, recovery_email";
 
 type MemberRole = "manager" | "member";
 type RepeatType = "none" | "daily" | "weekly";
@@ -58,13 +61,22 @@ type InviteAcceptResult = {
   status?: string;
 };
 
+const FAKE_EMAIL_DOMAIN = "users.miruji.app";
+
+function usernameToEmail(username: string) {
+  return `${username.trim().toLowerCase()}@${FAKE_EMAIL_DOMAIN}`;
+}
+
 export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   const [authMode, setAuthMode] = useState<"signin" | "signup" | "forgot">("signin");
-  const [authEmail, setAuthEmail] = useState("");
+  const [authUsername, setAuthUsername] = useState("");
+  const [authRecoveryEmail, setAuthRecoveryEmail] = useState("");
+  const [isHuman, setIsHuman] = useState(false);
+  const [rememberUsername, setRememberUsername] = useState(true);
   const [authPassword, setAuthPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -91,6 +103,7 @@ export default function Home() {
   const [newTaskDescription, setNewTaskDescription] = useState("");
   const [newTaskAssignedMemberId, setNewTaskAssignedMemberId] = useState("");
   const [newTaskVerificationType, setNewTaskVerificationType] = useState("none");
+  const [newTaskDueTime, setNewTaskDueTime] = useState("");
   const [newTaskRewardPoints, setNewTaskRewardPoints] = useState(1);
   const [newTaskRepeatType, setNewTaskRepeatType] = useState<RepeatType>("none");
   const [newTaskRepeatWeekdays, setNewTaskRepeatWeekdays] = useState<number[]>([]);
@@ -102,12 +115,14 @@ export default function Home() {
 
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberRole, setNewMemberRole] = useState<MemberRole>("member");
-  const [newMemberHasEmail, setNewMemberHasEmail] = useState(true);
-  const [inviteCodes, setInviteCodes] = useState<Record<string, string>>({});
+  const [inviteRole, setInviteRole] = useState<MemberRole>("member");
+  const [inviteSuggestedName, setInviteSuggestedName] = useState("");
+  const [pendingInvites, setPendingInvites] = useState<WorkspaceInvite[]>([]);
   const [joinInviteCode, setJoinInviteCode] = useState("");
   const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
-  const [inviteExpiresAt, setInviteExpiresAt] = useState<Record<string, string>>({});
   const [myNickname, setMyNickname] = useState("");
+  const [profileRecoveryEmail, setProfileRecoveryEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
     initializeAuth();
@@ -130,6 +145,15 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const saved = window.localStorage.getItem("miruji_saved_username");
+    if (saved) setAuthUsername(saved);
+  }, []);
+
+  useEffect(() => {
+    if (profile) setProfileRecoveryEmail(profile.recovery_email || "");
+  }, [profile?.id, profile?.recovery_email]);
+
+  useEffect(() => {
     if (workspace?.id) loadWorkspaceData(workspace.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace?.id, currentMonth.getFullYear(), currentMonth.getMonth()]);
@@ -149,11 +173,11 @@ export default function Home() {
       setJoinInviteCode(stored);
     }
   }, []);
-  
+
   useEffect(() => {
     if (!pendingInviteCode) return;
     if (!profile || !workspacesLoaded || loading) return;
-  
+
     const codeToConsume = pendingInviteCode;
     setPendingInviteCode(null);
     if (typeof window !== "undefined") {
@@ -162,7 +186,7 @@ export default function Home() {
     acceptInviteCode(codeToConsume);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingInviteCode, profile?.id, workspacesLoaded, loading]);
-  
+
   const selectedTasks = useMemo(() => {
     return tasks.filter((task) => task.due_date === selectedDate);
   }, [tasks, selectedDate]);
@@ -178,23 +202,42 @@ export default function Home() {
 
   useEffect(() => {
     if (!workspace) return;
-  
+
     const channel = supabase
-      .channel(`workspace-members-${workspace.id}`)
+      .channel(`workspace-sync-${workspace.id}`)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "workspace_members",
-          filter: `workspace_id=eq.${workspace.id}`,
-        },
-        () => {
-          loadWorkspaceData(workspace.id);
-        }
+        { event: "*", schema: "public", table: "workspace_members", filter: `workspace_id=eq.${workspace.id}` },
+        () => loadWorkspaceData(workspace.id)
       )
-      .subscribe();
-  
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks", filter: `workspace_id=eq.${workspace.id}` },
+        () => loadWorkspaceData(workspace.id)
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "task_templates", filter: `workspace_id=eq.${workspace.id}` },
+        () => loadWorkspaceData(workspace.id)
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rewards", filter: `workspace_id=eq.${workspace.id}` },
+        () => loadWorkspaceData(workspace.id)
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "reward_transactions", filter: `workspace_id=eq.${workspace.id}` },
+        () => loadWorkspaceData(workspace.id)
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "workspace_invites", filter: `workspace_id=eq.${workspace.id}` },
+        () => loadWorkspaceData(workspace.id)
+      )
+      .subscribe((status) => {
+      });
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -224,7 +267,7 @@ export default function Home() {
     if (summaryFilter === "all") return tasks;
     return [];
   }, [tasks, summaryFilter]);
-  
+
   async function initializeAuth() {
     setAuthLoading(true);
     const { data } = await supabase.auth.getUser();
@@ -242,16 +285,20 @@ export default function Home() {
 
   async function loadProfile(authUserId: string): Promise<Profile | null> {
     const { data: userData } = await supabase.auth.getUser();
-    const fallbackName = userData.user?.email?.split("@")[0] || "";
+    const meta = (userData.user?.user_metadata || {}) as {
+      username?: string;
+      recovery_email?: string;
+    };
+    const fallbackName = meta.username || userData.user?.email?.split("@")[0] || "";
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
+      .select(profileSelect)
       .eq("auth_user_id", authUserId)
       .maybeSingle();
 
     if (error) {
-      setMessage(`프로필 불러오기 실패: ${error.message}`);
+      setMessage(`프로필 조회 실패: ${error.message}`);
       return null;
     }
 
@@ -269,9 +316,11 @@ export default function Home() {
       .insert({
         auth_user_id: authUserId,
         display_name: fallbackName,
+        username: meta.username || null,
+        recovery_email: meta.recovery_email || null,
         onboarding_completed: false,
       })
-      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
+      .select(profileSelect)
       .single();
 
     if (createError) {
@@ -291,7 +340,7 @@ export default function Home() {
       .from("profiles")
       .update({ onboarding_completed: true })
       .eq("id", profile.id)
-      .select("id, auth_user_id, display_name, avatar_url, onboarding_completed")
+      .select(profileSelect)
       .single();
 
     if (!error && data) {
@@ -300,62 +349,97 @@ export default function Home() {
   }
 
   async function signUp() {
-    if (!authEmail.trim() || !authPassword.trim()) {
-      setMessage("이메일과 비밀번호를 모두 입력해주세요.");
+    const trimmedUsername = authUsername.trim();
+
+    if (!trimmedUsername || !authPassword.trim()) {
+      setMessage("아이디와 비밀번호를 입력해주세요.");
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(trimmedUsername)) {
+      setMessage("아이디는 영문, 숫자, 밑줄(_)만 3~20자로 입력해주세요.");
+      return;
+    }
+
+    if (authPassword.trim().length < 6) {
+      setMessage("비밀번호는 6자 이상이어야 합니다.");
+      return;
+    }
+
+    if (authRecoveryEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authRecoveryEmail.trim())) {
+      setMessage("복구용 이메일 형식이 올바르지 않습니다.");
       return;
     }
 
     if (!agreedToTerms) {
-      setMessage("이용약관 및 개인정보처리방침에 동의해주세요.");
+      setMessage("이용약관에 동의해주세요.");
+      return;
+    }
+
+    if (!isHuman) {
+      setMessage("사람입니다 체크를 해주세요.");
       return;
     }
 
     setLoading(true);
     setMessage("");
 
-    const appUrl =
-      typeof window !== "undefined"
-        ? window.location.origin
-        : "https://miruji-git-main-iamborghini5757-1567s-projects.vercel.app";
+    const { data: availability, error: availabilityError } = await supabase.rpc(
+      "is_username_available",
+      { check_username: trimmedUsername }
+    );
+
+    if (availabilityError) {
+      setMessage(`아이디 확인 실패: ${availabilityError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    if (availability === false) {
+      setMessage("이미 사용 중인 아이디입니다.");
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase.auth.signUp({
-      email: authEmail.trim(),
+      email: usernameToEmail(trimmedUsername),
       password: authPassword.trim(),
       options: {
-        emailRedirectTo: `${appUrl}/auth/callback`,
         data: {
-          display_name: authEmail.split("@")[0],
-          app_name: "",
+          username: trimmedUsername,
+          display_name: trimmedUsername,
+          recovery_email: authRecoveryEmail.trim() || null,
         },
       },
     });
 
     if (error) {
       console.error("signUp error", error);
-      const detail =
-        error.message && error.message.trim() && error.message !== "{}"
-          ? error.message
-          : `오류 코드: ${(error as any).status ?? error.name ?? "알 수 없음"}`;
-      setMessage(`가입 실패: ${detail}`);
+      setMessage(`가입 실패: ${error.message}`);
       setLoading(false);
       return;
     }
 
     const isAlreadyRegistered = data.user && (data.user.identities?.length ?? 0) === 0;
-
     if (isAlreadyRegistered) {
-      setMessage("이미 가입된 계정입니다. 로그인해주세요.");
+      setMessage("이미 가입된 아이디입니다. 로그인해주세요.");
       setLoading(false);
       return;
     }
 
-    setMessage("가입 완료. 이메일 인증 후 로그인해주세요.");
+    if (rememberUsername) {
+      window.localStorage.setItem("miruji_saved_username", trimmedUsername);
+    }
+
+    setMessage("가입 완료되었습니다.");
     setLoading(false);
   }
 
   async function signIn() {
-    if (!authEmail.trim() || !authPassword.trim()) {
-      setMessage("이메일과 비밀번호를 입력해주세요.");
+    const trimmedUsername = authUsername.trim();
+
+    if (!trimmedUsername || !authPassword.trim()) {
+      setMessage("아이디와 비밀번호를 입력해주세요.");
       return;
     }
 
@@ -363,7 +447,7 @@ export default function Home() {
     setMessage("");
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: authEmail.trim(),
+      email: usernameToEmail(trimmedUsername),
       password: authPassword.trim(),
     });
 
@@ -379,17 +463,23 @@ export default function Home() {
       return;
     }
 
+    if (rememberUsername) {
+      window.localStorage.setItem("miruji_saved_username", trimmedUsername);
+    } else {
+      window.localStorage.removeItem("miruji_saved_username");
+    }
+
     const loadedProfile = await loadProfile(data.user.id);
     if (loadedProfile) {
       await loadWorkspaces();
-      setMessage("로그인 완료");
+      setMessage("로그인 성공");
     }
     setLoading(false);
   }
 
   async function requestPasswordReset() {
-    if (!authEmail.trim()) {
-      setMessage("이메일을 입력해주세요.");
+    if (!authRecoveryEmail.trim()) {
+      setMessage("등록된 복구 이메일이 없습니다. 관리자에게 문의해주세요.");
       return;
     }
 
@@ -401,7 +491,7 @@ export default function Home() {
         ? window.location.origin
         : "https://miruji-omega.vercel.app";
 
-    const { error } = await supabase.auth.resetPasswordForEmail(authEmail.trim(), {
+    const { error } = await supabase.auth.resetPasswordForEmail(authRecoveryEmail.trim(), {
       redirectTo: `${appUrl}/auth/reset`,
     });
 
@@ -410,17 +500,16 @@ export default function Home() {
       const detail =
         error.message && error.message.trim() && error.message !== "{}"
           ? error.message
-          : `오류 코드: ${(error as any).status ?? error.name ?? "알 수 없음"}`;
-      setMessage(`재설정 링크 전송 실패: ${detail}`);
+          : `오류 코드: ${(error as any).status ?? error.name ?? "알수없음"}`;
+      setMessage(`재설정 요청 실패: ${detail}`);
       setLoading(false);
       return;
     }
 
-    setMessage("재설정 링크를 이메일로 보냈습니다. 메일함을 확인해주세요.");
+    setMessage("재설정 메일을 보냈습니다. 메일함을 확인해주세요.");
     setLoading(false);
   }
 
-  
   async function signOut() {
     setLoading(true);
     setMessage("");
@@ -443,7 +532,6 @@ export default function Home() {
 
     resetState();
     setProfile(null);
-    setAuthEmail("");
     setAuthPassword("");
     setAuthMode("signin");
     setLoading(false);
@@ -452,7 +540,7 @@ export default function Home() {
 
   async function deleteAccount() {
     const confirmed = window.confirm(
-      "정말 계정을 삭제하시겠습니까? 되돌릴 수 없습니다."
+      "정말 탈퇴하시겠습니까? 되돌릴 수 없습니다."
     );
     if (!confirmed) return;
 
@@ -462,7 +550,7 @@ export default function Home() {
     const accessToken = sessionData.session?.access_token;
 
     if (!accessToken) {
-      setMessage("인증 정보를 확인할 수 없습니다.");
+      setMessage("세션을 확인할 수 없습니다.");
       setLoading(false);
       return;
     }
@@ -477,91 +565,90 @@ export default function Home() {
     if (!response.ok) {
       if (result.error === "SOLE_OWNER") {
         setMessage(
-          "혼자 owner인 모임이 있어 탈퇴할 수 없습니다. 설정 탭에서 다른 참여자에게 소유권을 넘기거나, 해당 모임을 삭제한 뒤 다시 시도해주세요."
+          "owner인 모임이 있어 탈퇴할 수 없습니다. 먼저 방장을 다른 사람에게 넘기거나 모임을 삭제해주세요."
         );
       } else {
-        setMessage("계정 삭제에 실패했습니다. 다시 시도해주세요.");
+        setMessage("탈퇴에 실패했습니다. 다시 시도해주세요.");
       }
       setLoading(false);
       return;
     }
 
     await supabase.auth.signOut();
-    setMessage("계정이 삭제되었습니다.");
+    setMessage("탈퇴 처리되었습니다.");
     setLoading(false);
   }
 
   async function transferOwnership(targetMember: Member) {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
-  
+
     if (currentMember?.role !== "owner") {
-      setMessage("owner만 소유권을 넘길 수 있습니다.");
+      setMessage("owner만 넘길 수 있습니다.");
       return;
     }
-  
+
     if (!targetMember.profile_id) {
-      setMessage("계정이 연결된 참여자에게만 소유권을 넘길 수 있습니다.");
+      setMessage("계정이 연결된 참여자에게만 넘길 수 있습니다.");
       return;
     }
-  
+
     const confirmed = window.confirm(
-      `${targetMember.display_name}에게 owner 권한을 넘기시겠습니까? 넘긴 후 본인은 manager로 변경됩니다.`
+      `${targetMember.display_name}에게 owner를 넘기시겠습니까? 기존 owner는 manager로 변경됩니다.`
     );
     if (!confirmed) return;
-  
+
     setLoading(true);
     setMessage("");
-  
+
     const { error } = await supabase.rpc("transfer_workspace_ownership", {
       target_workspace_id: workspace.id,
       new_owner_member_id: targetMember.id,
     });
-  
+
     if (error) {
-      setMessage(`소유권 이전 실패: ${error.message}`);
+      setMessage(`방장 위임 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     await loadWorkspaceData(workspace.id);
-    setMessage(`${targetMember.display_name}에게 owner 권한을 넘겼습니다.`);
+    setMessage(`${targetMember.display_name}에게 owner를 넘겼습니다.`);
     setLoading(false);
   }
-  
+
   async function deleteWorkspace(targetWorkspace: Workspace) {
     if (currentMember?.role !== "owner") {
-      setMessage("방장만 모임을 삭제할 수 있습니다.");
+      setMessage("방장만 삭제할 수 있습니다.");
       return;
     }
-  
+
     const confirmed = window.confirm(
-      `"${targetWorkspace.name}" 모임을 삭제하시겠습니까? 모든 할 일, 참여자, 보상 데이터가 함께 삭제되며 되돌릴 수 없습니다. 다른 참여자의 동의는 필요하지 않습니다.`
+      `"${targetWorkspace.name}"을 삭제하시겠습니까? 모든 할 일, 참여자, 보상 기록이 삭제되며 되돌릴 수 없습니다.`
     );
     if (!confirmed) return;
-  
+
     setLoading(true);
     setMessage("");
-  
+
     const { error } = await supabase.from("workspaces").delete().eq("id", targetWorkspace.id);
-  
+
     if (error) {
       setMessage(`모임 삭제 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     setWorkspaces((prev) => prev.filter((item) => item.id !== targetWorkspace.id));
     setWorkspace((prev) => (prev?.id === targetWorkspace.id ? null : prev));
-    setMessage(`${targetWorkspace.name} 모임이 삭제되었습니다.`);
+    setMessage(`${targetWorkspace.name}을 삭제했습니다.`);
     setLoading(false);
-  
+
     await loadWorkspaces();
   }
 
-  
   function resetState() {
     setWorkspaces([]);
     setWorkspace(null);
@@ -587,8 +674,8 @@ export default function Home() {
     setNewRewardCostPoints(1);
     setNewMemberName("");
     setNewMemberRole("member");
-    setNewMemberHasEmail(true);
-    setInviteCodes({});
+    setInviteSuggestedName("");
+    setPendingInvites([]);
     setJoinInviteCode("");
     setAgreedToTerms(false);
   }
@@ -600,7 +687,7 @@ export default function Home() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      setMessage(`워크스페이스 불러오기 실패: ${error.message}`);
+      setMessage(`모임 조회 실패: ${error.message}`);
       setWorkspacesLoaded(true);
       return;
     }
@@ -621,7 +708,7 @@ export default function Home() {
     }
 
     if (!workspaceName.trim()) {
-      setMessage("워크스페이스 이름을 입력해주세요.");
+      setMessage("모임 이름을 입력해주세요.");
       return;
     }
 
@@ -639,7 +726,7 @@ export default function Home() {
       .single();
 
     if (workspaceError) {
-      setMessage(`워크스페이스 생성 실패: ${workspaceError.message}`);
+      setMessage(`모임 생성 실패: ${workspaceError.message}`);
       setLoading(false);
       return;
     }
@@ -668,18 +755,18 @@ export default function Home() {
     setWorkspaceName("");
     setWorkspaceDescription("");
     setActiveTab("settings");
-    setMessage(`워크스페이스 생성 완료: ${newWorkspace.name}`);
+    setMessage(`모임 생성 완료: ${newWorkspace.name}`);
     setLoading(false);
   }
 
-  async function addMember() {
+  async function addVirtualMember() {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
 
@@ -699,7 +786,7 @@ export default function Home() {
         role: newMemberRole,
         status: "active",
         is_virtual: true,
-        requires_account: newMemberHasEmail,
+        requires_account: false,
         created_by: profile?.id || null,
       })
       .select(memberSelect)
@@ -714,50 +801,28 @@ export default function Home() {
     setMembers((prev) => [...prev, data as Member]);
     setNewMemberName("");
     setNewMemberRole("member");
-    setNewMemberHasEmail(true);
     setMessage(`참여자 추가 완료: ${data.display_name}`);
     setLoading(false);
   }
 
-  function makeInviteCode() {
-    return Math.random().toString(36).slice(2, 8).toUpperCase();
-  }
-
-  async function createInviteForMember(member: Member) {
+  async function createInvite() {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
-      return;
-    }
-
-    if (!member.is_virtual) {
-      setMessage("이미 실제 계정과 연결된 참여자입니다.");
-      return;
-    }
-
-    if (!member.requires_account) {
-      setMessage("먼저 '실제 계정으로 전환하기'를 눌러주세요.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
 
     setLoading(true);
     setMessage("");
 
-    const manager = members.find((item) => item.role === "owner" || item.role === "manager");
-    const inviteCode = makeInviteCode();
-
-    const { error } = await supabase.from("workspace_invites").insert({
-      workspace_id: workspace.id,
-      target_member_id: member.id,
-      invite_code: inviteCode,
-      role: member.role,
-      status: "pending",
-      created_by_member_id: manager?.id || null,
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    const { data, error } = await supabase.rpc("create_workspace_invite", {
+      target_workspace_id: workspace.id,
+      member_role: inviteRole,
+      suggested_display_name: inviteSuggestedName.trim() || null,
     });
 
     if (error) {
@@ -766,103 +831,54 @@ export default function Home() {
       return;
     }
 
-    setInviteCodes((prev) => ({ ...prev, [member.id]: inviteCode }));
-    setMessage(`초대코드 생성 완료: ${inviteCode}`);
-    setInviteExpiresAt((prev) => ({
-      ...prev,
-      [member.id]: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    }));
+    await loadWorkspaceData(workspace.id);
+    setInviteSuggestedName("");
+    setMessage(`초대코드 생성 완료: ${data?.[0]?.invite_code ?? ""}`);
     setLoading(false);
   }
 
-  async function cancelInvite(member: Member) {
+  async function cancelPendingInvite(invite: WorkspaceInvite) {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
-  
+
     if (!isManager) {
-      setMessage("보호자/관리자만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
-  
-    const confirmed = window.confirm(
-      `${member.display_name}에게 발급한 초대코드를 취소하시겠습니까?`
-    );
+
+    const confirmed = window.confirm("이 초대코드를 취소할까요?");
     if (!confirmed) return;
-  
+
     setLoading(true);
     setMessage("");
-  
+
     const { error } = await supabase
       .from("workspace_invites")
       .update({ status: "cancelled" })
-      .eq("workspace_id", workspace.id)
-      .eq("target_member_id", member.id)
+      .eq("id", invite.id)
       .eq("status", "pending");
-  
+
     if (error) {
       setMessage(`초대코드 취소 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
-    setInviteCodes((prev) => {
-      const next = { ...prev };
-      delete next[member.id];
-      return next;
-    });
-    setInviteExpiresAt((prev) => {
-      const next = { ...prev };
-      delete next[member.id];
-      return next;
-    });
-    setMessage(`${member.display_name}의 초대코드를 취소했습니다.`);
-    setLoading(false);
-  }
-  
-  async function enableAccountForMember(member: Member) {
-    if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
-      return;
-    }
 
-    if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
-      return;
-    }
-
-    if (!member.is_virtual || member.requires_account) return;
-
-    setLoading(true);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("workspace_members")
-      .update({ requires_account: true })
-      .eq("id", member.id)
-      .select(memberSelect)
-      .single();
-
-    if (error) {
-      setMessage(`전환 처리 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
-    setMessage(`${member.display_name} 계정 전환 준비 완료. 초대코드를 생성해주세요.`);
+    setPendingInvites((prev) => prev.filter((item) => item.id !== invite.id));
+    setMessage("초대코드를 취소했습니다.");
     setLoading(false);
   }
 
   async function removeMember(member: Member) {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
 
@@ -872,7 +888,7 @@ export default function Home() {
     }
 
     const confirmed = window.confirm(
-      `${member.display_name}님을 제외하시겠습니까? 기록은 유지되고 나중에 복구할 수 있습니다.`
+      `${member.display_name}님을 제외하시겠습니까? 관련 기록은 유지됩니다.`
     );
     if (!confirmed) return;
 
@@ -899,12 +915,12 @@ export default function Home() {
 
   async function restoreMember(member: Member) {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
 
@@ -931,78 +947,130 @@ export default function Home() {
 
   async function saveMyNickname() {
     if (!workspace || !currentMember) {
-      setMessage("현재 참여 중인 멤버 정보가 없습니다.");
+      setMessage("연결된 참여자가 없습니다.");
       return;
     }
-  
+
     const trimmed = myNickname.trim();
     if (!trimmed) {
       setMessage("닉네임을 입력해주세요.");
       return;
     }
-  
+
     if (trimmed === currentMember.display_name) return;
-  
+
     setLoading(true);
     setMessage("");
-  
+
     const { data, error } = await supabase
       .from("workspace_members")
       .update({ display_name: trimmed })
       .eq("id", currentMember.id)
       .select(memberSelect)
       .single();
-  
+
     if (error) {
       setMessage(`닉네임 변경 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     setMembers((prev) => prev.map((item) => (item.id === currentMember.id ? (data as Member) : item)));
-    setMessage(`닉네임을 "${trimmed}"으로 바꿨습니다.`);
+    setMessage(`닉네임을 "${trimmed}"로 변경했습니다.`);
     setLoading(false);
   }
-  
-  async function acceptInviteCode(codeOverride?: string) {
-    const codeToUse = (codeOverride ?? joinInviteCode).trim();
-  
-    if (!codeToUse) {
-      setMessage("초대 코드를 입력해주세요.");
+
+  async function saveRecoveryEmail() {
+    if (!profile) return;
+
+    const trimmed = profileRecoveryEmail.trim();
+    if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setMessage("올바른 이메일 형식이 아닙니다.");
       return;
     }
-  
+
     setLoading(true);
     setMessage("");
-  
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ recovery_email: trimmed || null })
+      .eq("id", profile.id)
+      .select(profileSelect)
+      .single();
+
+    if (error) {
+      setMessage(`이메일 저장 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setProfile(data as Profile);
+    setMessage("복구용 이메일을 저장했습니다.");
+    setLoading(false);
+  }
+
+  async function changePassword() {
+    if (!newPassword.trim() || newPassword.trim().length < 6) {
+      setMessage("비밀번호는 6자 이상이어야 합니다.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword.trim() });
+
+    if (error) {
+      setMessage(`비밀번호 변경 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setNewPassword("");
+    setMessage("비밀번호를 변경했습니다.");
+    setLoading(false);
+  }
+
+  async function acceptInviteCode(codeOverride?: string) {
+    const codeToUse = (codeOverride ?? joinInviteCode).trim();
+
+    if (!codeToUse) {
+      setMessage("초대코드를 입력해주세요.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
     const { data, error } = await supabase.rpc("accept_workspace_invite", {
       input_code: codeToUse.toUpperCase(),
     });
-  
+
     if (error) {
       setMessage(`참여 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     setJoinInviteCode("");
-    setMessage("워크스페이스에 참여했습니다");
-  
+    setMessage("참여 완료");
+
     const result = data as InviteAcceptResult | null;
     const joinedWorkspaceId = result?.workspace_id;
-  
+
     await loadWorkspaces();
-  
+
     if (joinedWorkspaceId) {
       const { data: joinedWorkspace } = await supabase
         .from("workspaces")
         .select("id, name, description")
         .eq("id", joinedWorkspaceId)
         .single();
-  
+
       if (joinedWorkspace) setWorkspace(joinedWorkspace as Workspace);
     }
-  
+
     setActiveTab("calendar");
     setLoading(false);
   }
@@ -1011,36 +1079,42 @@ export default function Home() {
     const monthStart = toDateKey(startOfMonth(currentMonth));
     const monthEnd = toDateKey(endOfMonth(currentMonth));
 
-    const [membersResult, tasksResult, templatesResult, rewardsResult, rewardTransactionsResult] = await Promise.all([
+    const [membersResult, tasksResult, templatesResult, rewardsResult, rewardTransactionsResult, invitesResult] = await Promise.all([
       supabase.from("workspace_members").select(memberSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
       supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd).order("due_date", { ascending: true }),
       supabase.from("task_templates").select(taskTemplateSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
       supabase.from("rewards").select(rewardSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
       supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
+      supabase.from("workspace_invites").select("id, invite_code, role, suggested_name, status, expires_at").eq("workspace_id", workspaceId).eq("status", "pending").order("created_at", { ascending: false }),
     ]);
 
     if (membersResult.error) {
-      setMessage(`참여자 불러오기 실패: ${membersResult.error.message}`);
+      setMessage(`참여자 조회 실패: ${membersResult.error.message}`);
       return;
     }
 
     if (tasksResult.error) {
-      setMessage(`미션 불러오기 실패: ${tasksResult.error.message}`);
+      setMessage(`할 일 조회 실패: ${tasksResult.error.message}`);
       return;
     }
 
     if (templatesResult.error) {
-      setMessage(`반복 미션 불러오기 실패: ${templatesResult.error.message}`);
+      setMessage(`반복 할 일 조회 실패: ${templatesResult.error.message}`);
       return;
     }
 
     if (rewardsResult.error) {
-      setMessage(`보상 불러오기 실패: ${rewardsResult.error.message}`);
+      setMessage(`보상 조회 실패: ${rewardsResult.error.message}`);
       return;
     }
 
     if (rewardTransactionsResult.error) {
-      setMessage(`포인트 내역 불러오기 실패: ${rewardTransactionsResult.error.message}`);
+      setMessage(`포인트 내역 조회 실패: ${rewardTransactionsResult.error.message}`);
+      return;
+    }
+
+    if (invitesResult.error) {
+      setMessage(`초대코드 조회 실패: ${invitesResult.error.message}`);
       return;
     }
 
@@ -1049,6 +1123,7 @@ export default function Home() {
     setTemplates((templatesResult.data || []) as TaskTemplate[]);
     setRewards((rewardsResult.data || []) as Reward[]);
     setRewardTransactions((rewardTransactionsResult.data || []) as RewardTransaction[]);
+    setPendingInvites((invitesResult.data || []) as WorkspaceInvite[]);
   }
 
   function toggleRepeatWeekday(day: number) {
@@ -1059,12 +1134,7 @@ export default function Home() {
 
   async function createTask() {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
-      return;
-    }
-
-    if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
 
@@ -1100,6 +1170,7 @@ export default function Home() {
           due_date: selectedDate,
           assigned_member_id: newTaskAssignedMemberId,
           verification_type: newTaskVerificationType,
+          due_time: newTaskDueTime || null,
           verification_required: newTaskVerificationType !== "none",
           reward_points: newTaskRewardPoints,
           rollover_enabled: true,
@@ -1109,13 +1180,13 @@ export default function Home() {
         .single();
 
       if (error) {
-        setMessage(`미션 생성 실패: ${error.message}`);
+        setMessage(`할 일 등록 실패: ${error.message}`);
         setLoading(false);
         return;
       }
 
       setTasks((prev) => [...prev, data as Task]);
-      setMessage("미션 생성 완료");
+      setMessage("할 일 등록 완료");
     } else {
       const { data: templateData, error: templateError } = await supabase
         .from("task_templates")
@@ -1125,6 +1196,7 @@ export default function Home() {
           description: newTaskDescription.trim() || null,
           assigned_member_id: newTaskAssignedMemberId,
           verification_type: newTaskVerificationType,
+          due_time: newTaskDueTime || null,
           reward_points: newTaskRewardPoints,
           rollover_enabled: true,
           repeat_type: newTaskRepeatType,
@@ -1136,7 +1208,7 @@ export default function Home() {
         .single();
 
       if (templateError) {
-        setMessage(`반복 미션 생성 실패: ${templateError.message}`);
+        setMessage(`반복 할 일 등록 실패: ${templateError.message}`);
         setLoading(false);
         return;
       }
@@ -1146,13 +1218,13 @@ export default function Home() {
       const { error: generateError } = await supabase.rpc("generate_recurring_tasks");
 
       if (generateError) {
-        setMessage(`반복 미션은 등록됐지만 오늘 일정 생성에 실패했습니다: ${generateError.message}`);
+        setMessage(`반복 할 일 생성 실패: ${generateError.message}`);
         setLoading(false);
         return;
       }
 
       await loadWorkspaceData(workspace.id);
-      setMessage("반복 미션 생성 완료");
+      setMessage("반복 할 일 등록 완료");
     }
 
     setNewTaskTitle("");
@@ -1161,12 +1233,13 @@ export default function Home() {
     setNewTaskRewardPoints(1);
     setNewTaskRepeatType("none");
     setNewTaskRepeatWeekdays([]);
+    setNewTaskDueTime("");
     setLoading(false);
   }
 
   async function toggleTemplateActive(template: TaskTemplate) {
     if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
 
@@ -1181,25 +1254,25 @@ export default function Home() {
       .single();
 
     if (error) {
-      setMessage(`반복 미션 상태 변경 실패: ${error.message}`);
+      setMessage(`반복 할 일 상태 변경 실패: ${error.message}`);
       setLoading(false);
       return;
     }
 
     const updated = data as TaskTemplate;
     setTemplates((prev) => prev.map((item) => (item.id === template.id ? updated : item)));
-    setMessage(`${template.title} ${updated.is_active ? "재개" : "일시중지"}`);
+    setMessage(`${template.title} ${updated.is_active ? "활성화" : "비활성화"}`);
     setLoading(false);
   }
 
   async function deleteTemplate(template: TaskTemplate) {
     if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
 
     const confirmed = window.confirm(
-      `"${template.title}" 반복 미션을 삭제하시겠습니까? 이미 생성된 미션 기록은 남습니다.`
+      `"${template.title}"을 삭제하시겠습니까? 이후 반복 생성이 중단됩니다.`
     );
     if (!confirmed) return;
 
@@ -1221,12 +1294,12 @@ export default function Home() {
 
   async function rolloverNow() {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
 
@@ -1236,24 +1309,24 @@ export default function Home() {
     const { error } = await supabase.rpc("rollover_overdue_tasks");
 
     if (error) {
-      setMessage(`정리 실패: ${error.message}`);
+      setMessage(`이월 실패: ${error.message}`);
       setLoading(false);
       return;
     }
 
     await loadWorkspaceData(workspace.id);
-    setMessage("지난 미션을 정리했습니다.");
+    setMessage("미완료 할 일을 이월했습니다.");
     setLoading(false);
   }
 
   async function createReward() {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
 
@@ -1263,7 +1336,7 @@ export default function Home() {
     }
 
     if (!newRewardTargetMemberId) {
-      setMessage("대상을 선택해주세요.");
+      setMessage("대상자를 선택해주세요.");
       return;
     }
 
@@ -1288,7 +1361,7 @@ export default function Home() {
       .single();
 
     if (error) {
-      setMessage(`보상 생성 실패: ${error.message}`);
+      setMessage(`보상 등록 실패: ${error.message}`);
       setLoading(false);
       return;
     }
@@ -1297,71 +1370,70 @@ export default function Home() {
     setNewRewardTitle("");
     setNewRewardDescription("");
     setNewRewardCostPoints(1);
-    setMessage("보상 생성 완료");
+    setMessage("보상 등록 완료");
     setLoading(false);
   }
 
   async function deleteReward(reward: Reward) {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
-  
+
     if (!isManager) {
-      setMessage("보호자/관리자만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
-  
+
     if (reward.status !== "approved") {
-      setMessage("이미 신청되었거나 완료된 보상은 삭제할 수 없습니다.");
+      setMessage("승인된 보상만 삭제할 수 있습니다.");
       return;
     }
-  
-    const confirmed = window.confirm(`"${reward.title}" 보상을 삭제하시겠습니까?`);
+
+    const confirmed = window.confirm(`"${reward.title}"을 삭제하시겠습니까?`);
     if (!confirmed) return;
-  
+
     setLoading(true);
     setMessage("");
-  
+
     const { error } = await supabase.from("rewards").delete().eq("id", reward.id);
-  
+
     if (error) {
-      setMessage(`보상 삭제 실패: ${error.message}`);
+      setMessage(`삭제 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     setRewards((prev) => prev.filter((item) => item.id !== reward.id));
-    setMessage(`${reward.title} 보상이 삭제되었습니다.`);
+    setMessage(`${reward.title} 삭제 완료.`);
     setLoading(false);
   }
 
   async function requestRedeem(reward: Reward) {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
-  
+
     if (currentMember?.id !== reward.target_member_id) {
-      setMessage("본인에게 배정된 보상만 신청할 수 있습니다.");
+      setMessage("본인의 보상만 신청할 수 있습니다.");
       return;
     }
-  
+
     if (reward.status !== "approved") {
       setMessage("신청할 수 없는 상태입니다.");
       return;
     }
-  
+
     const balance = balanceByMemberId(reward.target_member_id);
     if (balance < reward.cost_points) {
-      setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 보유 ${balance}개`);
+      setMessage(`포인트가 부족합니다. 필요 ${reward.cost_points} / 보유 ${balance}`);
       return;
     }
-  
+
     setLoading(true);
     setMessage("");
-  
-    // 방장이 자기 자신의 보상을 신청하는 경우: 별도 승인 단계 없이 즉시 교환 처리
+
     if (isManager) {
       const { data: spendData, error: spendError } = await supabase
         .from("reward_transactions")
@@ -1377,76 +1449,75 @@ export default function Home() {
         })
         .select(rewardTxSelect)
         .single();
-  
+
       if (spendError) {
-        setMessage(`스티커 차감 실패: ${spendError.message}`);
+        setMessage(`포인트 차감 실패: ${spendError.message}`);
         setLoading(false);
         return;
       }
-  
+
       const { data: updatedReward, error: rewardError } = await supabase
         .from("rewards")
         .update({ status: "redeemed", redeemed_at: new Date().toISOString() })
         .eq("id", reward.id)
         .select(rewardSelect)
         .single();
-  
+
       if (rewardError) {
         setMessage(`보상 상태 변경 실패: ${rewardError.message}`);
         setLoading(false);
         return;
       }
-  
+
       setRewardTransactions((prev) => [...prev, spendData as RewardTransaction]);
       setRewards((prev) => prev.map((item) => (item.id === reward.id ? (updatedReward as Reward) : item)));
       setMessage(`교환 완료: ${reward.title}`);
       setLoading(false);
       return;
     }
-  
+
     const { data, error } = await supabase
       .from("rewards")
       .update({ status: "requested" })
       .eq("id", reward.id)
       .select(rewardSelect)
       .single();
-  
+
     if (error) {
       setMessage(`신청 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     setRewards((prev) => prev.map((item) => (item.id === reward.id ? (data as Reward) : item)));
-    setMessage(`${reward.title} 교환을 신청했습니다. 방장 승인을 기다려주세요.`);
+    setMessage(`${reward.title} 신청 완료. 승인을 기다려주세요.`);
     setLoading(false);
   }
 
-
   async function confirmRedeem(reward: Reward) {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("매니저/오너만 승인할 수 있습니다.");
+      setMessage("방장/부방장만 승인할 수 있습니다.");
       return;
     }
 
     if (!reward.target_member_id) {
-      setMessage("대상 참여자가 없습니다.");
+      setMessage("대상자가 없습니다.");
       return;
     }
 
     if (reward.status !== "requested") {
-      setMessage("신청된 보상만 승인할 수 있습니다.");
+      setMessage("신청 상태가 아닙니다.");
       return;
     }
 
     const balance = balanceByMemberId(reward.target_member_id);
     if (balance < reward.cost_points) {
-      setMessage(`스티커가 부족합니다. 필요 ${reward.cost_points}개 / 현재 ${balance}개`);
+      setMessage(`포인트가 부족합니다. 필요 ${reward.cost_points} / 보유 ${balance}`);
       return;
     }
 
@@ -1489,23 +1560,23 @@ export default function Home() {
 
     setRewardTransactions((prev) => [...prev, spendData as RewardTransaction]);
     setRewards((prev) => prev.map((item) => (item.id === reward.id ? (updatedReward as Reward) : item)));
-    setMessage(`교환 승인 완료: ${reward.title}`);
+    setMessage(`승인 완료: ${reward.title}`);
     setLoading(false);
   }
 
   async function rejectRedeem(reward: Reward) {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("매니저/오너만 거절할 수 있습니다.");
+      setMessage("방장/부방장만 반려할 수 있습니다.");
       return;
     }
 
     if (reward.status !== "requested") {
-      setMessage("신청된 보상만 거절할 수 있습니다.");
+      setMessage("신청 상태가 아닙니다.");
       return;
     }
 
@@ -1520,19 +1591,19 @@ export default function Home() {
       .single();
 
     if (error) {
-      setMessage(`거절 처리 실패: ${error.message}`);
+      setMessage(`반려 실패: ${error.message}`);
       setLoading(false);
       return;
     }
 
     setRewards((prev) => prev.map((item) => (item.id === reward.id ? (data as Reward) : item)));
-    setMessage(`${reward.title} 신청을 거절했습니다.`);
+    setMessage(`${reward.title} 신청을 반려했습니다.`);
     setLoading(false);
   }
 
   async function submitTask(task: Task) {
-     if (!workspace) {
-      setMessage("작업 공간이 없습니다.");
+    if (!workspace) {
+      setMessage("모임이 없습니다.");
       return;
     }
 
@@ -1542,7 +1613,7 @@ export default function Home() {
     }
 
     if (!isManager && task.assigned_member_id !== currentMember?.id) {
-      setMessage("본인에게 배정된 미션만 제출할 수 있습니다.");
+      setMessage("담당자만 제출할 수 있습니다.");
       return;
     }
 
@@ -1567,139 +1638,180 @@ export default function Home() {
     setLoading(false);
   }
 
-  async function submitTaskWithEvidence(task: Task, file: File) {
+  async function submitTaskWithText(task: Task, text: string) {
     if (!workspace) {
-      setMessage("작업 공간이 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
-  
+
     if (task.status !== "todo" && task.status !== "rolled_over" && task.status !== "rejected") {
-      setMessage("이미 제출되었거나 처리된 할 일입니다.");
+      setMessage("제출할 수 없는 상태입니다.");
       return;
     }
-  
+
     if (!isManager && task.assigned_member_id !== currentMember?.id) {
-      setMessage("본인에게 배정된 할 일만 제출할 수 있습니다.");
+      setMessage("담당자만 제출할 수 있습니다.");
       return;
     }
-  
+
+    if (!text.trim()) {
+      setMessage("증거 텍스트를 입력해주세요.");
+      return;
+    }
+
     setLoading(true);
     setMessage("");
-  
-    const filePath = `${workspace.id}/${task.id}-${Date.now()}-${file.name}`;
-  
-    const { error: uploadError } = await supabase.storage
-      .from("task-evidence")
-      .upload(filePath, file, { upsert: false });
-  
-    if (uploadError) {
-      setMessage(`사진 업로드 실패: ${uploadError.message}`);
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ status: "submitted", evidence_text: text.trim() })
+      .eq("id", task.id)
+      .select(taskSelect)
+      .single();
+
+    if (error) {
+      setMessage(`제출 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
+    setMessage(`${task.title} 제출 완료.`);
+    setLoading(false);
+  }
+
+  async function submitTaskWithEvidence(task: Task, file: File) {
+    if (!workspace) {
+      setMessage("모임이 없습니다.");
+      return;
+    }
+
+    if (task.status !== "todo" && task.status !== "rolled_over" && task.status !== "rejected") {
+      setMessage("제출할 수 없는 상태입니다.");
+      return;
+    }
+
+    if (!isManager && task.assigned_member_id !== currentMember?.id) {
+      setMessage("담당자만 제출할 수 있습니다.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const filePath = `${workspace.id}/${task.id}-${Date.now()}-${file.name}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("task-evidence")
+      .upload(filePath, file, { upsert: false });
+
+    if (uploadError) {
+      setMessage(`업로드 실패: ${uploadError.message}`);
+      setLoading(false);
+      return;
+    }
+
     const { data: publicUrlData } = supabase.storage.from("task-evidence").getPublicUrl(filePath);
-  
+
     const { data, error } = await supabase
       .from("tasks")
       .update({ status: "submitted", evidence_url: publicUrlData.publicUrl })
       .eq("id", task.id)
       .select(taskSelect)
       .single();
-  
+
     if (error) {
       setMessage(`제출 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
-    setMessage(`${task.title} 사진과 함께 제출했습니다.`);
+    setMessage(`${task.title} 증거 제출 완료.`);
     setLoading(false);
   }
 
-  
   async function cancelSubmission(task: Task) {
-  if (!workspace) {
-    setMessage("워크스페이스를 불러오지 못했습니다.");
-    return;
-  }
+    if (!workspace) {
+      setMessage("모임이 없습니다.");
+      return;
+    }
 
-  if (task.status !== "submitted") {
-    setMessage("제출된 할 일만 회수할 수 있습니다.");
-    return;
-  }
+    if (task.status !== "submitted") {
+      setMessage("제출된 상태만 취소할 수 있습니다.");
+      return;
+    }
 
-  if (!isManager && task.assigned_member_id !== currentMember?.id) {
-    setMessage("본인에게 배정된 할 일만 회수할 수 있습니다.");
-    return;
-  }
+    if (!isManager && task.assigned_member_id !== currentMember?.id) {
+      setMessage("담당자만 취소할 수 있습니다.");
+      return;
+    }
 
-  setLoading(true);
-  setMessage("");
+    setLoading(true);
+    setMessage("");
 
-  const { data, error } = await supabase
-    .from("tasks")
-    .update({ status: "todo" })
-    .eq("id", task.id)
-    .select(taskSelect)
-    .single();
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ status: "todo" })
+      .eq("id", task.id)
+      .select(taskSelect)
+      .single();
 
-  if (error) {
-    setMessage(`회수 실패: ${error.message}`);
+    if (error) {
+      setMessage(`취소 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
+    setMessage(`${task.title} 제출을 취소했습니다.`);
     setLoading(false);
-    return;
   }
-
-  setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
-  setMessage(`${task.title} 제출을 회수했습니다.`);
-  setLoading(false);
-}
 
   async function deleteTask(task: Task) {
     if (!workspace) {
-      setMessage("워크스페이스를 불러오지 못했습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
-  
+
     const canDelete = isManager || task.created_by_member_id === currentMember?.id;
     if (!canDelete) {
-      setMessage("할 일을 만든 사람 또는 관리자만 삭제할 수 있습니다.");
+      setMessage("본인이 만든 할 일 또는 방장/부방장만 삭제할 수 있습니다.");
       return;
     }
-  
-    const confirmed = window.confirm(`"${task.title}" 할 일을 삭제하시겠습니까? 승인된 내역도 함께 삭제됩니다.`);
+
+    const confirmed = window.confirm(`"${task.title}"을 삭제하시겠습니까? 되돌릴 수 없습니다.`);
     if (!confirmed) return;
-  
+
     setLoading(true);
     setMessage("");
-  
+
     const { error } = await supabase.from("tasks").delete().eq("id", task.id);
-  
+
     if (error) {
       setMessage(`삭제 실패: ${error.message}`);
       setLoading(false);
       return;
     }
-  
+
     setTasks((prev) => prev.filter((item) => item.id !== task.id));
     setMessage(`${task.title} 삭제 완료`);
     setLoading(false);
   }
-  
+
   async function approveTask(task: Task) {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
 
     if (task.status !== "submitted") {
-      setMessage("제출된 미션만 승인할 수 있습니다.");
+      setMessage("제출된 상태만 승인할 수 있습니다.");
       return;
     }
 
@@ -1731,7 +1843,7 @@ export default function Home() {
           transaction_type: "earn",
           source_type: "task",
           source_id: task.id,
-          memo: `${task.title} 승인`,
+          memo: `${task.title} 완료`,
           created_by_member_id: currentMember?.id || null,
         })
         .select(rewardTxSelect)
@@ -1752,17 +1864,17 @@ export default function Home() {
 
   async function rejectTask(task: Task) {
     if (!workspace) {
-      setMessage("워크스페이스가 없습니다.");
+      setMessage("모임이 없습니다.");
       return;
     }
 
     if (!isManager) {
-      setMessage("매니저/오너만 가능합니다.");
+      setMessage("방장/부방장만 가능합니다.");
       return;
     }
 
     if (task.status !== "submitted") {
-      setMessage("제출된 미션만 반려할 수 있습니다.");
+      setMessage("제출된 상태만 반려할 수 있습니다.");
       return;
     }
 
@@ -1783,7 +1895,7 @@ export default function Home() {
     }
 
     setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
-    setMessage(`${task.title} 반려 처리.`);
+    setMessage(`${task.title} 반려했습니다.`);
     setLoading(false);
   }
 
@@ -1797,7 +1909,7 @@ export default function Home() {
     return (
       <Shell>
         <h1 style={titleStyle}>미루지</h1>
-        <p style={subTextStyle}>인증 정보를 확인하는 중...</p>
+        <p style={subTextStyle}>로그인 상태 확인 중...</p>
       </Shell>
     );
   }
@@ -1806,19 +1918,24 @@ export default function Home() {
     return (
       <Shell>
         <AuthPanel
-            mode={authMode}
-            email={authEmail}
-            password={authPassword}
-            loading={loading}
-            message={message}
-            agreedToTerms={agreedToTerms}
-            onModeChange={setAuthMode}
-            onEmailChange={setAuthEmail}
-            onPasswordChange={setAuthPassword}
-            onAgreedToTermsChange={setAgreedToTerms}
-            onSignIn={signIn}
-            onSignUp={signUp}
-            onSendPasswordReset={requestPasswordReset}
+          mode={authMode}
+          username={authUsername}
+          password={authPassword}
+          recoveryEmail={authRecoveryEmail}
+          loading={loading}
+          message={message}
+          agreedToTerms={agreedToTerms}
+          isHuman={isHuman}
+          rememberUsername={rememberUsername}
+          onModeChange={setAuthMode}
+          onUsernameChange={setAuthUsername}
+          onPasswordChange={setAuthPassword}
+          onRecoveryEmailChange={setAuthRecoveryEmail}
+          onAgreedToTermsChange={setAgreedToTerms}
+          onIsHumanChange={setIsHuman}
+          onRememberUsernameChange={setRememberUsername}
+          onSignIn={signIn}
+          onSignUp={signUp}
         />
       </Shell>
     );
@@ -1828,7 +1945,7 @@ export default function Home() {
     return (
       <Shell>
         <h1 style={titleStyle}>미루지</h1>
-        <p style={subTextStyle}>워크스페이스를 불러오는 중...</p>
+        <p style={subTextStyle}>모임 정보 불러오는 중...</p>
       </Shell>
     );
   }
@@ -1839,17 +1956,17 @@ export default function Home() {
     if (pendingInviteCode) {
       return (
         <Shell>
-          <AppHeader title="미루지말자" loading={loading} onSignOut={signOut} />
+          <AppHeader title="미루지" loading={loading} onSignOut={signOut} />
           <h1 style={titleStyle}>초대 확인 중...</h1>
-          <p style={subTextStyle}>초대 코드로 워크스페이스에 자동으로 참여하고 있어요.</p>
+          <p style={subTextStyle}>잠시만 기다려주세요. 초대코드를 처리하고 있습니다.</p>
           {message && <div style={messageBoxStyle(message)}>{message}</div>}
         </Shell>
       );
     }
-  
+
     return (
       <Shell>
-        <AppHeader title="미루지말자" loading={loading} onSignOut={signOut} />
+        <AppHeader title="미루지" loading={loading} onSignOut={signOut} />
         <OnboardingGate
           step={onboardingStep}
           loading={loading}
@@ -1935,6 +2052,7 @@ export default function Home() {
             onDeleteTask={deleteTask}
             onAddTask={() => setActiveTab("missions")}
             onSubmitWithEvidence={submitTaskWithEvidence}
+            onSubmitWithText={submitTaskWithText}
           />
         </>
       )}
@@ -1951,6 +2069,8 @@ export default function Home() {
           description={newTaskDescription}
           assignedMemberId={newTaskAssignedMemberId}
           verificationType={newTaskVerificationType}
+          dueTime={newTaskDueTime}
+          onDueTimeChange={setNewTaskDueTime}
           rewardPoints={newTaskRewardPoints}
           repeatType={newTaskRepeatType}
           repeatWeekdays={newTaskRepeatWeekdays}
@@ -1973,6 +2093,7 @@ export default function Home() {
           onCancelTask={cancelSubmission}
           onDeleteTask={deleteTask}
           onSubmitWithEvidence={submitTaskWithEvidence}
+          onSubmitWithText={submitTaskWithText}
         />
       )}
 
@@ -2016,14 +2137,16 @@ export default function Home() {
           onCreateWorkspace={createWorkspace}
           newMemberName={newMemberName}
           newMemberRole={newMemberRole}
-          newMemberHasEmail={newMemberHasEmail}
           onNewMemberNameChange={setNewMemberName}
           onNewMemberRoleChange={setNewMemberRole}
-          onNewMemberHasEmailChange={setNewMemberHasEmail}
-          onAddMember={addMember}
-          inviteCodes={inviteCodes}
-          onCreateInvite={createInviteForMember}
-          onEnableAccount={enableAccountForMember}
+          onAddMember={addVirtualMember}
+          inviteRole={inviteRole}
+          onInviteRoleChange={setInviteRole}
+          inviteSuggestedName={inviteSuggestedName}
+          onInviteSuggestedNameChange={setInviteSuggestedName}
+          onCreateInvite={createInvite}
+          pendingInvites={pendingInvites}
+          onCancelPendingInvite={cancelPendingInvite}
           onRemoveMember={removeMember}
           onRestoreMember={restoreMember}
           joinInviteCode={joinInviteCode}
@@ -2031,12 +2154,16 @@ export default function Home() {
           onAcceptInvite={() => acceptInviteCode()}
           onDeleteAccount={deleteAccount}
           onTransferOwnership={transferOwnership}
-          onCancelInvite={cancelInvite}
-          inviteExpiresAt={inviteExpiresAt}
           onDeleteWorkspace={deleteWorkspace}
           myNickname={myNickname}
           onMyNicknameChange={setMyNickname}
           onSaveMyNickname={saveMyNickname}
+          recoveryEmail={profileRecoveryEmail}
+          onRecoveryEmailChange={setProfileRecoveryEmail}
+          onSaveRecoveryEmail={saveRecoveryEmail}
+          newPassword={newPassword}
+          onNewPasswordChange={setNewPassword}
+          onChangePassword={changePassword}
         />
       )}
 
@@ -2049,10 +2176,10 @@ export default function Home() {
             <div style={summaryModalHeaderStyle}>
               <h2 style={summaryModalTitleStyle}>
                 {summaryFilter === "all"
-                  ? "이번 달 할 일"
+                  ? "이번 달 전체 할 일"
                   : summaryFilter === "pending"
-                  ? "승인 대기"
-                  : "승인 완료"}
+                  ? "제출된 할 일"
+                  : "승인된 할 일"}
               </h2>
               <button
                 type="button"
@@ -2074,6 +2201,7 @@ export default function Home() {
                   loading={loading}
                   onSubmit={submitTask}
                   onSubmitWithEvidence={submitTaskWithEvidence}
+                  onSubmitWithText={submitTaskWithText}
                   onApprove={approveTask}
                   onReject={rejectTask}
                   onCancel={cancelSubmission}
@@ -2153,7 +2281,7 @@ const devLinkStyle: CSSProperties = {
 };
 
 const messageBoxStyle = (message: string): CSSProperties => {
-  const ok = message.includes("완료") || message.includes("성공") || message.includes("신청") || message.includes("승인") || message.includes("정리");
+  const ok = message.includes("완료") || message.includes("성공") || message.includes("보냈습니다") || message.includes("변경") || message.includes("저장");
   return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 };
 };
 

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import type { Member, Workspace } from "@/types/app";
+import type { Member, Workspace, WorkspaceInvite } from "@/types/app";
 import { roleLabel } from "@/lib/labels";
+import { supabase } from "@/lib/supabase/client";
 
 type MemberRole = "manager" | "member";
 
@@ -19,14 +20,16 @@ type SettingsTabProps = {
   onCreateWorkspace: () => void;
   newMemberName: string;
   newMemberRole: MemberRole;
-  newMemberHasEmail: boolean;
   onNewMemberNameChange: (value: string) => void;
   onNewMemberRoleChange: (value: MemberRole) => void;
-  onNewMemberHasEmailChange: (value: boolean) => void;
   onAddMember: () => void;
-  inviteCodes: Record<string, string>;
-  onCreateInvite: (member: Member) => void;
-  onEnableAccount: (member: Member) => void;
+  inviteRole: MemberRole;
+  onInviteRoleChange: (value: MemberRole) => void;
+  inviteSuggestedName: string;
+  onInviteSuggestedNameChange: (value: string) => void;
+  onCreateInvite: () => void;
+  pendingInvites: WorkspaceInvite[];
+  onCancelPendingInvite: (invite: WorkspaceInvite) => void;
   onRemoveMember: (member: Member) => void;
   onRestoreMember: (member: Member) => void;
   joinInviteCode: string;
@@ -35,11 +38,15 @@ type SettingsTabProps = {
   onDeleteAccount: () => void;
   onTransferOwnership: (member: Member) => void;
   onDeleteWorkspace: (workspace: Workspace) => void;
-  onCancelInvite: (member: Member) => void;
-  inviteExpiresAt: Record<string, string>;
   myNickname: string;
   onMyNicknameChange: (value: string) => void;
   onSaveMyNickname: () => void;
+  recoveryEmail: string;
+  onRecoveryEmailChange: (value: string) => void;
+  onSaveRecoveryEmail: () => void;
+  newPassword: string;
+  onNewPasswordChange: (value: string) => void;
+  onChangePassword: () => void;
 };
 
 export default function SettingsTab({
@@ -56,14 +63,16 @@ export default function SettingsTab({
   onCreateWorkspace,
   newMemberName,
   newMemberRole,
-  newMemberHasEmail,
   onNewMemberNameChange,
   onNewMemberRoleChange,
-  onNewMemberHasEmailChange,
   onAddMember,
-  inviteCodes,
+  inviteRole,
+  onInviteRoleChange,
+  inviteSuggestedName,
+  onInviteSuggestedNameChange,
   onCreateInvite,
-  onEnableAccount,
+  pendingInvites,
+  onCancelPendingInvite,
   onRemoveMember,
   onRestoreMember,
   joinInviteCode,
@@ -72,13 +81,124 @@ export default function SettingsTab({
   onDeleteAccount,
   onTransferOwnership,
   onDeleteWorkspace,
-  onCancelInvite,
-  inviteExpiresAt,
   myNickname,
   onMyNicknameChange,
   onSaveMyNickname,
+  recoveryEmail,
+  onRecoveryEmailChange,
+  onSaveRecoveryEmail,
+  newPassword,
+  onNewPasswordChange,
+  onChangePassword,
 }: SettingsTabProps) {
   const hasWorkspace = Boolean(workspace);
+  const [appShareCopied, setAppShareCopied] = useState(false);
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
+
+  function handleShareApp() {
+    const link = typeof window !== "undefined" ? window.location.origin : "";
+    const text = `미루지 – 가족/팀과 함께 할 일을 관리하고 스티커로 보상받는 앱\n${link}`;
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setAppShareCopied(true);
+      setTimeout(() => setAppShareCopied(false), 1800);
+    });
+  }
+
+  function buildInviteLink(code: string) {
+    if (typeof window === "undefined") return "";
+    return `${window.location.origin}/join?code=${code}`;
+  }
+
+  function handleCopyInviteLink(inviteId: string, code: string) {
+    const link = buildInviteLink(code);
+    if (!link || typeof navigator === "undefined" || !navigator.clipboard) return;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopiedInviteId(inviteId);
+      setTimeout(() => {
+        setCopiedInviteId((prev) => (prev === inviteId ? null : prev));
+      }, 1800);
+    });
+  }
+
+  function formatExpiryDate(iso: string) {
+    const date = new Date(iso);
+    return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+  }
+
+  const [notifStatus, setNotifStatus] = useState<string | null>(null);
+
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  async function handleEnableNotifications() {
+    try {
+      if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+        setNotifStatus("이 브라우저는 알림 기능을 지원하지 않습니다.");
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setNotifStatus("알림 권한이 허용되지 않았습니다.");
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+
+      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+
+      const { data: userData } = await supabase.auth.getUser();
+      const authUserId = userData?.user?.id;
+      if (!authUserId) {
+        setNotifStatus("로그인 정보를 확인할 수 없습니다.");
+        return;
+      }
+
+      const { data: profileRow, error: profileError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_user_id", authUserId)
+        .single();
+
+      if (profileError || !profileRow) {
+        setNotifStatus("프로필 정보를 확인할 수 없습니다.");
+        return;
+      }
+
+      const profileId = profileRow.id;
+      const tokenPayload = JSON.stringify(subscription.toJSON());
+
+      const { error } = await supabase
+        .from("device_tokens")
+        .upsert(
+          { profile_id: profileId, platform: "web-push", token: tokenPayload, last_seen_at: new Date().toISOString() },
+          { onConflict: "profile_id,platform" }
+        );
+
+      if (error) {
+        setNotifStatus(`알림 등록 실패: ${error.message}`);
+        return;
+      }
+
+      setNotifStatus("알림이 활성화되었습니다.");
+    } catch (err) {
+      setNotifStatus("알림 활성화 중 오류가 발생했습니다.");
+    }
+  }
 
   return (
     <>
@@ -97,25 +217,84 @@ export default function SettingsTab({
         )}
       </section>
 
-      {currentMember && (
-        <section style={createBoxStyle}>
-          <h2 style={sectionTitleStyle}>내 닉네임</h2>
-          <p style={subTextStyle}>다른 참여자에게 보여질 내 이름을 바꿀 수 있습니다.</p>
-          <input
-            value={myNickname}
-            onChange={(event) => onMyNicknameChange(event.target.value)}
-            placeholder="예) 아빠, 엄마, 첫째"
-            style={inputStyle}
-          />
-          <button
-            onClick={onSaveMyNickname}
-            disabled={loading || !myNickname.trim() || myNickname.trim() === currentMember.display_name}
-            style={primaryButtonStyle(loading)}
-          >
-            {loading ? "저장 중..." : "닉네임 저장"}
-          </button>
-        </section>
-      )}
+      <details style={accordionStyle}>
+        <summary style={accordionSummaryStyle}>프로필</summary>
+        <div style={accordionBodyStyle}>
+          {currentMember && (
+            <div style={{ marginBottom: 22 }}>
+              <h3 style={subSectionTitleStyle}>닉네임</h3>
+              <p style={subTextStyle}>다른 참여자에게 보여질 내 이름을 바꿀 수 있습니다.</p>
+              <input
+                value={myNickname}
+                onChange={(event) => onMyNicknameChange(event.target.value)}
+                placeholder="예) 아빠, 엄마, 첫째"
+                style={inputStyle}
+              />
+              <button
+                onClick={onSaveMyNickname}
+                disabled={loading || !myNickname.trim() || myNickname.trim() === currentMember.display_name}
+                style={primaryButtonStyle(loading)}
+              >
+                {loading ? "저장 중..." : "닉네임 저장"}
+              </button>
+            </div>
+          )}
+
+          <div style={{ marginBottom: 22 }}>
+            <h3 style={subSectionTitleStyle}>복구용 이메일</h3>
+            <p style={subTextStyle}>비밀번호를 잊었을 때 재설정 메일을 받을 이메일입니다. 선택 입력입니다.</p>
+            <input
+              value={recoveryEmail}
+              onChange={(event) => onRecoveryEmailChange(event.target.value)}
+              placeholder="예) me@example.com"
+              type="email"
+              autoComplete="email"
+              style={inputStyle}
+            />
+            <button onClick={onSaveRecoveryEmail} disabled={loading} style={primaryButtonStyle(loading)}>
+              {loading ? "저장 중..." : "이메일 저장"}
+            </button>
+          </div>
+
+          <div>
+            <h3 style={subSectionTitleStyle}>비밀번호 변경</h3>
+            <p style={subTextStyle}>새 비밀번호는 6자 이상이어야 합니다.</p>
+            <input
+              value={newPassword}
+              onChange={(event) => onNewPasswordChange(event.target.value)}
+              placeholder="새 비밀번호"
+              type="password"
+              autoComplete="new-password"
+              style={inputStyle}
+            />
+            <button onClick={onChangePassword} disabled={loading || !newPassword.trim()} style={primaryButtonStyle(loading)}>
+              {loading ? "변경 중..." : "비밀번호 변경"}
+            </button>
+          </div>
+        </div>
+      </details>
+
+      <details style={accordionStyle}>
+        <summary style={accordionSummaryStyle}>알림 & 공유</summary>
+        <div style={accordionBodyStyle}>
+          <div style={{ marginBottom: 20 }}>
+            <h3 style={subSectionTitleStyle}>알림 받기</h3>
+            <p style={subTextStyle}>할 일 등록, 제출, 승인 소식을 알림으로 받아보세요.</p>
+            <button type="button" onClick={handleEnableNotifications} style={primaryButtonStyle(false)}>
+              알림 켜기
+            </button>
+            {notifStatus && <p style={subTextStyle}>{notifStatus}</p>}
+          </div>
+
+          <div>
+            <h3 style={subSectionTitleStyle}>친구에게 공유하기</h3>
+            <p style={subTextStyle}>미루지가 마음에 드셨다면 주변에 알려주세요.</p>
+            <button type="button" onClick={handleShareApp} style={primaryButtonStyle(false)}>
+              {appShareCopied ? "복사됨! 원하는 곳에 붙여넣어 보내보세요" : "친구에게 공유하기"}
+            </button>
+          </div>
+        </div>
+      </details>
 
       <details style={accordionStyle} open={!hasWorkspace}>
         <summary style={accordionSummaryStyle}>초대코드로 참여하기</summary>
@@ -130,36 +309,50 @@ export default function SettingsTab({
         <details style={accordionStyle}>
           <summary style={accordionSummaryStyle}>참여자 관리</summary>
           <div style={accordionBodyStyle}>
-            <div style={{ marginBottom: 20 }}>
-              <h3 style={subSectionTitleStyle}>참여자 추가</h3>
-              <p style={subTextStyle}>이메일 유무에 따라 계정 연결 방식이 달라집니다.</p>
+            <div style={{ marginBottom: 22 }}>
+              <h3 style={subSectionTitleStyle}>초대코드 발급</h3>
+              <p style={subTextStyle}>코드를 만들어 전달하면, 상대가 코드로 직접 가입해 참여자가 됩니다.</p>
+              <input
+                value={inviteSuggestedName}
+                onChange={(event) => onInviteSuggestedNameChange(event.target.value)}
+                placeholder="별명 힌트 (선택, 예: 첫째)"
+                style={inputStyle}
+              />
+              <select value={inviteRole} onChange={(event) => onInviteRoleChange(event.target.value as MemberRole)} style={inputStyle}>
+                <option value="member">참여자</option>
+                <option value="manager">부방장</option>
+              </select>
+              <button onClick={onCreateInvite} disabled={loading} style={primaryButtonStyle(loading)}>
+                {loading ? "생성 중..." : "초대코드 발급"}
+              </button>
 
-              <div style={{ marginBottom: 14 }}>
-                <label style={toggleLabelStyle}>이 참여자는 이메일이 있나요?</label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => onNewMemberHasEmailChange(true)}
-                    style={newMemberHasEmail ? emailToggleActiveStyle : emailToggleInactiveStyle}
-                  >
-                    네, 있어요
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onNewMemberHasEmailChange(false)}
-                    style={!newMemberHasEmail ? emailToggleActiveStyle : emailToggleInactiveStyle}
-                  >
-                    아니요, 없어요
-                  </button>
+              {pendingInvites.length > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  {pendingInvites.map((invite) => (
+                    <div key={invite.id} style={inviteCodeCardStyle}>
+                      <div>
+                        <strong>{invite.invite_code}</strong> · {roleLabel(invite.role)}
+                        {invite.suggested_name && ` · ${invite.suggested_name}`}
+                      </div>
+                      <div style={{ fontSize: 12, marginTop: 4 }}>{formatExpiryDate(invite.expires_at)}까지</div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                        <button type="button" onClick={() => handleCopyInviteLink(invite.id, invite.invite_code)} style={copyLinkButtonStyle}>
+                          {copiedInviteId === invite.id ? "복사됨!" : "참여 링크 복사"}
+                        </button>
+                        <button type="button" onClick={() => onCancelPendingInvite(invite)} disabled={loading} style={{ ...copyLinkButtonStyle, background: "#b91c1c" }}>
+                          취소
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <p style={toggleHintStyle}>
-                  {newMemberHasEmail
-                    ? "초대코드를 만들어서 전달하면, 상대가 코드를 입력해 본인 계정으로 연결할 수 있어요."
-                    : "계정을 만들지 않고 부방장이 직접 관리합니다. 초대코드는 생성되지 않아요."}
-                </p>
-              </div>
+              )}
+            </div>
 
-              <input value={newMemberName} onChange={(event) => onNewMemberNameChange(event.target.value)} placeholder="예) 첫째, 아빠, 엄마, 토끼" style={inputStyle} />
+            <div style={{ marginBottom: 20 }}>
+              <h3 style={subSectionTitleStyle}>계정 없이 참여자 추가</h3>
+              <p style={subTextStyle}>아기, 반려동물처럼 직접 로그인하지 않는 참여자는 방장/부방장이 대신 관리합니다.</p>
+              <input value={newMemberName} onChange={(event) => onNewMemberNameChange(event.target.value)} placeholder="예) 첫째, 토끼" style={inputStyle} />
               <select value={newMemberRole} onChange={(event) => onNewMemberRoleChange(event.target.value as MemberRole)} style={inputStyle}>
                 <option value="member">참여자</option>
                 <option value="manager">부방장</option>
@@ -170,15 +363,10 @@ export default function SettingsTab({
             <MemberList
               members={members}
               currentMember={currentMember}
-              inviteCodes={inviteCodes}
               loading={loading}
-              onCreateInvite={onCreateInvite}
-              onEnableAccount={onEnableAccount}
               onRemoveMember={onRemoveMember}
               onRestoreMember={onRestoreMember}
               onTransferOwnership={onTransferOwnership}
-              onCancelInvite={onCancelInvite}
-              inviteExpiresAt={inviteExpiresAt}
             />
           </div>
         </details>
@@ -234,41 +422,19 @@ export default function SettingsTab({
 function MemberList({
   members,
   currentMember,
-  inviteCodes,
   loading,
-  onCreateInvite,
-  onEnableAccount,
   onRemoveMember,
   onRestoreMember,
   onTransferOwnership,
-  onCancelInvite,
-  inviteExpiresAt,
 }: {
   members: Member[];
   currentMember: Member | null;
-  inviteCodes: Record<string, string>;
   loading: boolean;
-  onCreateInvite: (member: Member) => void;
-  onEnableAccount: (member: Member) => void;
   onRemoveMember: (member: Member) => void;
   onRestoreMember: (member: Member) => void;
   onTransferOwnership: (member: Member) => void;
-  onCancelInvite: (member: Member) => void;
-  inviteExpiresAt: Record<string, string>;
 }) {
   const isOwner = currentMember?.role === "owner";
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  function handleCopyLink(memberId: string, code: string) {
-    const link = buildInviteLink(code);
-    if (!link || typeof navigator === "undefined" || !navigator.clipboard) return;
-    navigator.clipboard.writeText(link).then(() => {
-      setCopiedId(memberId);
-      setTimeout(() => {
-        setCopiedId((prev) => (prev === memberId ? null : prev));
-      }, 1800);
-    });
-  }
 
   return (
     <div>
@@ -297,93 +463,28 @@ function MemberList({
                     {isRemoved
                       ? "제외됨"
                       : member.is_virtual
-                      ? member.requires_account
-                        ? "초대 대기"
-                        : "계정 없이 관리 중"
+                      ? "계정 없이 관리 중"
                       : "계정 연결됨"}
                   </div>
-                  {inviteCodes[member.id] && (
-                    <div style={inviteCodeBoxStyle}>
-                      <div>
-                        초대코드: <strong>{inviteCodes[member.id]}</strong>
-                      </div>
-                      {inviteExpiresAt[member.id] && (
-                        <div style={{ marginTop: 4, fontSize: 12, fontWeight: 600 }}>
-                          만료일: {formatExpiryDate(inviteExpiresAt[member.id])}까지
-                        </div>
-                      )}
-                      <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyLink(member.id, inviteCodes[member.id])}
-                          style={copyLinkButtonStyle}
-                        >
-                          {copiedId === member.id ? "복사됨!" : "참여 링크 복사하기"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onCancelInvite(member)}
-                          disabled={loading}
-                          style={{ ...copyLinkButtonStyle, background: "#b91c1c" }}
-                        >
-                          초대코드 취소
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {canTransferTo && (
-                    <button
-                      onClick={() => onTransferOwnership(member)}
-                      disabled={loading}
-                      style={smallButtonStyle}
-                    >
+                    <button onClick={() => onTransferOwnership(member)} disabled={loading} style={smallButtonStyle}>
                       방장 넘기기
                     </button>
                   )}
 
                   {isRemoved ? (
-                    <button
-                      onClick={() => onRestoreMember(member)}
-                      disabled={loading}
-                      style={smallButtonStyle}
-                    >
+                    <button onClick={() => onRestoreMember(member)} disabled={loading} style={smallButtonStyle}>
                       복구하기
                     </button>
                   ) : (
-                    <>
-                      {member.is_virtual && !member.requires_account && (
-                        <button
-                          onClick={() => onEnableAccount(member)}
-                          disabled={loading}
-                          style={smallButtonStyle}
-                        >
-                          실제 계정으로 전환하기
-                        </button>
-                      )}
-
-                      {member.is_virtual && member.requires_account && (
-                        <button
-                          onClick={() => onCreateInvite(member)}
-                          disabled={loading}
-                          style={smallButtonStyle}
-                        >
-                          초대코드 생성
-                        </button>
-                      )}
-
-                      {member.role !== "owner" && (
-                        <button
-                          onClick={() => onRemoveMember(member)}
-                          disabled={loading}
-                          style={{ ...smallButtonStyle, background: "#b91c1c" }}
-                        >
-                          제외하기
-                        </button>
-                      )}
-                    </>
+                    member.role !== "owner" && (
+                      <button onClick={() => onRemoveMember(member)} disabled={loading} style={{ ...smallButtonStyle, background: "#b91c1c" }}>
+                        제외하기
+                      </button>
+                    )
                   )}
                 </div>
               </div>
@@ -393,15 +494,6 @@ function MemberList({
       )}
     </div>
   );
-}
-
-function buildInviteLink(code: string) {
-  if (typeof window === "undefined") return "";
-  return `${window.location.origin}/join?code=${code}`;
-}
-function formatExpiryDate(iso: string) {
-  const date = new Date(iso);
-  return `${date.getMonth() + 1}월 ${date.getDate()}일`;
 }
 
 const createBoxStyle: CSSProperties = { padding: 16, borderRadius: 20, background: "#fff8f7", marginBottom: 18, boxShadow: "0 4px 16px rgba(219,39,119,0.06)" };
@@ -420,12 +512,8 @@ const memberListStyle: CSSProperties = { display: "flex", flexDirection: "column
 const memberCardStyle: CSSProperties = { padding: 14, borderRadius: 18, background: "#fff", boxShadow: "0 2px 10px rgba(219,39,119,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 };
 const memberNameStyle: CSSProperties = { fontSize: 16, fontWeight: 900, color: "#3f1d24" };
 const memberMetaStyle: CSSProperties = { marginTop: 5, color: "#9f6b75", fontSize: 13 };
-const inviteCodeBoxStyle: CSSProperties = { marginTop: 8, padding: "6px 8px", borderRadius: 10, background: "#fce7f3", color: "#be185d", fontSize: 13, fontWeight: 800 };
-const copyLinkButtonStyle: CSSProperties = { marginTop: 8, border: "none", borderRadius: 10, background: "#db2777", color: "#fff", padding: "6px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer" };
+const inviteCodeCardStyle: CSSProperties = { padding: "10px 12px", borderRadius: 14, background: "#fce7f3", color: "#be185d", fontSize: 13, fontWeight: 700, marginBottom: 8 };
+const copyLinkButtonStyle: CSSProperties = { border: "none", borderRadius: 10, background: "#db2777", color: "#fff", padding: "6px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer" };
 const smallButtonStyle: CSSProperties = { border: "none", borderRadius: 12, background: "#db2777", color: "#fff", padding: "9px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" };
-const toggleLabelStyle: CSSProperties = { display: "block", fontSize: 13, fontWeight: 800, color: "#5c3a41", marginBottom: 6 };
-const toggleHintStyle: CSSProperties = { fontSize: 12, color: "#9f6b75", marginTop: 6, lineHeight: 1.5 };
-const emailToggleActiveStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "linear-gradient(135deg, #ec4899, #db2777)", color: "#fff", fontWeight: 800, cursor: "pointer", fontSize: 13, boxShadow: "0 6px 14px rgba(219,39,119,0.35)" };
-const emailToggleInactiveStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "1px solid #fbcfe8", background: "#fff", color: "#db2777", fontWeight: 800, cursor: "pointer", fontSize: 13 };
 const dangerButtonStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "none", background: "#b91c1c", color: "#fff", fontWeight: 800, cursor: "pointer" };
 function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#94a3b8" : "linear-gradient(135deg, #fb7185, #e11d48)", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer", boxShadow: loading ? "none" : "0 6px 14px rgba(225,29,72,0.30)" }; }
