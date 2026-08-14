@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { CSSProperties } from "react";
 
 type AuthMode = "signin" | "signup" | "forgot";
@@ -21,6 +22,7 @@ type AuthPanelProps = {
   onRememberUsernameChange: (value: boolean) => void;
   onSignIn: () => void;
   onSignUp: () => void;
+  onRequestPasswordReset: (message: string) => void;
 };
 
 export default function AuthPanel({
@@ -42,15 +44,42 @@ export default function AuthPanel({
   onRememberUsernameChange,
   onSignIn,
   onSignUp,
+  onRequestPasswordReset,
 }: AuthPanelProps) {
+  const [resetRequestMessage, setResetRequestMessage] = useState("");
+
   if (mode === "forgot") {
     return (
       <>
         <h1 style={titleStyle}>미루지말자</h1>
         <p style={subTextStyle}>
-          비밀번호를 잊으셨다면 워크스페이스 관리자(부모/방장)에게 문의해 초기화를 요청해주세요.
-          가입 시 복구용 이메일을 등록해두셨다면, 곧 이메일로 재설정하는 기능이 추가될 예정입니다.
+          비밀번호를 잊으셨다면 아래 내용을 남겨주세요. 확인 후 안내드릴게요.
         </p>
+
+        <input
+          value={username}
+          onChange={(event) => onUsernameChange(event.target.value)}
+          placeholder="아이디"
+          autoComplete="username"
+          style={inputStyle}
+        />
+
+        <textarea
+          value={resetRequestMessage}
+          onChange={(event) => setResetRequestMessage(event.target.value)}
+          placeholder="상황을 간단히 남겨주세요. (예: 비밀번호가 기억나지 않아요)"
+          rows={4}
+          style={textareaStyle}
+        />
+
+        <button
+          type="button"
+          onClick={() => onRequestPasswordReset(resetRequestMessage)}
+          disabled={loading}
+          style={primaryButtonStyle(loading)}
+        >
+          {loading ? "요청 접수 중..." : "요청 보내기"}
+        </button>
 
         <button
           type="button"
@@ -220,6 +249,18 @@ const inputStyle: CSSProperties = {
   fontSize: 15,
 };
 
+const textareaStyle: CSSProperties = {
+  width: "100%",
+  padding: 14,
+  borderRadius: 14,
+  border: "1px solid #dbeafe",
+  marginBottom: 12,
+  outline: "none",
+  fontSize: 15,
+  fontFamily: "inherit",
+  resize: "vertical",
+};
+
 const secondaryButtonStyle: CSSProperties = {
   width: "100%",
   padding: 13,
@@ -293,7 +334,8 @@ function messageBoxStyle(message: string): CSSProperties {
     message.includes("완료") ||
     message.includes("성공") ||
     message.includes("불러오기") ||
-    message.includes("보냈습니다");
+    message.includes("보냈습니다") ||
+    message.includes("접수");
 
   return {
     marginTop: 14,
