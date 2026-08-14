@@ -293,7 +293,7 @@ export default function SettingsTab({
       </details>
 
       <details style={accordionStyle} open={!hasWorkspace}>
-        <summary style={accordionSummaryStyle}>초대코드로 참여하기</summary>
+        <summary style={accordionSummaryStyle}>{hasWorkspace ? "새 모임 참여하기" : "모임 참여하기"}</summary>
         <div style={accordionBodyStyle}>
           <p style={subTextStyle}>다른 사람이 만든 모임에 참여하려면 초대코드를 입력하세요.</p>
           <input value={joinInviteCode} onChange={(event) => onJoinInviteCodeChange(event.target.value.toUpperCase())} placeholder="예) A1B2C3" style={inputStyle} />
