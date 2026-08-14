@@ -293,6 +293,7 @@ export default function Home() {
           onRememberUsernameChange={setRememberUsername}
           onSignIn={signIn}
           onSignUp={signUp}
+          onRequestPasswordReset={requestPasswordReset}
         />
       </Shell>
     );
