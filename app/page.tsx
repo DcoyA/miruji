@@ -810,34 +810,32 @@ export default function Home() {
 
   async function createInvite() {
     if (!workspace) {
-      setMessage("모임이 없습니다.");
-      return;
+      setMessage("워크스페이스가 없습니다.");
+      return null;
     }
-
+  
     if (!isManager) {
-      setMessage("방장/부방장만 가능합니다.");
-      return;
+      setMessage("방장/부방장만 초대코드를 발급할 수 있습니다.");
+      return null;
     }
-
+  
     setLoading(true);
-    setMessage("");
-
+  
     const { data, error } = await supabase.rpc("create_workspace_invite", {
       target_workspace_id: workspace.id,
       member_role: "member",
       suggested_display_name: inviteSuggestedName.trim() || null,
     });
-
+  
     if (error) {
-      setMessage(`초대코드 생성 실패: ${error.message}`);
       setLoading(false);
-      return;
+      return { ok: false, text: error.message };
     }
-
+  
     await loadWorkspaceData(workspace.id);
     setInviteSuggestedName("");
-    setMessage(`초대코드 생성 완료: ${data?.[0]?.invite_code ?? ""}`);
     setLoading(false);
+    return { ok: true, text: `초대코드 발급: ${data?.[0]?.invite_code ?? ""}` };
   }
 
   async function cancelPendingInvite(invite: WorkspaceInvite) {
