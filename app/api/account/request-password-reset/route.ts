@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendAdminEmail } from "@/lib/email";
+import type { User } from "@supabase/supabase-js";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   const { data: userListData } = await admin.auth.admin.listUsers();
-  const matchedAuthUser = userListData?.users.find((user) => {
+  const matchedAuthUser = userListData?.users.find((user: User) => {
     const localPart = user.email?.split("@")[0];
     return localPart?.toLowerCase() === username.toLowerCase();
   });
