@@ -218,10 +218,6 @@ export default function MissionTab({
       </section>
       ) : (
         <section style={createBoxStyle}>
-          <h2 style={sectionTitleStyle}>내 할 일</h2>
-          <p style={subTextStyle}>참여자는 본인에게 배정된 할 일만 확인합니다.</p>
-        </section>
-      )}
 
       {isManager && templates.length > 0 && (
         <section style={templateSectionStyle}>
