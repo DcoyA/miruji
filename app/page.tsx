@@ -1138,11 +1138,6 @@ export default function Home() {
       return;
     }
 
-    if (!isManager) {
-      setMessage("방장/부방장만 가능합니다.");
-      return;
-    }
-
     if (!newTaskTitle.trim()) {
       setMessage("제목을 입력해주세요.");
       return;
