@@ -27,7 +27,7 @@ type SettingsTabProps = {
   onInviteRoleChange: (value: MemberRole) => void;
   inviteSuggestedName: string;
   onInviteSuggestedNameChange: (value: string) => void;
-  onCreateInvite: () => void;
+  onCreateInvite: () => Promise<{ ok: boolean; text: string } | null>;
   pendingInvites: WorkspaceInvite[];
   onCancelPendingInvite: (invite: WorkspaceInvite) => void;
   onRemoveMember: (member: Member) => void;
@@ -96,6 +96,13 @@ export default function SettingsTab({
   const hasWorkspace = Boolean(workspace);
   const [appShareCopied, setAppShareCopied] = useState(false);
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
+
+  const [inviteMessage, setInviteMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function handleCreateInvite() {
+    const result = await onCreateInvite();
+    if (result) setInviteMessage(result);
+  }
 
   function handleShareApp() {
     const link = typeof window !== "undefined" ? window.location.origin : "";
@@ -331,9 +338,14 @@ export default function SettingsTab({
                 placeholder="별명 힌트 (선택, 예: 첫째)"
                 style={inputStyle}
               />
-              <button onClick={onCreateInvite} disabled={loading} style={primaryButtonStyle(loading)}>
+              <button onClick={handleCreateInvite} disabled={loading} style={primaryButtonStyle(loading)}>
                 {loading ? "발급 중..." : "초대코드 발급"}
               </button>
+              {inviteMessage && (
+                <p style={{ marginTop: 8, fontSize: 13, color: inviteMessage.ok ? "#047857" : "#b91c1c" }}>
+                  {inviteMessage.text}
+                </p>
+              )}
       
               {pendingInvites.length > 0 && (
                 <div style={{ marginTop: 14 }}>
