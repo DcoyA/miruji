@@ -9,7 +9,7 @@ export type AuthMode = "signin" | "signup";
 // ⚠️ 실제 값 확인 필요: 원본 page.tsx에 이 상수의 선언부가 보이지 않았습니다.
 // 저장소에서 `FAKE_EMAIL_DOMAIN` 을 검색해 실제 문자열로 반드시 교체하세요.
 // 잘못된 값을 넣으면 기존 가입자 전원이 로그인할 수 없게 됩니다.
-const FAKE_EMAIL_DOMAIN = "__REPLACE_ME__";
+const FAKE_EMAIL_DOMAIN = "users.miruji.app";
 
 const profileSelect =
   "id, auth_user_id, display_name, avatar_url, onboarding_completed, recovery_email";
@@ -31,7 +31,7 @@ export function useAuth({ setMessage, setLoading }: UseAuthParams) {
   const [authUsername, setAuthUsername] = useState("");
   const [authRecoveryEmail, setAuthRecoveryEmail] = useState("");
   const [isHuman, setIsHuman] = useState(false);
-  const [rememberUsername, setRememberUsername] = useState(false);
+  const [rememberUsername, setRememberUsername] = useState(true);
   const [authPassword, setAuthPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
