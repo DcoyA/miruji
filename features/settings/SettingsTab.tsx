@@ -5,6 +5,7 @@ import { roleLabel } from "@/lib/labels";
 import { supabase } from "@/lib/supabase/client";
 
 type MemberRole = "manager" | "member";
+type ActionResult = { ok: boolean; text: string } | undefined;
 
 type SettingsTabProps = {
   workspaces: Workspace[];
@@ -17,38 +18,47 @@ type SettingsTabProps = {
   loading: boolean;
   onWorkspaceNameChange: (value: string) => void;
   onWorkspaceDescriptionChange: (value: string) => void;
-  onCreateWorkspace: () => void;
+  onCreateWorkspace: () => Promise<ActionResult>;
   newMemberName: string;
   newMemberRole: MemberRole;
   onNewMemberNameChange: (value: string) => void;
   onNewMemberRoleChange: (value: MemberRole) => void;
-  onAddMember: () => void;
+  onAddMember: () => Promise<ActionResult>;
   inviteRole: MemberRole;
   onInviteRoleChange: (value: MemberRole) => void;
   inviteSuggestedName: string;
   onInviteSuggestedNameChange: (value: string) => void;
   onCreateInvite: () => Promise<{ ok: boolean; text: string } | null>;
   pendingInvites: WorkspaceInvite[];
-  onCancelPendingInvite: (invite: WorkspaceInvite) => void;
-  onRemoveMember: (member: Member) => void;
-  onRestoreMember: (member: Member) => void;
+  onCancelPendingInvite: (invite: WorkspaceInvite) => Promise<ActionResult>;
+  onRemoveMember: (member: Member) => Promise<ActionResult>;
+  onRestoreMember: (member: Member) => Promise<ActionResult>;
   joinInviteCode: string;
   onJoinInviteCodeChange: (value: string) => void;
-  onAcceptInvite: () => void;
-  onDeleteAccount: () => void;
-  onTransferOwnership: (member: Member) => void;
-  onUpdateMemberRole: (member: Member, newRole: MemberRole) => void;
-  onDeleteWorkspace: (workspace: Workspace) => void;
+  onAcceptInvite: () => Promise<ActionResult>;
+  onDeleteAccount: () => Promise<ActionResult>;
+  onTransferOwnership: (member: Member) => Promise<ActionResult>;
+  onUpdateMemberRole: (member: Member, newRole: MemberRole) => Promise<ActionResult>;
+  onDeleteWorkspace: (workspace: Workspace) => Promise<ActionResult>;
   myNickname: string;
   onMyNicknameChange: (value: string) => void;
-  onSaveMyNickname: () => void;
+  onSaveMyNickname: () => Promise<ActionResult>;
   recoveryEmail: string;
   onRecoveryEmailChange: (value: string) => void;
-  onSaveRecoveryEmail: () => void;
+  onSaveRecoveryEmail: () => Promise<ActionResult>;
   newPassword: string;
   onNewPasswordChange: (value: string) => void;
-  onChangePassword: () => void;
+  onChangePassword: () => Promise<ActionResult>;
 };
+
+function ResultMessage({ result }: { result: ActionResult | null }) {
+  if (!result) return null;
+  return (
+    <p style={{ marginTop: 8, fontSize: 13, color: result.ok ? "#047857" : "#b91c1c" }}>
+      {result.text}
+    </p>
+  );
+}
 
 export default function SettingsTab({
   workspaces,
@@ -98,10 +108,66 @@ export default function SettingsTab({
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
 
   const [inviteMessage, setInviteMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [joinMessage, setJoinMessage] = useState<ActionResult | null>(null);
+  const [createWorkspaceMessage, setCreateWorkspaceMessage] = useState<ActionResult | null>(null);
+  const [addMemberMessage, setAddMemberMessage] = useState<ActionResult | null>(null);
+  const [memberListMessage, setMemberListMessage] = useState<ActionResult | null>(null);
+  const [cancelInviteMessage, setCancelInviteMessage] = useState<ActionResult | null>(null);
+  const [nicknameMessage, setNicknameMessage] = useState<ActionResult | null>(null);
+  const [recoveryEmailMessage, setRecoveryEmailMessage] = useState<ActionResult | null>(null);
+  const [passwordMessage, setPasswordMessage] = useState<ActionResult | null>(null);
+  const [deleteWorkspaceMessage, setDeleteWorkspaceMessage] = useState<ActionResult | null>(null);
+  const [deleteAccountMessage, setDeleteAccountMessage] = useState<ActionResult | null>(null);
 
   async function handleCreateInvite() {
     const result = await onCreateInvite();
     if (result) setInviteMessage(result);
+  }
+
+  async function handleJoin() {
+    const result = await onAcceptInvite();
+    setJoinMessage(result ?? null);
+  }
+
+  async function handleCreateWorkspace() {
+    const result = await onCreateWorkspace();
+    setCreateWorkspaceMessage(result ?? null);
+  }
+
+  async function handleAddMember() {
+    const result = await onAddMember();
+    setAddMemberMessage(result ?? null);
+  }
+
+  async function handleCancelPendingInvite(invite: WorkspaceInvite) {
+    const result = await onCancelPendingInvite(invite);
+    setCancelInviteMessage(result ?? null);
+  }
+
+  async function handleSaveMyNickname() {
+    const result = await onSaveMyNickname();
+    setNicknameMessage(result ?? null);
+  }
+
+  async function handleSaveRecoveryEmail() {
+    const result = await onSaveRecoveryEmail();
+    setRecoveryEmailMessage(result ?? null);
+  }
+
+  async function handleChangePassword() {
+    const result = await onChangePassword();
+    setPasswordMessage(result ?? null);
+  }
+
+  async function handleDeleteWorkspace() {
+    if (!workspace) return;
+    const result = await onDeleteWorkspace(workspace);
+    setDeleteWorkspaceMessage(result ?? null);
+  }
+
+  async function handleDeleteAccount() {
+    const result = await onDeleteAccount();
+    setDeleteAccountMessage(result ?? null);
   }
 
   function handleShareApp() {
@@ -234,12 +300,13 @@ export default function SettingsTab({
                 style={inputStyle}
               />
               <button
-                onClick={onSaveMyNickname}
+                onClick={handleSaveMyNickname}
                 disabled={loading || !myNickname.trim() || myNickname.trim() === currentMember.display_name}
                 style={primaryButtonStyle(loading)}
               >
                 {loading ? "저장 중..." : "닉네임 저장"}
               </button>
+              <ResultMessage result={nicknameMessage} />
             </div>
           )}
 
@@ -254,9 +321,10 @@ export default function SettingsTab({
               autoComplete="email"
               style={inputStyle}
             />
-            <button onClick={onSaveRecoveryEmail} disabled={loading} style={primaryButtonStyle(loading)}>
+            <button onClick={handleSaveRecoveryEmail} disabled={loading} style={primaryButtonStyle(loading)}>
               {loading ? "저장 중..." : "이메일 저장"}
             </button>
+            <ResultMessage result={recoveryEmailMessage} />
           </div>
 
           <div>
@@ -270,9 +338,10 @@ export default function SettingsTab({
               autoComplete="new-password"
               style={inputStyle}
             />
-            <button onClick={onChangePassword} disabled={loading || !newPassword.trim()} style={primaryButtonStyle(loading)}>
+            <button onClick={handleChangePassword} disabled={loading || !newPassword.trim()} style={primaryButtonStyle(loading)}>
               {loading ? "변경 중..." : "비밀번호 변경"}
             </button>
+            <ResultMessage result={passwordMessage} />
           </div>
         </div>
       </details>
@@ -307,7 +376,8 @@ export default function SettingsTab({
             <h3 style={subSectionTitleStyle}>{hasWorkspace ? "새 모임 참여하기" : "모임 참여하기"}</h3>
             <p style={subTextStyle}>다른 사람이 만든 모임에 참여하려면 초대코드를 입력하세요.</p>
             <input value={joinInviteCode} onChange={(event) => onJoinInviteCodeChange(event.target.value.toUpperCase())} placeholder="예) A1B2C3" style={inputStyle} />
-            <button onClick={onAcceptInvite} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "참여 중..." : "초대코드로 참여하기"}</button>
+            <button onClick={handleJoin} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "참여 중..." : "초대코드로 참여하기"}</button>
+            <ResultMessage result={joinMessage} />
           </div>
 
           <div style={{ marginBottom: 22 }}>
@@ -315,7 +385,8 @@ export default function SettingsTab({
             <p style={subTextStyle}>가족, 팀, 클래스처럼 별도 공간이 필요하면 새 모임을 만들 수 있습니다.</p>
             <input value={workspaceName} onChange={(event) => onWorkspaceNameChange(event.target.value)} placeholder="예) 우리집, 주말 프로젝트, 1학년 3반" style={inputStyle} />
             <textarea value={workspaceDescription} onChange={(event) => onWorkspaceDescriptionChange(event.target.value)} placeholder="설명 (선택)" rows={3} style={{ ...inputStyle, resize: "vertical" }} />
-            <button onClick={onCreateWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "모임 만들기"}</button>
+            <button onClick={handleCreateWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "모임 만들기"}</button>
+            <ResultMessage result={createWorkspaceMessage} />
           </div>
 
           {hasWorkspace && isManager && (
@@ -329,6 +400,8 @@ export default function SettingsTab({
                 onRestoreMember={onRestoreMember}
                 onTransferOwnership={onTransferOwnership}
                 onUpdateMemberRole={onUpdateMemberRole}
+                actionMessage={memberListMessage}
+                onActionResult={setMemberListMessage}
               />
             </div>
           )}
@@ -349,11 +422,7 @@ export default function SettingsTab({
                 <button onClick={handleCreateInvite} disabled={loading} style={primaryButtonStyle(loading)}>
                   {loading ? "발급 중..." : "초대코드 발급"}
                 </button>
-                {inviteMessage && (
-                  <p style={{ marginTop: 8, fontSize: 13, color: inviteMessage.ok ? "#047857" : "#b91c1c" }}>
-                    {inviteMessage.text}
-                  </p>
-                )}
+                <ResultMessage result={inviteMessage} />
 
                 {pendingInvites.length > 0 && (
                   <div style={{ marginTop: 14 }}>
@@ -368,12 +437,13 @@ export default function SettingsTab({
                           <button type="button" onClick={() => handleCopyInviteCode(invite.id, invite.invite_code)} style={copyLinkButtonStyle}>
                             {copiedInviteId === invite.id ? "복사됐어요!" : "초대코드 복사"}
                           </button>
-                          <button type="button" onClick={() => onCancelPendingInvite(invite)} disabled={loading} style={{ ...copyLinkButtonStyle, background: "#b91c1c" }}>
+                          <button type="button" onClick={() => handleCancelPendingInvite(invite)} disabled={loading} style={{ ...copyLinkButtonStyle, background: "#b91c1c" }}>
                             취소
                           </button>
                         </div>
                       </div>
                     ))}
+                    <ResultMessage result={cancelInviteMessage} />
                   </div>
                 )}
               </div>
@@ -386,9 +456,10 @@ export default function SettingsTab({
                   <option value="member">참여자</option>
                   <option value="manager">부방장</option>
                 </select>
-                <button onClick={onAddMember} disabled={loading} style={primaryButtonStyle(loading)}>
+                <button onClick={handleAddMember} disabled={loading} style={primaryButtonStyle(loading)}>
                   {loading ? "추가 중..." : "참여자 추가"}
                 </button>
+                <ResultMessage result={addMemberMessage} />
               </div>
             </div>
           )}
@@ -402,29 +473,31 @@ export default function SettingsTab({
               )}
             </div>
           )}
-
-          {hasWorkspace && currentMember?.role === "owner" && (
-            <div>
-              <h3 style={{ ...subSectionTitleStyle, color: "#b91c1c" }}>모임 삭제</h3>
-              <p style={subTextStyle}>
-                모임을 삭제하면 모든 할 일, 참여자, 보상 기록이 함께 삭제되며 되돌릴 수
-                없습니다. 방장은 다른 참여자의 동의 없이 단독으로 삭제할 수 있습니다.
-              </p>
-              <button onClick={() => onDeleteWorkspace(workspace!)} style={dangerButtonStyle}>
-                모임 삭제하기
-              </button>
-            </div>
-          )}
         </div>
       </details>
 
       <details style={dangerAccordionStyle}>
         <summary style={dangerAccordionSummaryStyle}>위험 구역</summary>
         <div style={accordionBodyStyle}>
+          {hasWorkspace && currentMember?.role === "owner" && (
+            <div style={{ marginBottom: 22 }}>
+              <h3 style={{ ...subSectionTitleStyle, color: "#b91c1c" }}>모임 삭제</h3>
+              <p style={subTextStyle}>
+                모임을 삭제하면 모든 할 일, 참여자, 보상 기록이 함께 삭제되며 되돌릴 수
+                없습니다. 방장은 다른 참여자의 동의 없이 단독으로 삭제할 수 있습니다.
+              </p>
+              <button onClick={handleDeleteWorkspace} style={dangerButtonStyle}>
+                모임 삭제하기
+              </button>
+              <ResultMessage result={deleteWorkspaceMessage} />
+            </div>
+          )}
+
           <div>
             <h3 style={{ ...subSectionTitleStyle, color: "#b91c1c" }}>회원 탈퇴</h3>
             <p style={subTextStyle}>탈퇴하면 계정과 프로필 정보가 삭제되며 되돌릴 수 없습니다.</p>
-            <button onClick={onDeleteAccount} style={dangerButtonStyle}>탈퇴하기</button>
+            <button onClick={handleDeleteAccount} style={dangerButtonStyle}>탈퇴하기</button>
+            <ResultMessage result={deleteAccountMessage} />
           </div>
         </div>
       </details>
@@ -440,17 +513,26 @@ function MemberList({
   onRestoreMember,
   onTransferOwnership,
   onUpdateMemberRole,
+  actionMessage,
+  onActionResult,
 }: {
   members: Member[];
   currentMember: Member | null;
   loading: boolean;
-  onRemoveMember: (member: Member) => void;
-  onRestoreMember: (member: Member) => void;
-  onTransferOwnership: (member: Member) => void;
-  onUpdateMemberRole: (member: Member, newRole: MemberRole) => void;
+  onRemoveMember: (member: Member) => Promise<ActionResult>;
+  onRestoreMember: (member: Member) => Promise<ActionResult>;
+  onTransferOwnership: (member: Member) => Promise<ActionResult>;
+  onUpdateMemberRole: (member: Member, newRole: MemberRole) => Promise<ActionResult>;
+  actionMessage: ActionResult | null;
+  onActionResult: (result: ActionResult | null) => void;
 }) {
 
   const isOwner = currentMember?.role === "owner";
+
+  async function handle(action: () => Promise<ActionResult>) {
+    const result = await action();
+    onActionResult(result ?? null);
+  }
 
   return (
     <div>
@@ -486,30 +568,30 @@ function MemberList({
 
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {canTransferTo && (
-                    <button onClick={() => onTransferOwnership(member)} disabled={loading} style={smallButtonStyle}>
+                    <button onClick={() => handle(() => onTransferOwnership(member))} disabled={loading} style={smallButtonStyle}>
                       방장 넘기기
                     </button>
                   )}
 
                   {!isRemoved && member.role !== "owner" && member.id !== currentMember?.id && (
                     member.role === "member" ? (
-                      <button onClick={() => onUpdateMemberRole(member, "manager")} disabled={loading} style={smallButtonStyle}>
+                      <button onClick={() => handle(() => onUpdateMemberRole(member, "manager"))} disabled={loading} style={smallButtonStyle}>
                         부방장으로 승격
                       </button>
                     ) : (
-                      <button onClick={() => onUpdateMemberRole(member, "member")} disabled={loading} style={smallButtonStyle}>
+                      <button onClick={() => handle(() => onUpdateMemberRole(member, "member"))} disabled={loading} style={smallButtonStyle}>
                         참여자로 변경
                       </button>
                     )
                   )}
-                  
+
                   {isRemoved ? (
-                    <button onClick={() => onRestoreMember(member)} disabled={loading} style={smallButtonStyle}>
+                    <button onClick={() => handle(() => onRestoreMember(member))} disabled={loading} style={smallButtonStyle}>
                       복구하기
                     </button>
                   ) : (
                     member.role !== "owner" && (
-                      <button onClick={() => onRemoveMember(member)} disabled={loading} style={{ ...smallButtonStyle, background: "#b91c1c" }}>
+                      <button onClick={() => handle(() => onRemoveMember(member))} disabled={loading} style={{ ...smallButtonStyle, background: "#b91c1c" }}>
                         제외하기
                       </button>
                     )
@@ -520,6 +602,7 @@ function MemberList({
           })}
         </div>
       )}
+      <ResultMessage result={actionMessage} />
     </div>
   );
 }
