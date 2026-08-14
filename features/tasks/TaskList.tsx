@@ -64,7 +64,9 @@ export default function TaskList({
         const needsFile = task.verification_type === "photo" || task.verification_type === "video" || task.verification_type === "audio";
         const needsText = task.verification_type === "text";
 
-        const canReview = isManager && task.status === "submitted";
+        const canReview =
+          (isManager || (!!currentMember?.id && task.created_by_member_id === currentMember.id)) &&
+          task.status === "submitted";
 
         const canCancel = isAssignee && task.status === "submitted";
 

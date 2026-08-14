@@ -86,7 +86,11 @@ export default function MissionTab({
 }: MissionTabProps) {
   const visibleTasks = isManager
     ? tasks
-    : tasks.filter((task) => task.assigned_member_id === currentMember?.id);
+    : tasks.filter(
+        (task) =>
+          task.assigned_member_id === currentMember?.id ||
+          task.created_by_member_id === currentMember?.id
+      );
 
   const createDisabled =
     loading || (repeatType === "weekly" && repeatWeekdays.length === 0);

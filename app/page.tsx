@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
+import NotificationPrompt from "@/features/notifications/NotificationPrompt";
 
 import Shell from "@/components/Shell";
 import AppHeader from "@/components/AppHeader";
@@ -90,6 +91,8 @@ export default function Home() {
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("choice");
 
   const [members, setMembers] = useState<Member[]>([]);
+  const [workspacePlan, setWorkspacePlan] = useState<"free" | "premium">("free");
+  const [memberBalances, setMemberBalances] = useState<Record<string, number>>({});
   const [tasks, setTasks] = useState<Task[]>([]);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
@@ -807,34 +810,32 @@ export default function Home() {
 
   async function createInvite() {
     if (!workspace) {
-      setMessage("모임이 없습니다.");
-      return;
+      setMessage("워크스페이스가 없습니다.");
+      return null;
     }
-
+  
     if (!isManager) {
-      setMessage("방장/부방장만 가능합니다.");
-      return;
+      setMessage("방장/부방장만 초대코드를 발급할 수 있습니다.");
+      return null;
     }
-
+  
     setLoading(true);
-    setMessage("");
-
+  
     const { data, error } = await supabase.rpc("create_workspace_invite", {
       target_workspace_id: workspace.id,
-      member_role: inviteRole,
+      member_role: "member",
       suggested_display_name: inviteSuggestedName.trim() || null,
     });
-
+  
     if (error) {
-      setMessage(`초대코드 생성 실패: ${error.message}`);
       setLoading(false);
-      return;
+      return { ok: false, text: error.message };
     }
-
+  
     await loadWorkspaceData(workspace.id);
     setInviteSuggestedName("");
-    setMessage(`초대코드 생성 완료: ${data?.[0]?.invite_code ?? ""}`);
     setLoading(false);
+    return { ok: true, text: `초대코드 발급: ${data?.[0]?.invite_code ?? ""}` };
   }
 
   async function cancelPendingInvite(invite: WorkspaceInvite) {
@@ -945,6 +946,45 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function updateMemberRole(member: Member, newRole: "manager" | "member") {
+    if (!workspace) {
+      setMessage("모임이 없습니다.");
+      return;
+    }
+  
+    if (!isManager) {
+      setMessage("방장/부방장만 권한을 조정할 수 있습니다.");
+      return;
+    }
+  
+    if (member.role === "owner") {
+      setMessage("방장의 권한은 여기서 바꿀 수 없습니다.");
+      return;
+    }
+  
+    if (member.role === newRole) return;
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { data, error } = await supabase
+      .from("workspace_members")
+      .update({ role: newRole })
+      .eq("id", member.id)
+      .select(memberSelect)
+      .single();
+  
+    if (error) {
+      setMessage(`권한 변경 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
+    setMessage(`${member.display_name}님의 권한을 ${roleLabel(newRole)}로 변경했습니다.`);
+    setLoading(false);
+  }
+  
   async function saveMyNickname() {
     if (!workspace || !currentMember) {
       setMessage("연결된 참여자가 없습니다.");
@@ -1076,15 +1116,49 @@ export default function Home() {
   }
 
   async function loadWorkspaceData(workspaceId: string) {
+    const { data: workspaceRow } = await supabase
+      .from("workspaces")
+      .select("created_by")
+      .eq("id", workspaceId)
+      .single();
+    
+    let plan: "free" | "premium" = "free";
+    if (workspaceRow?.created_by) {
+      const { data: premiumCheck } = await supabase.rpc("is_premium", {
+        target_profile_id: workspaceRow.created_by,
+      });
+      plan = premiumCheck ? "premium" : "free";
+    }
+    setWorkspacePlan(plan);
+    
+    const { data: balanceRows } = await supabase.rpc("get_member_balances", {
+      target_workspace_id: workspaceId,
+    });
+    const balanceMap: Record<string, number> = {};
+    (balanceRows || []).forEach((row: { member_id: string; balance: number }) => {
+      balanceMap[row.member_id] = row.balance;
+    });
+    setMemberBalances(balanceMap);
+    
     const monthStart = toDateKey(startOfMonth(currentMonth));
     const monthEnd = toDateKey(endOfMonth(currentMonth));
+    const thirtyDaysAgoKey = toDateKey(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+    const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const [membersResult, tasksResult, templatesResult, rewardsResult, rewardTransactionsResult, invitesResult] = await Promise.all([
       supabase.from("workspace_members").select(memberSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
-      supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd).order("due_date", { ascending: true }),
+      (() => {
+        let q = supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd);
+        if (plan === "free") q = q.gte("due_date", thirtyDaysAgoKey);
+        return q.order("due_date", { ascending: true });
+      })(),
       supabase.from("task_templates").select(taskTemplateSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
       supabase.from("rewards").select(rewardSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
-      supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
+      (() => {
+        let q = supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", workspaceId);
+        if (plan === "free") q = q.gte("created_at", thirtyDaysAgoIso);
+        return q.order("created_at", { ascending: true });
+      })(),
       supabase.from("workspace_invites").select("id, invite_code, role, suggested_name, status, expires_at").eq("workspace_id", workspaceId).eq("status", "pending").order("created_at", { ascending: false }),
     ]);
 
@@ -1805,8 +1879,10 @@ export default function Home() {
       return;
     }
 
-    if (!isManager) {
-      setMessage("방장/부방장만 가능합니다.");
+    const canReview =
+      isManager || (!!currentMember?.id && task.created_by_member_id === currentMember.id);
+    if (!canReview) {
+      setMessage("이 할 일을 만든 사람 또는 방장/부방장만 승인할 수 있습니다.");
       return;
     }
 
@@ -1868,8 +1944,10 @@ export default function Home() {
       return;
     }
 
-    if (!isManager) {
-      setMessage("방장/부방장만 가능합니다.");
+    const canReview =
+      isManager || (!!currentMember?.id && task.created_by_member_id === currentMember.id);
+    if (!canReview) {
+      setMessage("이 할 일을 만든 사람 또는 방장/부방장만 승인할 수 있습니다.");
       return;
     }
 
@@ -1900,9 +1978,7 @@ export default function Home() {
   }
 
   function balanceByMemberId(memberId: string) {
-    return rewardTransactions
-      .filter((item) => item.member_id === memberId)
-      .reduce((sum, item) => sum + item.amount, 0);
+    return memberBalances[memberId] ?? 0;
   }
 
   if (authLoading) {
@@ -2004,6 +2080,8 @@ export default function Home() {
         <a href="/dev" style={devLinkStyle}>dev</a>
       </section>
 
+      {workspace && <NotificationPrompt />}
+      
       {workspaces.length > 0 && (
         <WorkspaceSwitcher
           workspaces={workspaces}
@@ -2154,6 +2232,7 @@ export default function Home() {
           onAcceptInvite={() => acceptInviteCode()}
           onDeleteAccount={deleteAccount}
           onTransferOwnership={transferOwnership}
+          onUpdateMemberRole={updateMemberRole}
           onDeleteWorkspace={deleteWorkspace}
           myNickname={myNickname}
           onMyNicknameChange={setMyNickname}

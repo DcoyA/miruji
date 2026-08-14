@@ -27,7 +27,7 @@ type SettingsTabProps = {
   onInviteRoleChange: (value: MemberRole) => void;
   inviteSuggestedName: string;
   onInviteSuggestedNameChange: (value: string) => void;
-  onCreateInvite: () => void;
+  onCreateInvite: () => Promise<{ ok: boolean; text: string } | null>;
   pendingInvites: WorkspaceInvite[];
   onCancelPendingInvite: (invite: WorkspaceInvite) => void;
   onRemoveMember: (member: Member) => void;
@@ -37,6 +37,7 @@ type SettingsTabProps = {
   onAcceptInvite: () => void;
   onDeleteAccount: () => void;
   onTransferOwnership: (member: Member) => void;
+  onUpdateMemberRole: (member: Member, newRole: MemberRole) => void;
   onDeleteWorkspace: (workspace: Workspace) => void;
   myNickname: string;
   onMyNicknameChange: (value: string) => void;
@@ -80,6 +81,7 @@ export default function SettingsTab({
   onAcceptInvite,
   onDeleteAccount,
   onTransferOwnership,
+  onUpdateMemberRole,
   onDeleteWorkspace,
   myNickname,
   onMyNicknameChange,
@@ -95,6 +97,13 @@ export default function SettingsTab({
   const [appShareCopied, setAppShareCopied] = useState(false);
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
 
+  const [inviteMessage, setInviteMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function handleCreateInvite() {
+    const result = await onCreateInvite();
+    if (result) setInviteMessage(result);
+  }
+
   function handleShareApp() {
     const link = typeof window !== "undefined" ? window.location.origin : "";
     const text = `미루지 – 가족/팀과 함께 할 일을 관리하고 스티커로 보상받는 앱\n${link}`;
@@ -105,15 +114,9 @@ export default function SettingsTab({
     });
   }
 
-  function buildInviteLink(code: string) {
-    if (typeof window === "undefined") return "";
-    return `${window.location.origin}/join?code=${code}`;
-  }
-
-  function handleCopyInviteLink(inviteId: string, code: string) {
-    const link = buildInviteLink(code);
-    if (!link || typeof navigator === "undefined" || !navigator.clipboard) return;
-    navigator.clipboard.writeText(link).then(() => {
+  function handleCopyInviteCode(inviteId: string, code: string) {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    navigator.clipboard.writeText(code).then(() => {
       setCopiedInviteId(inviteId);
       setTimeout(() => {
         setCopiedInviteId((prev) => (prev === inviteId ? null : prev));
@@ -297,7 +300,7 @@ export default function SettingsTab({
       </details>
 
       <details style={accordionStyle} open={!hasWorkspace}>
-        <summary style={accordionSummaryStyle}>초대코드로 참여하기</summary>
+        <summary style={accordionSummaryStyle}>{hasWorkspace ? "새 모임 참여하기" : "모임 참여하기"}</summary>
         <div style={accordionBodyStyle}>
           <p style={subTextStyle}>다른 사람이 만든 모임에 참여하려면 초대코드를 입력하세요.</p>
           <input value={joinInviteCode} onChange={(event) => onJoinInviteCodeChange(event.target.value.toUpperCase())} placeholder="예) A1B2C3" style={inputStyle} />
@@ -309,6 +312,23 @@ export default function SettingsTab({
         <details style={accordionStyle}>
           <summary style={accordionSummaryStyle}>참여자 관리</summary>
           <div style={accordionBodyStyle}>
+            <MemberList
+              members={members}
+              currentMember={currentMember}
+              loading={loading}
+              onRemoveMember={onRemoveMember}
+              onRestoreMember={onRestoreMember}
+              onTransferOwnership={onTransferOwnership}
+              onUpdateMemberRole={onUpdateMemberRole}
+            />
+          </div>
+        </details>
+      )}
+      
+     {hasWorkspace && isManager && (
+        <details style={accordionStyle}>
+          <summary style={accordionSummaryStyle}>초대하기</summary>
+          <div style={accordionBodyStyle}>
             <div style={{ marginBottom: 22 }}>
               <h3 style={subSectionTitleStyle}>초대코드 발급</h3>
               <p style={subTextStyle}>코드를 만들어 전달하면, 상대가 코드로 직접 가입해 참여자가 됩니다.</p>
@@ -318,14 +338,15 @@ export default function SettingsTab({
                 placeholder="별명 힌트 (선택, 예: 첫째)"
                 style={inputStyle}
               />
-              <select value={inviteRole} onChange={(event) => onInviteRoleChange(event.target.value as MemberRole)} style={inputStyle}>
-                <option value="member">참여자</option>
-                <option value="manager">부방장</option>
-              </select>
-              <button onClick={onCreateInvite} disabled={loading} style={primaryButtonStyle(loading)}>
-                {loading ? "생성 중..." : "초대코드 발급"}
+              <button onClick={handleCreateInvite} disabled={loading} style={primaryButtonStyle(loading)}>
+                {loading ? "발급 중..." : "초대코드 발급"}
               </button>
-
+              {inviteMessage && (
+                <p style={{ marginTop: 8, fontSize: 13, color: inviteMessage.ok ? "#047857" : "#b91c1c" }}>
+                  {inviteMessage.text}
+                </p>
+              )}
+      
               {pendingInvites.length > 0 && (
                 <div style={{ marginTop: 14 }}>
                   {pendingInvites.map((invite) => (
@@ -336,8 +357,8 @@ export default function SettingsTab({
                       </div>
                       <div style={{ fontSize: 12, marginTop: 4 }}>{formatExpiryDate(invite.expires_at)}까지</div>
                       <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                        <button type="button" onClick={() => handleCopyInviteLink(invite.id, invite.invite_code)} style={copyLinkButtonStyle}>
-                          {copiedInviteId === invite.id ? "복사됨!" : "참여 링크 복사"}
+                        <button type="button" onClick={() => handleCopyInviteCode(invite.id, invite.invite_code)} style={copyLinkButtonStyle}>
+                          {copiedInviteId === invite.id ? "복사됐어요!" : "초대코드 복사"}
                         </button>
                         <button type="button" onClick={() => onCancelPendingInvite(invite)} disabled={loading} style={{ ...copyLinkButtonStyle, background: "#b91c1c" }}>
                           취소
@@ -348,7 +369,7 @@ export default function SettingsTab({
                 </div>
               )}
             </div>
-
+      
             <div style={{ marginBottom: 20 }}>
               <h3 style={subSectionTitleStyle}>계정 없이 참여자 추가</h3>
               <p style={subTextStyle}>아기, 반려동물처럼 직접 로그인하지 않는 참여자는 방장/부방장이 대신 관리합니다.</p>
@@ -357,17 +378,10 @@ export default function SettingsTab({
                 <option value="member">참여자</option>
                 <option value="manager">부방장</option>
               </select>
-              <button onClick={onAddMember} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "추가 중..." : "참여자 추가"}</button>
+              <button onClick={onAddMember} disabled={loading} style={primaryButtonStyle(loading)}>
+                {loading ? "추가 중..." : "참여자 추가"}
+              </button>
             </div>
-
-            <MemberList
-              members={members}
-              currentMember={currentMember}
-              loading={loading}
-              onRemoveMember={onRemoveMember}
-              onRestoreMember={onRestoreMember}
-              onTransferOwnership={onTransferOwnership}
-            />
           </div>
         </details>
       )}
@@ -426,6 +440,7 @@ function MemberList({
   onRemoveMember,
   onRestoreMember,
   onTransferOwnership,
+  onUpdateMemberRole,
 }: {
   members: Member[];
   currentMember: Member | null;
@@ -433,7 +448,9 @@ function MemberList({
   onRemoveMember: (member: Member) => void;
   onRestoreMember: (member: Member) => void;
   onTransferOwnership: (member: Member) => void;
+  onUpdateMemberRole: (member: Member, newRole: MemberRole) => void;
 }) {
+
   const isOwner = currentMember?.role === "owner";
 
   return (
@@ -475,6 +492,18 @@ function MemberList({
                     </button>
                   )}
 
+                  {!isRemoved && member.role !== "owner" && member.id !== currentMember?.id && (
+                    member.role === "member" ? (
+                      <button onClick={() => onUpdateMemberRole(member, "manager")} disabled={loading} style={smallButtonStyle}>
+                        부방장으로 승격
+                      </button>
+                    ) : (
+                      <button onClick={() => onUpdateMemberRole(member, "member")} disabled={loading} style={smallButtonStyle}>
+                        참여자로 변경
+                      </button>
+                    )
+                  )}
+                  
                   {isRemoved ? (
                     <button onClick={() => onRestoreMember(member)} disabled={loading} style={smallButtonStyle}>
                       복구하기
