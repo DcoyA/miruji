@@ -822,7 +822,7 @@ export default function Home() {
 
     const { data, error } = await supabase.rpc("create_workspace_invite", {
       target_workspace_id: workspace.id,
-      member_role: inviteRole,
+      member_role: "member",
       suggested_display_name: inviteSuggestedName.trim() || null,
     });
 
@@ -946,6 +946,45 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function updateMemberRole(member: Member, newRole: "manager" | "member") {
+    if (!workspace) {
+      setMessage("모임이 없습니다.");
+      return;
+    }
+  
+    if (!isManager) {
+      setMessage("방장/부방장만 권한을 조정할 수 있습니다.");
+      return;
+    }
+  
+    if (member.role === "owner") {
+      setMessage("방장의 권한은 여기서 바꿀 수 없습니다.");
+      return;
+    }
+  
+    if (member.role === newRole) return;
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { data, error } = await supabase
+      .from("workspace_members")
+      .update({ role: newRole })
+      .eq("id", member.id)
+      .select(memberSelect)
+      .single();
+  
+    if (error) {
+      setMessage(`권한 변경 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+  
+    setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
+    setMessage(`${member.display_name}님의 권한을 ${roleLabel(newRole)}로 변경했습니다.`);
+    setLoading(false);
+  }
+  
   async function saveMyNickname() {
     if (!workspace || !currentMember) {
       setMessage("연결된 참여자가 없습니다.");
@@ -2157,6 +2196,7 @@ export default function Home() {
           onAcceptInvite={() => acceptInviteCode()}
           onDeleteAccount={deleteAccount}
           onTransferOwnership={transferOwnership}
+          onUpdateMemberRole={updateMemberRole}
           onDeleteWorkspace={deleteWorkspace}
           myNickname={myNickname}
           onMyNicknameChange={setMyNickname}
