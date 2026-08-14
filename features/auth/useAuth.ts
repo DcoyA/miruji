@@ -260,36 +260,30 @@ export function useAuth({ setMessage, setLoading }: UseAuthParams) {
     setLoading(false);
   }
 
-  async function requestPasswordReset() {
-    if (!authRecoveryEmail.trim()) {
-      setMessage("등록된 복구 이메일이 없습니다. 관리자에게 문의해주세요.");
+  async function requestPasswordReset(customMessage: string) {
+    const trimmedUsername = authUsername.trim();
+  
+    if (!trimmedUsername) {
+      setMessage("아이디를 입력해주세요.");
       return;
     }
-
+  
     setLoading(true);
     setMessage("");
-
-    const appUrl =
-      typeof window !== "undefined"
-        ? window.location.origin
-        : "https://miruji-omega.vercel.app";
-
-    const { error } = await supabase.auth.resetPasswordForEmail(authRecoveryEmail.trim(), {
-      redirectTo: `${appUrl}/auth/reset`,
+  
+    const response = await fetch("/api/account/request-password-reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: trimmedUsername, message: customMessage }),
     });
-
-    if (error) {
-      console.error("resetPasswordForEmail error", error);
-      const detail =
-        error.message && error.message.trim() && error.message !== "{}"
-          ? error.message
-          : `오류 코드: ${(error as any).status ?? error.name ?? "알수없음"}`;
-      setMessage(`재설정 요청 실패: ${detail}`);
+  
+    if (!response.ok) {
+      setMessage("요청 접수에 실패했습니다. 잠시 후 다시 시도해주세요.");
       setLoading(false);
       return;
     }
-
-    setMessage("재설정 메일을 보냈습니다. 메일함을 확인해주세요.");
+  
+    setMessage("요청이 접수되었습니다. 확인 후 안내드릴게요.");
     setLoading(false);
   }
 
