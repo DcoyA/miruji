@@ -316,7 +316,9 @@ export default function SettingsTab({
             />
           </div>
         </details>
+      )}
       
+     {hasWorkspace && isManager && (
         <details style={accordionStyle}>
           <summary style={accordionSummaryStyle}>초대하기</summary>
           <div style={accordionBodyStyle}>
@@ -332,7 +334,7 @@ export default function SettingsTab({
               <button onClick={onCreateInvite} disabled={loading} style={primaryButtonStyle(loading)}>
                 {loading ? "발급 중..." : "초대코드 발급"}
               </button>
-
+      
               {pendingInvites.length > 0 && (
                 <div style={{ marginTop: 14 }}>
                   {pendingInvites.map((invite) => (
@@ -355,7 +357,7 @@ export default function SettingsTab({
                 </div>
               )}
             </div>
-
+      
             <div style={{ marginBottom: 20 }}>
               <h3 style={subSectionTitleStyle}>계정 없이 참여자 추가</h3>
               <p style={subTextStyle}>아기, 반려동물처럼 직접 로그인하지 않는 참여자는 방장/부방장이 대신 관리합니다.</p>
@@ -364,8 +366,11 @@ export default function SettingsTab({
                 <option value="member">참여자</option>
                 <option value="manager">부방장</option>
               </select>
-              <button onClick={onAddMember} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "추가 중..." : "참여자 추가"}</button>
+              <button onClick={onAddMember} disabled={loading} style={primaryButtonStyle(loading)}>
+                {loading ? "추가 중..." : "참여자 추가"}
+              </button>
             </div>
+          </div>
         </details>
       )}
 
