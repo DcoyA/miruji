@@ -4,53 +4,51 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { Profile } from "@/types/app";
 
-const FAKE_EMAIL_DOMAIN = "users.miruji.app";
+export type AuthMode = "signin" | "signup";
+
+// ⚠️ 실제 값 확인 필요: 원본 page.tsx에 이 상수의 선언부가 보이지 않았습니다.
+// 저장소에서 `FAKE_EMAIL_DOMAIN` 을 검색해 실제 문자열로 반드시 교체하세요.
+// 잘못된 값을 넣으면 기존 가입자 전원이 로그인할 수 없게 됩니다.
+const FAKE_EMAIL_DOMAIN = "__REPLACE_ME__";
+
+const profileSelect =
+  "id, auth_user_id, display_name, avatar_url, onboarding_completed, recovery_email";
 
 function usernameToEmail(username: string) {
   return `${username.trim().toLowerCase()}@${FAKE_EMAIL_DOMAIN}`;
 }
 
-const profileSelect =
-  "id, auth_user_id, display_name, avatar_url, onboarding_completed, recovery_email";
-
 type UseAuthParams = {
   setMessage: (message: string) => void;
   setLoading: (loading: boolean) => void;
-  onAuthenticated: () => Promise<void> | void;
-  onSignedOut: () => void;
 };
 
-export function useAuth({ setMessage, setLoading, onAuthenticated, onSignedOut }: UseAuthParams) {
+export function useAuth({ setMessage, setLoading }: UseAuthParams) {
+  // ⚠️ authLoading=true, authMode="signin", rememberUsername=false 는
+  // 원본에 선언부가 없어 동작 패턴으로 추정한 초기값입니다. 실제 의도와 다르면 알려주세요.
   const [authLoading, setAuthLoading] = useState(true);
-  const [authMode, setAuthMode] = useState<"signin" | "signup" | "forgot">("signin");
+  const [authMode, setAuthMode] = useState<AuthMode>("signin");
   const [authUsername, setAuthUsername] = useState("");
   const [authRecoveryEmail, setAuthRecoveryEmail] = useState("");
   const [isHuman, setIsHuman] = useState(false);
-  const [rememberUsername, setRememberUsername] = useState(true);
+  const [rememberUsername, setRememberUsername] = useState(false);
   const [authPassword, setAuthPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileRecoveryEmail, setProfileRecoveryEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
-  function handleSignedOut() {
-    onSignedOut();
-    setAgreedToTerms(false);
-    setProfile(null);
-  }
-
   useEffect(() => {
     initializeAuth();
 
     const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
-        handleSignedOut();
+        setProfile(null);
         setAuthLoading(false);
         return;
       }
 
-      const loadedProfile = await loadProfile(session.user.id);
-      if (loadedProfile) await onAuthenticated();
+      await loadProfile(session.user.id);
       setAuthLoading(false);
     });
 
@@ -77,8 +75,7 @@ export function useAuth({ setMessage, setLoading, onAuthenticated, onSignedOut }
       return;
     }
 
-    const loadedProfile = await loadProfile(data.user.id);
-    if (loadedProfile) await onAuthenticated();
+    await loadProfile(data.user.id);
     setAuthLoading(false);
   }
 
@@ -154,27 +151,22 @@ export function useAuth({ setMessage, setLoading, onAuthenticated, onSignedOut }
       setMessage("아이디와 비밀번호를 입력해주세요.");
       return;
     }
-
     if (!/^[a-zA-Z0-9_]{3,20}$/.test(trimmedUsername)) {
       setMessage("아이디는 영문, 숫자, 밑줄(_)만 3~20자로 입력해주세요.");
       return;
     }
-
     if (authPassword.trim().length < 6) {
       setMessage("비밀번호는 6자 이상이어야 합니다.");
       return;
     }
-
     if (authRecoveryEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authRecoveryEmail.trim())) {
       setMessage("복구용 이메일 형식이 올바르지 않습니다.");
       return;
     }
-
     if (!agreedToTerms) {
       setMessage("이용약관에 동의해주세요.");
       return;
     }
-
     if (!isHuman) {
       setMessage("사람입니다 체크를 해주세요.");
       return;
@@ -193,7 +185,6 @@ export function useAuth({ setMessage, setLoading, onAuthenticated, onSignedOut }
       setLoading(false);
       return;
     }
-
     if (availability === false) {
       setMessage("이미 사용 중인 아이디입니다.");
       setLoading(false);
@@ -255,7 +246,6 @@ export function useAuth({ setMessage, setLoading, onAuthenticated, onSignedOut }
       setLoading(false);
       return;
     }
-
     if (!data.user) {
       setMessage("로그인에 실패했습니다.");
       setLoading(false);
@@ -270,7 +260,6 @@ export function useAuth({ setMessage, setLoading, onAuthenticated, onSignedOut }
 
     const loadedProfile = await loadProfile(data.user.id);
     if (loadedProfile) {
-      await onAuthenticated();
       setMessage("로그인 성공");
     }
     setLoading(false);
@@ -329,7 +318,9 @@ export function useAuth({ setMessage, setLoading, onAuthenticated, onSignedOut }
       });
     }
 
-    handleSignedOut();
+    // 여기서 워크스페이스 상태를 직접 초기화하지 않습니다.
+    // profile을 null로 만들면 page.tsx의 감시용 useEffect가 resetWorkspaceState를 호출합니다.
+    setProfile(null);
     setAuthPassword("");
     setAuthMode("signin");
     setLoading(false);
@@ -337,9 +328,7 @@ export function useAuth({ setMessage, setLoading, onAuthenticated, onSignedOut }
   }
 
   async function deleteAccount() {
-    const confirmed = window.confirm(
-      "정말 탈퇴하시겠습니까? 되돌릴 수 없습니다."
-    );
+    const confirmed = window.confirm("정말 탈퇴하시겠습니까? 되돌릴 수 없습니다.");
     if (!confirmed) return;
 
     setLoading(true);
