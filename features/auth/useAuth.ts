@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { Profile } from "@/types/app";
 
-export type AuthMode = "signin" | "signup";
+export type AuthMode = "signin" | "signup" | "forgot";
 
 // ⚠️ 실제 값 확인 필요: 원본 page.tsx에 이 상수의 선언부가 보이지 않았습니다.
 // 저장소에서 `FAKE_EMAIL_DOMAIN` 을 검색해 실제 문자열로 반드시 교체하세요.
