@@ -1144,13 +1144,23 @@ export default function Home() {
     
     const monthStart = toDateKey(startOfMonth(currentMonth));
     const monthEnd = toDateKey(endOfMonth(currentMonth));
+    const thirtyDaysAgoKey = toDateKey(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+    const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const [membersResult, tasksResult, templatesResult, rewardsResult, rewardTransactionsResult, invitesResult] = await Promise.all([
       supabase.from("workspace_members").select(memberSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
-      supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd).order("due_date", { ascending: true }),
+      (() => {
+        let q = supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd);
+        if (plan === "free") q = q.gte("due_date", thirtyDaysAgoKey);
+        return q.order("due_date", { ascending: true });
+      })(),
       supabase.from("task_templates").select(taskTemplateSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
       supabase.from("rewards").select(rewardSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
-      supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
+      (() => {
+        let q = supabase.from("reward_transactions").select(rewardTxSelect).eq("workspace_id", workspaceId);
+        if (plan === "free") q = q.gte("created_at", thirtyDaysAgoIso);
+        return q.order("created_at", { ascending: true });
+      })(),
       supabase.from("workspace_invites").select("id, invite_code, role, suggested_name, status, expires_at").eq("workspace_id", workspaceId).eq("status", "pending").order("created_at", { ascending: false }),
     ]);
 
