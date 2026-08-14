@@ -1,7 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { CSSProperties } from "react";
+import {
+  titleStyle,
+  subTextStyle,
+  accountBoxStyle,
+  avatarStyle,
+  accountInfoStyle,
+  accountNameStyle,
+  roleBadgeStyle,
+  devLinkStyle,
+  messageBoxStyle,
+  summaryModalBackdropStyle,
+  summaryModalPanelStyle,
+  summaryModalHeaderStyle,
+  summaryModalTitleStyle,
+  summaryModalCloseButtonStyle,
+  summaryModalBodyStyle,
+} from "@/features/home/styles";
 import NotificationPrompt from "@/features/notifications/NotificationPrompt";
 
 import Shell from "@/components/Shell";
@@ -560,124 +576,3 @@ export default function Home() {
     </Shell>
   );
 }
-
-const titleStyle: CSSProperties = {
-  margin: "0 0 8px",
-  fontSize: 30,
-  letterSpacing: "-0.04em",
-  fontWeight: 800,
-  color: "#3f1d24",
-};
-const subTextStyle: CSSProperties = { color: "#9f6b75", lineHeight: 1.6, marginBottom: 20 };
-const accountBoxStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  background: "#ffffff",
-  borderRadius: 20,
-  padding: "14px 16px",
-  marginBottom: 20,
-  boxShadow: "0 4px 16px rgba(190, 24, 93, 0.08)",
-};
-
-const avatarStyle: CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: "50%",
-  background: "linear-gradient(135deg, #fb7185, #e11d48)",
-  color: "#ffffff",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontWeight: 800,
-  fontSize: 18,
-  flexShrink: 0,
-};
-
-const accountInfoStyle: CSSProperties = {
-  flex: 1,
-  display: "flex",
-  flexDirection: "column",
-  gap: 4,
-};
-
-const accountNameStyle: CSSProperties = {
-  fontSize: 15,
-  color: "#3f1d24",
-};
-
-const roleBadgeStyle: CSSProperties = {
-  display: "inline-flex",
-  alignSelf: "flex-start",
-  padding: "3px 10px",
-  borderRadius: 999,
-  background: "#ffe4e6",
-  color: "#be123c",
-  fontSize: 11,
-  fontWeight: 800,
-};
-
-const devLinkStyle: CSSProperties = {
-  color: "#94a3b8",
-  fontSize: 12,
-  fontWeight: 700,
-  textDecoration: "none",
-};
-
-const messageBoxStyle = (message: string): CSSProperties => {
-  const ok = message.includes("완료") || message.includes("성공") || message.includes("보냈습니다") || message.includes("변경") || message.includes("저장");
-  return { marginTop: 14, padding: 12, borderRadius: 14, background: ok ? "#ecfdf5" : "#fef2f2", color: ok ? "#047857" : "#b91c1c", fontSize: 14, lineHeight: 1.5 };
-};
-
-const summaryModalBackdropStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(63,29,36,0.45)",
-  zIndex: 50,
-  display: "flex",
-  alignItems: "flex-end",
-  justifyContent: "center",
-};
-
-const summaryModalPanelStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 480,
-  maxHeight: "80dvh",
-  background: "#fff",
-  borderRadius: "24px 24px 0 0",
-  display: "flex",
-  flexDirection: "column",
-  paddingTop: "env(safe-area-inset-top)",
-};
-
-const summaryModalHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "16px 18px 12px",
-  borderBottom: "1px solid #f6e8e6",
-};
-
-const summaryModalTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 20,
-  letterSpacing: "-0.03em",
-  color: "#3f1d24",
-};
-
-const summaryModalCloseButtonStyle: CSSProperties = {
-  border: "1px solid #f1d9dd",
-  background: "#fff",
-  color: "#9f6b75",
-  borderRadius: 999,
-  padding: "6px 14px",
-  fontWeight: 800,
-  fontSize: 13,
-  cursor: "pointer",
-};
-
-const summaryModalBodyStyle: CSSProperties = {
-  flex: 1,
-  overflowY: "auto",
-  padding: "14px 18px 28px",
-};
