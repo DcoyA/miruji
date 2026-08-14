@@ -91,6 +91,8 @@ export default function Home() {
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("choice");
 
   const [members, setMembers] = useState<Member[]>([]);
+  const [workspacePlan, setWorkspacePlan] = useState<"free" | "premium">("free");
+  const [memberBalances, setMemberBalances] = useState<Record<string, number>>({});
   const [tasks, setTasks] = useState<Task[]>([]);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
@@ -1116,6 +1118,30 @@ export default function Home() {
   }
 
   async function loadWorkspaceData(workspaceId: string) {
+    const { data: workspaceRow } = await supabase
+      .from("workspaces")
+      .select("created_by")
+      .eq("id", workspaceId)
+      .single();
+    
+    let plan: "free" | "premium" = "free";
+    if (workspaceRow?.created_by) {
+      const { data: premiumCheck } = await supabase.rpc("is_premium", {
+        target_profile_id: workspaceRow.created_by,
+      });
+      plan = premiumCheck ? "premium" : "free";
+    }
+    setWorkspacePlan(plan);
+    
+    const { data: balanceRows } = await supabase.rpc("get_member_balances", {
+      target_workspace_id: workspaceId,
+    });
+    const balanceMap: Record<string, number> = {};
+    (balanceRows || []).forEach((row: { member_id: string; balance: number }) => {
+      balanceMap[row.member_id] = row.balance;
+    });
+    setMemberBalances(balanceMap);
+    
     const monthStart = toDateKey(startOfMonth(currentMonth));
     const monthEnd = toDateKey(endOfMonth(currentMonth));
 
@@ -1944,9 +1970,7 @@ export default function Home() {
   }
 
   function balanceByMemberId(memberId: string) {
-    return rewardTransactions
-      .filter((item) => item.member_id === memberId)
-      .reduce((sum, item) => sum + item.amount, 0);
+    return memberBalances[memberId] ?? 0;
   }
 
   if (authLoading) {
