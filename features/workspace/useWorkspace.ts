@@ -30,6 +30,9 @@ export const rewardTxSelect =
 
 export type MemberRole = "manager" | "member";
 
+// ⚠️ 참여자 제한 인원. 원래 요구사항에 "제한 3명"이라고 하셨으니 3으로 고정했습니다.
+const MAX_MEMBER_COUNT = 3;
+
 type InviteAcceptResult = {
   workspace_id?: string;
   member_id?: string;
@@ -44,6 +47,15 @@ type UseWorkspaceParams = {
   setLoading: (loading: boolean) => void;
   setActiveTab: (tab: ActiveTab) => void;
 };
+
+function generateInviteCode(length = 6) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let result = "";
+  for (let i = 0; i < length; i += 1) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return result;
+}
 
 export function useWorkspace({
   profile,
@@ -275,6 +287,11 @@ export function useWorkspace({
       setMessage("이름을 입력해주세요.");
       return { ok: false, text: "이름을 입력해주세요." };
     }
+    if (activeMembers.length + pendingInvites.length >= MAX_MEMBER_COUNT) {
+      const text = `참여자 제한(최대 ${MAX_MEMBER_COUNT}명)에 도달하여 추가할 수 없습니다.`;
+      setMessage(text);
+      return { ok: false, text };
+    }
 
     setLoading(true);
     setMessage("");
@@ -324,7 +341,7 @@ export function useWorkspace({
     const confirmed = window.confirm(
       `${member.display_name}님을 제외하시겠습니까? 관련 기록은 유지됩니다.`
     );
-    if (!confirmed) return;
+    if (!confirmed) return { ok: false, text: "" };
 
     setLoading(true);
     setMessage("");
@@ -356,6 +373,11 @@ export function useWorkspace({
     if (!isManager) {
       setMessage("방장/부방장만 가능합니다.");
       return { ok: false, text: "방장/부방장만 가능합니다." };
+    }
+    if (activeMembers.length + pendingInvites.length >= MAX_MEMBER_COUNT) {
+      const text = `참여자 제한(최대 ${MAX_MEMBER_COUNT}명)에 도달하여 복구할 수 없습니다.`;
+      setMessage(text);
+      return { ok: false, text };
     }
 
     setLoading(true);
@@ -393,7 +415,7 @@ export function useWorkspace({
       setMessage("방장의 권한은 여기서 바꿀 수 없습니다.");
       return { ok: false, text: "방장의 권한은 여기서 바꿀 수 없습니다." };
     }
-    if (member.role === newRole) return;
+    if (member.role === newRole) return { ok: true, text: "" };
 
     setLoading(true);
     setMessage("");
@@ -429,7 +451,7 @@ export function useWorkspace({
       setMessage("닉네임을 입력해주세요.");
       return { ok: false, text: "닉네임을 입력해주세요." };
     }
-    if (trimmed === currentMember.display_name) return;
+    if (trimmed === currentMember.display_name) return { ok: true, text: "" };
 
     setLoading(true);
     setMessage("");
@@ -471,7 +493,7 @@ export function useWorkspace({
     const confirmed = window.confirm(
       `${targetMember.display_name}에게 owner를 넘기시겠습니까? 기존 owner는 manager로 변경됩니다.`
     );
-    if (!confirmed) return;
+    if (!confirmed) return { ok: false, text: "" };
 
     setLoading(true);
     setMessage("");
@@ -503,7 +525,7 @@ export function useWorkspace({
     const confirmed = window.confirm(
       `"${targetWorkspace.name}"을 삭제하시겠습니까? 모든 할 일, 참여자, 보상 기록이 삭제되며 되돌릴 수 없습니다.`
     );
-    if (!confirmed) return;
+    if (!confirmed) return { ok: false, text: "" };
 
     setLoading(true);
     setMessage("");
@@ -523,6 +545,61 @@ export function useWorkspace({
     setLoading(false);
 
     await loadWorkspaces();
+    return { ok: true, text };
+  }
+
+  // ⚠️ 재구성한 함수: 원본 파일에 본문이 존재하지 않아, 지금까지 논의된 요구사항
+  // (방장/부방장만 발급, 참여자 3명 제한, {ok, text} 반환)에 맞춰 새로 작성했습니다.
+  // 원래 코드에 초대코드 생성 방식이 따로 있었다면(예: RPC 호출 등) 반드시 알려주세요.
+  async function createInvite() {
+    if (!workspace) {
+      const text = "모임이 없습니다.";
+      setMessage(text);
+      return { ok: false, text };
+    }
+    if (!isManager) {
+      const text = "방장/부방장만 초대코드를 발급할 수 있습니다.";
+      setMessage(text);
+      return { ok: false, text };
+    }
+    if (activeMembers.length + pendingInvites.length >= MAX_MEMBER_COUNT) {
+      const text = `참여자 제한(최대 ${MAX_MEMBER_COUNT}명)에 도달하여 더 이상 초대할 수 없습니다.`;
+      setMessage(text);
+      return { ok: false, text };
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const code = generateInviteCode();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data, error } = await supabase
+      .from("workspace_invites")
+      .insert({
+        workspace_id: workspace.id,
+        invite_code: code,
+        role: inviteRole,
+        suggested_name: inviteSuggestedName.trim() || null,
+        status: "pending",
+        expires_at: expiresAt,
+        created_by: profile?.id || null,
+      })
+      .select("id, invite_code, role, suggested_name, status, expires_at")
+      .single();
+
+    if (error) {
+      const text = `초대코드 발급 실패: ${error.message}`;
+      setMessage(text);
+      setLoading(false);
+      return { ok: false, text };
+    }
+
+    setPendingInvites((prev) => [data as WorkspaceInvite, ...prev]);
+    setInviteSuggestedName("");
+    const text = `초대코드 발급 완료: ${data.invite_code}`;
+    setMessage(text);
+    setLoading(false);
     return { ok: true, text };
   }
 
@@ -581,7 +658,7 @@ export function useWorkspace({
     }
 
     const confirmed = window.confirm("이 초대코드를 취소할까요?");
-    if (!confirmed) return;
+    if (!confirmed) return { ok: false, text: "" };
 
     setLoading(true);
     setMessage("");
@@ -602,191 +679,6 @@ export function useWorkspace({
     setMessage("초대코드를 취소했습니다.");
     setLoading(false);
     return { ok: true, text: "초대코드를 취소했습니다." };
-  }
-
-
-  async function removeMember(member: Member) {
-    if (!workspace) {
-      setMessage("모임이 없습니다.");
-      return;
-    }
-    if (!isManager) {
-      setMessage("방장/부방장만 가능합니다.");
-      return;
-    }
-    if (member.role === "owner") {
-      setMessage("owner는 제외할 수 없습니다.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `${member.display_name}님을 제외하시겠습니까? 관련 기록은 유지됩니다.`
-    );
-    if (!confirmed) return;
-
-    setLoading(true);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("workspace_members")
-      .update({ status: "removed" })
-      .eq("id", member.id)
-      .select(memberSelect)
-      .single();
-
-    if (error) {
-      setMessage(`제외 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
-    setMessage(`${member.display_name}님을 제외했습니다.`);
-    setLoading(false);
-  }
-
-  async function restoreMember(member: Member) {
-    if (!workspace) {
-      setMessage("모임이 없습니다.");
-      return;
-    }
-    if (!isManager) {
-      setMessage("방장/부방장만 가능합니다.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("workspace_members")
-      .update({ status: "active" })
-      .eq("id", member.id)
-      .select(memberSelect)
-      .single();
-
-    if (error) {
-      setMessage(`복구 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
-    setMessage(`${member.display_name}님을 복구했습니다.`);
-    setLoading(false);
-  }
-
-  async function updateMemberRole(member: Member, newRole: "manager" | "member") {
-    if (!workspace) {
-      setMessage("모임이 없습니다.");
-      return;
-    }
-    if (!isManager) {
-      setMessage("방장/부방장만 권한을 조정할 수 있습니다.");
-      return;
-    }
-    if (member.role === "owner") {
-      setMessage("방장의 권한은 여기서 바꿀 수 없습니다.");
-      return;
-    }
-    if (member.role === newRole) return;
-
-    setLoading(true);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("workspace_members")
-      .update({ role: newRole })
-      .eq("id", member.id)
-      .select(memberSelect)
-      .single();
-
-    if (error) {
-      setMessage(`권한 변경 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
-    setMessage(`${member.display_name}님의 권한을 ${roleLabel(newRole)}로 변경했습니다.`);
-    setLoading(false);
-  }
-
-  async function saveMyNickname() {
-    if (!workspace || !currentMember) {
-      setMessage("연결된 참여자가 없습니다.");
-      return;
-    }
-
-    const trimmed = myNickname.trim();
-    if (!trimmed) {
-      setMessage("닉네임을 입력해주세요.");
-      return;
-    }
-    if (trimmed === currentMember.display_name) return;
-
-    setLoading(true);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("workspace_members")
-      .update({ display_name: trimmed })
-      .eq("id", currentMember.id)
-      .select(memberSelect)
-      .single();
-
-    if (error) {
-      setMessage(`닉네임 변경 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setMembers((prev) => prev.map((item) => (item.id === currentMember.id ? (data as Member) : item)));
-    setMessage(`닉네임을 "${trimmed}"로 변경했습니다.`);
-    setLoading(false);
-  }
-
-  async function acceptInviteCode(codeOverride?: string) {
-    const codeToUse = (codeOverride ?? joinInviteCode).trim();
-
-    if (!codeToUse) {
-      setMessage("초대코드를 입력해주세요.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    const { data, error } = await supabase.rpc("accept_workspace_invite", {
-      input_code: codeToUse.toUpperCase(),
-    });
-
-    if (error) {
-      setMessage(`참여 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setJoinInviteCode("");
-    setMessage("참여 완료");
-
-    const result = data as InviteAcceptResult | null;
-    const joinedWorkspaceId = result?.workspace_id;
-
-    await loadWorkspaces();
-
-    if (joinedWorkspaceId) {
-      const { data: joinedWorkspace } = await supabase
-        .from("workspaces")
-        .select("id, name, description")
-        .eq("id", joinedWorkspaceId)
-        .single();
-
-      if (joinedWorkspace) setWorkspace(joinedWorkspace as Workspace);
-    }
-
-    setActiveTab("calendar");
-    setLoading(false);
   }
 
   async function loadWorkspaceData(workspaceId: string) {
@@ -867,74 +759,6 @@ export function useWorkspace({
     setRewards((rewardsResult.data || []) as Reward[]);
     setRewardTransactions((rewardTransactionsResult.data || []) as RewardTransaction[]);
     setPendingInvites((invitesResult.data || []) as WorkspaceInvite[]);
-  }
-
-  async function transferOwnership(targetMember: Member) {
-    if (!workspace) {
-      setMessage("모임이 없습니다.");
-      return;
-    }
-    if (currentMember?.role !== "owner") {
-      setMessage("owner만 넘길 수 있습니다.");
-      return;
-    }
-    if (!targetMember.profile_id) {
-      setMessage("계정이 연결된 참여자에게만 넘길 수 있습니다.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `${targetMember.display_name}에게 owner를 넘기시겠습니까? 기존 owner는 manager로 변경됩니다.`
-    );
-    if (!confirmed) return;
-
-    setLoading(true);
-    setMessage("");
-
-    const { error } = await supabase.rpc("transfer_workspace_ownership", {
-      target_workspace_id: workspace.id,
-      new_owner_member_id: targetMember.id,
-    });
-
-    if (error) {
-      setMessage(`방장 위임 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    await loadWorkspaceData(workspace.id);
-    setMessage(`${targetMember.display_name}에게 owner를 넘겼습니다.`);
-    setLoading(false);
-  }
-
-  async function deleteWorkspace(targetWorkspace: Workspace) {
-    if (currentMember?.role !== "owner") {
-      setMessage("방장만 삭제할 수 있습니다.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `"${targetWorkspace.name}"을 삭제하시겠습니까? 모든 할 일, 참여자, 보상 기록이 삭제되며 되돌릴 수 없습니다.`
-    );
-    if (!confirmed) return;
-
-    setLoading(true);
-    setMessage("");
-
-    const { error } = await supabase.from("workspaces").delete().eq("id", targetWorkspace.id);
-
-    if (error) {
-      setMessage(`모임 삭제 실패: ${error.message}`);
-      setLoading(false);
-      return;
-    }
-
-    setWorkspaces((prev) => prev.filter((item) => item.id !== targetWorkspace.id));
-    setWorkspace((prev) => (prev?.id === targetWorkspace.id ? null : prev));
-    setMessage(`${targetWorkspace.name}을 삭제했습니다.`);
-    setLoading(false);
-
-    await loadWorkspaces();
   }
 
   function balanceByMemberId(memberId: string) {
