@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@/features/auth/useAuth";
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
@@ -62,26 +63,11 @@ type InviteAcceptResult = {
   status?: string;
 };
 
-const FAKE_EMAIL_DOMAIN = "users.miruji.app";
-
 function usernameToEmail(username: string) {
   return `${username.trim().toLowerCase()}@${FAKE_EMAIL_DOMAIN}`;
 }
 
 export default function Home() {
-  const [authLoading, setAuthLoading] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-
-  const [authMode, setAuthMode] = useState<"signin" | "signup" | "forgot">("signin");
-  const [authUsername, setAuthUsername] = useState("");
-  const [authRecoveryEmail, setAuthRecoveryEmail] = useState("");
-  const [isHuman, setIsHuman] = useState(false);
-  const [rememberUsername, setRememberUsername] = useState(true);
-  const [authPassword, setAuthPassword] = useState("");
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [profile, setProfile] = useState<Profile | null>(null);
-
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [workspacesLoaded, setWorkspacesLoaded] = useState(false);
@@ -124,8 +110,6 @@ export default function Home() {
   const [joinInviteCode, setJoinInviteCode] = useState("");
   const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
   const [myNickname, setMyNickname] = useState("");
-  const [profileRecoveryEmail, setProfileRecoveryEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
     initializeAuth();
