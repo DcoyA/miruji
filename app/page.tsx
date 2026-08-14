@@ -1845,8 +1845,10 @@ export default function Home() {
       return;
     }
 
-    if (!isManager) {
-      setMessage("방장/부방장만 가능합니다.");
+    const canReview =
+      isManager || (!!currentMember?.id && task.created_by_member_id === currentMember.id);
+    if (!canReview) {
+      setMessage("이 할 일을 만든 사람 또는 방장/부방장만 승인할 수 있습니다.");
       return;
     }
 
@@ -1908,8 +1910,10 @@ export default function Home() {
       return;
     }
 
-    if (!isManager) {
-      setMessage("방장/부방장만 가능합니다.");
+    const canReview =
+      isManager || (!!currentMember?.id && task.created_by_member_id === currentMember.id);
+    if (!canReview) {
+      setMessage("이 할 일을 만든 사람 또는 방장/부방장만 승인할 수 있습니다.");
       return;
     }
 
