@@ -366,57 +366,98 @@ export function useAuth({ setMessage, setLoading }: UseAuthParams) {
     setLoading(false);
   }
 
-  async function saveRecoveryEmail() {
-    if (!profile) return;
-
-    const trimmed = profileRecoveryEmail.trim();
-    if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setMessage("올바른 이메일 형식이 아닙니다.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .update({ recovery_email: trimmed || null })
-      .eq("id", profile.id)
-      .select(profileSelect)
-      .single();
-
-    if (error) {
-      setMessage(`이메일 저장 실패: ${error.message}`);
+    async function saveRecoveryEmail() {
+      if (!profile) return;
+  
+      const trimmed = profileRecoveryEmail.trim();
+      if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        setMessage("올바른 이메일 형식이 아닙니다.");
+        return { ok: false, text: "올바른 이메일 형식이 아닙니다." };
+      }
+  
+      setLoading(true);
+      setMessage("");
+  
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ recovery_email: trimmed || null })
+        .eq("id", profile.id)
+        .select(profileSelect)
+        .single();
+  
+      if (error) {
+        setMessage(`이메일 저장 실패: ${error.message}`);
+        setLoading(false);
+        return { ok: false, text: `이메일 저장 실패: ${error.message}` };
+      }
+  
+      setProfile(data as Profile);
+      setMessage("복구용 이메일을 저장했습니다.");
       setLoading(false);
-      return;
+      return { ok: true, text: "복구용 이메일을 저장했습니다." };
     }
-
-    setProfile(data as Profile);
-    setMessage("복구용 이메일을 저장했습니다.");
-    setLoading(false);
-  }
-
-  async function changePassword() {
-    if (!newPassword.trim() || newPassword.trim().length < 6) {
-      setMessage("비밀번호는 6자 이상이어야 합니다.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-
-    const { error } = await supabase.auth.updateUser({ password: newPassword.trim() });
-
-    if (error) {
-      setMessage(`비밀번호 변경 실패: ${error.message}`);
+  
+    async function changePassword() {
+      if (!newPassword.trim() || newPassword.trim().length < 6) {
+        setMessage("비밀번호는 6자 이상이어야 합니다.");
+        return { ok: false, text: "비밀번호는 6자 이상이어야 합니다." };
+      }
+  
+      setLoading(true);
+      setMessage("");
+  
+      const { error } = await supabase.auth.updateUser({ password: newPassword.trim() });
+  
+      if (error) {
+        setMessage(`비밀번호 변경 실패: ${error.message}`);
+        setLoading(false);
+        return { ok: false, text: `비밀번호 변경 실패: ${error.message}` };
+      }
+  
+      setNewPassword("");
+      setMessage("비밀번호를 변경했습니다.");
       setLoading(false);
-      return;
+      return { ok: true, text: "비밀번호를 변경했습니다." };
+    }
+  
+    async function deleteAccount() {
+      const confirmed = window.confirm("정말 탈퇴하시겠습니까? 되돌릴 수 없습니다.");
+      if (!confirmed) return;
+  
+      setLoading(true);
+  
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+  
+      if (!accessToken) {
+        setMessage("세션을 확인할 수 없습니다.");
+        setLoading(false);
+        return { ok: false, text: "세션을 확인할 수 없습니다." };
+      }
+  
+      const response = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+  
+      const result = await response.json();
+  
+      if (!response.ok) {
+        const text =
+          result.error === "SOLE_OWNER"
+            ? "owner인 모임이 있어 탈퇴할 수 없습니다. 먼저 방장을 다른 사람에게 넘기거나 모임을 삭제해주세요."
+            : "탈퇴에 실패했습니다. 다시 시도해주세요.";
+        setMessage(text);
+        setLoading(false);
+        return { ok: false, text };
+      }
+  
+      await supabase.auth.signOut();
+      setMessage("탈퇴 처리되었습니다.");
+      setLoading(false);
+      return { ok: true, text: "탈퇴 처리되었습니다." };
     }
 
-    setNewPassword("");
-    setMessage("비밀번호를 변경했습니다.");
-    setLoading(false);
-  }
 
   return {
     authLoading,
