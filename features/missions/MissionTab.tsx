@@ -93,128 +93,129 @@ export default function MissionTab({
 
   return (
     <>
-      {isManager ? (
-        <section style={createBoxStyle}>
-          <div style={createHeaderRowStyle}>
-            <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 할 일 추가</h2>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(event) => onSelectedDateChange(event.target.value)}
-                style={dateInputStyle}
-              />
+      <section style={createBoxStyle}>
+        <div style={createHeaderRowStyle}>
+          <h2 style={sectionTitleStyle}>{formatKoreanDate(selectedDate)} 할 일 추가</h2>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(event) => onSelectedDateChange(event.target.value)}
+              style={dateInputStyle}
+            />
+            {isManager && (
               <button onClick={onRolloverNow} disabled={loading} style={rolloverButtonStyle}>
                 지난 할 일 정리하기
               </button>
-            </div>
+            )}
           </div>
-
-          <input
-            value={title}
-            onChange={(event) => onTitleChange(event.target.value)}
-            placeholder="예) 피아노 100번 치기"
-            style={inputStyle}
-          />
-
-          <textarea
-            value={description}
-            onChange={(event) => onDescriptionChange(event.target.value)}
-            placeholder="설명 (선택)"
-            rows={3}
-            style={{ ...inputStyle, resize: "vertical" }}
-          />
-
-          <select
-            value={assignedMemberId}
-            onChange={(event) => onAssignedMemberIdChange(event.target.value)}
-            style={inputStyle}
-          >
-            <option value="">할 일을 받을 참여자 선택</option>
-            {members.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.display_name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={verificationType}
-            onChange={(event) => onVerificationTypeChange(event.target.value)}
-            style={inputStyle}
-          >
-            <option value="none">인증 없음</option>
-            <option value="text">텍스트 인증</option>
-            <option value="photo">사진 인증</option>
-            <option value="video">영상 인증</option>
-            <option value="audio">음성 인증</option>
-          </select>
-          
-          <label style={fieldLabelStyle}>마감 시간 (선택)</label>
-          <input
-            type="time"
-            value={dueTime}
-            onChange={(event) => onDueTimeChange(event.target.value)}
-            style={inputStyle}
-          />
-          <p style={fieldHintStyle}>입력하지 않으면 하루 종일로 표시됩니다.</p>
-
-          <label style={fieldLabelStyle}>완료하면 받을 스티커 개수</label>
-          <div style={presetRowStyle}>
-            {REWARD_PRESETS.map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => onRewardPointsChange(preset)}
-                style={rewardPoints === preset ? presetButtonActiveStyle : presetButtonStyle}
-              >
-                {preset}개
-              </button>
-            ))}
+        </div>
+  
+        <input
+          value={title}
+          onChange={(event) => onTitleChange(event.target.value)}
+          placeholder="예) 피아노 100번 치기"
+          style={inputStyle}
+        />
+  
+        <textarea
+          value={description}
+          onChange={(event) => onDescriptionChange(event.target.value)}
+          placeholder="설명 (선택)"
+          rows={3}
+          style={{ ...inputStyle, resize: "vertical" }}
+        />
+  
+        <select
+          value={assignedMemberId}
+          onChange={(event) => onAssignedMemberIdChange(event.target.value)}
+          style={inputStyle}
+        >
+          <option value="">할 일을 받을 참여자 선택</option>
+          {members.map((member) => (
+            <option key={member.id} value={member.id}>
+              {member.display_name}
+            </option>
+          ))}
+        </select>
+  
+        <select
+          value={verificationType}
+          onChange={(event) => onVerificationTypeChange(event.target.value)}
+          style={inputStyle}
+        >
+          <option value="none">인증 없음</option>
+          <option value="text">텍스트 인증</option>
+          <option value="photo">사진 인증</option>
+          <option value="video">영상 인증</option>
+          <option value="audio">음성 인증</option>
+        </select>
+  
+        <label style={fieldLabelStyle}>마감 시간 (선택)</label>
+        <input
+          type="time"
+          value={dueTime}
+          onChange={(event) => onDueTimeChange(event.target.value)}
+          style={inputStyle}
+        />
+        <p style={fieldHintStyle}>입력하지 않으면 하루 종일로 표시됩니다.</p>
+  
+        <label style={fieldLabelStyle}>완료하면 받을 스티커 개수</label>
+        <div style={presetRowStyle}>
+          {REWARD_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => onRewardPointsChange(preset)}
+              style={rewardPoints === preset ? presetButtonActiveStyle : presetButtonStyle}
+            >
+              {preset}개
+            </button>
+          ))}
+        </div>
+        <input
+          type="number"
+          min={0}
+          value={rewardPoints}
+          onChange={(event) => onRewardPointsChange(Number(event.target.value))}
+          placeholder="직접 입력"
+          style={inputStyle}
+        />
+        <p style={fieldHintStyle}>참여자가 이 할 일을 완료하고 승인받으면 스티커를 받아요.</p>
+  
+        <div style={repeatLabelStyle}>반복 설정</div>
+        <select
+          value={repeatType}
+          onChange={(event) => onRepeatTypeChange(event.target.value as RepeatType)}
+          style={inputStyle}
+        >
+          <option value="none">반복 없음 (오늘만)</option>
+          <option value="daily">매일 반복</option>
+          <option value="weekly">요일 선택 반복</option>
+        </select>
+  
+        {repeatType === "weekly" && (
+          <div style={weekdayRowStyle}>
+            {WEEKDAYS.map((day) => {
+              const active = repeatWeekdays.includes(day);
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => onToggleRepeatWeekday(day)}
+                  style={active ? weekdayButtonActiveStyle : weekdayButtonStyle}
+                >
+                  {weekdayLabel(day)}
+                </button>
+              );
+            })}
           </div>
-          <input
-            type="number"
-            min={0}
-            value={rewardPoints}
-            onChange={(event) => onRewardPointsChange(Number(event.target.value))}
-            placeholder="직접 입력"
-            style={inputStyle}
-          />
-          <p style={fieldHintStyle}>참여자가 이 할 일을 완료하고 승인받으면 스티커를 받아요.</p>
-
-          <div style={repeatLabelStyle}>반복 설정</div>
-          <select
-            value={repeatType}
-            onChange={(event) => onRepeatTypeChange(event.target.value as RepeatType)}
-            style={inputStyle}
-          >
-            <option value="none">반복 없음 (오늘만)</option>
-            <option value="daily">매일 반복</option>
-            <option value="weekly">요일 선택 반복</option>
-          </select>
-
-          {repeatType === "weekly" && (
-            <div style={weekdayRowStyle}>
-              {WEEKDAYS.map((day) => {
-                const active = repeatWeekdays.includes(day);
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => onToggleRepeatWeekday(day)}
-                    style={active ? weekdayButtonActiveStyle : weekdayButtonStyle}
-                  >
-                    {weekdayLabel(day)}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <button onClick={onCreate} disabled={createDisabled} style={primaryButtonStyle(createDisabled)}>
-            {loading ? "생성 중..." : repeatType === "none" ? "할 일 만들기" : "반복 할 일 만들기"}
-          </button>
-        </section>
+        )}
+  
+        <button onClick={onCreate} disabled={createDisabled} style={primaryButtonStyle(createDisabled)}>
+          {loading ? "생성 중..." : repeatType === "none" ? "할 일 만들기" : "반복 할 일 만들기"}
+        </button>
+      </section>
       ) : (
         <section style={createBoxStyle}>
           <h2 style={sectionTitleStyle}>내 할 일</h2>
