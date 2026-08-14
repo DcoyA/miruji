@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
+import NotificationPrompt from "@/features/notifications/NotificationPrompt";
 
 import Shell from "@/components/Shell";
 import AppHeader from "@/components/AppHeader";
@@ -2004,6 +2005,8 @@ export default function Home() {
         <a href="/dev" style={devLinkStyle}>dev</a>
       </section>
 
+      {workspace && <NotificationPrompt />}
+      
       {workspaces.length > 0 && (
         <WorkspaceSwitcher
           workspaces={workspaces}
