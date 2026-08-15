@@ -106,6 +106,9 @@ export default function SettingsTab({
   newPassword,
   onNewPasswordChange,
   onChangePassword,
+  profileDisplayName,
+  avatarUrl,
+  onUploadAvatar,
 }: SettingsTabProps) {
   const hasWorkspace = Boolean(workspace);
   const [appShareCopied, setAppShareCopied] = useState(false);
