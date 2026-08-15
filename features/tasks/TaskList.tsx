@@ -77,7 +77,7 @@ export default function TaskList({
 
         function handleSubmitClick() {
           const confirmed = window.confirm(
-            "제출하시겠습니까? 제출 후에는 승인 전까지 회수할 수 있습니다."
+            "제출하시겠습니까? 제출 후에는 승인 전까지 제출취소할 수 있습니다."
           );
           if (!confirmed) return;
           onSubmit(task);
@@ -89,7 +89,7 @@ export default function TaskList({
           if (!file) return;
 
           const confirmed = window.confirm(
-            "선택한 파일을 첨부해서 제출하시겠습니까? 제출 후에는 승인 전까지 회수할 수 있습니다."
+            "선택한 파일을 첨부해서 제출하시겠습니까? 제출 후에는 승인 전까지 제출취소할 수 있습니다."
           );
           if (!confirmed) return;
 
@@ -108,7 +108,7 @@ export default function TaskList({
           }
 
           const confirmed = window.confirm(
-            "입력한 내용으로 제출하시겠습니까? 제출 후에는 승인 전까지 회수할 수 있습니다."
+            "입력한 내용으로 제출하시겠습니까? 제출 후에는 승인 전까지 제출취소할 수 있습니다."
           );
           if (!confirmed) return;
 
@@ -188,7 +188,7 @@ export default function TaskList({
                   )}
                   {canCancel && onCancel && (
                     <button onClick={() => onCancel(task)} disabled={loading} style={cancelButtonStyle}>
-                      회수하기
+                      제출취소
                     </button>
                   )}
                   {canReview && (
