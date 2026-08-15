@@ -53,6 +53,7 @@ type SettingsTabProps = {
   onChangePassword: () => Promise<ActionResult>;
   profileDisplayName: string;
   avatarUrl: string | null;
+  myStickerBalance: number;
   onUploadAvatar: (file: File) => Promise<ActionResult>;
 };
 
@@ -109,6 +110,7 @@ export default function SettingsTab({
   onChangePassword,
   profileDisplayName,
   avatarUrl,
+  myStickerBalance,
   onUploadAvatar,
 }: SettingsTabProps) {
   const hasWorkspace = Boolean(workspace);
@@ -361,6 +363,11 @@ export default function SettingsTab({
             </label>
             <ResultMessage result={avatarMessage} />
           </div>
+        </div>
+
+        <div style={{ marginBottom: 22 }}>
+          <h3 style={subSectionTitleStyle}>내 스티커</h3>
+          <div style={settingLineStyle}>🎁 <strong>{myStickerBalance}개</strong> 모았어요</div>
         </div>
 
         <div style={accordionBodyStyle}>
