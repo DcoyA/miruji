@@ -408,6 +408,68 @@ export function useAuth({ setMessage, setLoading }: UseAuthParams) {
     return { ok: true, text: "탈퇴 처리되었습니다." };
   }
 
+  async function uploadAvatar(file: File) {
+    if (!profile) return { ok: false, text: "프로필 정보를 불러오지 못했습니다." };
+  
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      return { ok: false, text: "jpg, png, webp, gif 형식만 업로드할 수 있습니다." };
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return { ok: false, text: "파일 크기는 5MB 이하여야 합니다." };
+    }
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { data: userData } = await supabase.auth.getUser();
+    const authUserId = userData.user?.id;
+    if (!authUserId) {
+      setLoading(false);
+      return { ok: false, text: "로그인 정보를 확인할 수 없습니다." };
+    }
+  
+    const ext = file.name.split(".").pop() || "jpg";
+    const filePath = `${authUserId}/avatar.${ext}`;
+  
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(filePath, file, { upsert: true, cacheControl: "3600" });
+  
+    if (uploadError) {
+      setLoading(false);
+      const text = `업로드 실패: ${uploadError.message}`;
+      setMessage(text);
+      return { ok: false, text };
+    }
+  
+    const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+    // 뒤에 타임스탬프를 붙여서, 사진을 바꿔도 브라우저 캐시 때문에 예전 사진이 계속 보이는 문제를 방지합니다.
+    const avatarUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+  
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ avatar_url: avatarUrl })
+      .eq("id", profile.id)
+      .select(profileSelect)
+      .single();
+  
+    if (error) {
+      setLoading(false);
+      const text = `프로필 업데이트 실패: ${error.message}`;
+      setMessage(text);
+      return { ok: false, text };
+    }
+
+    await supabase.from("workspace_members").update({ avatar_url: avatarUrl }).eq("profile_id", profile.id);
+    
+    setProfile(data as Profile);
+    setLoading(false);
+    const text = "프로필 사진을 변경했습니다.";
+    setMessage(text);
+    return { ok: true, text };
+  }
+  
   return {
     authLoading,
     authMode,
@@ -437,5 +499,6 @@ export function useAuth({ setMessage, setLoading }: UseAuthParams) {
     saveRecoveryEmail,
     changePassword,
     markOnboardingComplete,
+    uploadAvatar,
   };
 }

@@ -5,7 +5,6 @@ import {
   titleStyle,
   subTextStyle,
   accountBoxStyle,
-  avatarStyle,
   accountInfoStyle,
   accountNameStyle,
   roleBadgeStyle,
@@ -45,6 +44,7 @@ import { useAuth } from "@/features/auth/useAuth";
 import { useWorkspace } from "@/features/workspace/useWorkspace";
 import { useTasks } from "@/features/tasks/useTasks";
 import { useRewards } from "@/features/rewards/useRewards";
+import Avatar from "@/components/Avatar";
 
 import type { ActiveTab } from "@/types/app";
 
@@ -88,6 +88,7 @@ export default function Home() {
     saveRecoveryEmail,
     changePassword,
     markOnboardingComplete,
+    uploadAvatar,
   } = auth;
 
   const workspaceHook = useWorkspace({
@@ -350,9 +351,7 @@ export default function Home() {
       <AppHeader title={tabTitle(activeTab)} loading={loading} onSignOut={signOut} />
 
       <section style={accountBoxStyle}>
-        <div style={avatarStyle}>
-          {profile.display_name?.charAt(0)?.toUpperCase() || "?"}
-        </div>
+        <Avatar src={profile.avatar_url} name={profile.display_name} size={44} />
         <div style={accountInfoStyle}>
           <strong style={accountNameStyle}>{currentMember?.display_name || profile.display_name}</strong>
           {currentMember && (
@@ -525,6 +524,9 @@ export default function Home() {
           newPassword={newPassword}
           onNewPasswordChange={setNewPassword}
           onChangePassword={changePassword}
+          profileDisplayName={profile.display_name}
+          avatarUrl={profile.avatar_url}
+          onUploadAvatar={uploadAvatar}
         />
       )}
 

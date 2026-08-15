@@ -18,7 +18,7 @@ import type {
 } from "@/types/app";
 
 export const memberSelect =
-  "id, profile_id, display_name, role, is_virtual, requires_account, status";
+  "id, profile_id, display_name, role, is_virtual, requires_account, status, avatar_url";
 export const taskSelect =
   "id, workspace_id, title, description, status, due_date, due_time, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url, evidence_text";
 export const taskTemplateSelect =
@@ -359,7 +359,7 @@ export function useWorkspace({
       return { ok: false, text: `제외 실패: ${error.message}` };
     }
 
-    setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
+    setMembers((prev) => prev.map((item) => (item.id === member.id ? { ...item, ...(data as Member) } : item)));
     setMessage(`${member.display_name}님을 제외했습니다.`);
     setLoading(false);
     return { ok: true, text: `${member.display_name}님을 제외했습니다.` };
@@ -583,7 +583,6 @@ export function useWorkspace({
         suggested_name: inviteSuggestedName.trim() || null,
         status: "pending",
         expires_at: expiresAt,
-        created_by: profile?.id || null,
       })
       .select("id, invite_code, role, suggested_name, status, expires_at")
       .single();
