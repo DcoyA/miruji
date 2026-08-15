@@ -30,7 +30,7 @@ export type Member = {
   is_virtual: boolean;
   requires_account: boolean;
   status: string;
-  avatar_url?: string | null
+  avatar_url: string | null;
 };
 
 export type Task = {
