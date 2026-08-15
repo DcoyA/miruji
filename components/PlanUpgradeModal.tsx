@@ -79,8 +79,8 @@ export default function PlanUpgradeModal({ isOpen, reasonText, onClose }: PlanUp
               )}
             </div>
             <ul style={planListStyle}>
-              <li>🚀 모임 무제한 생성</li>
-              <li>👨‍👩‍👧‍👦 참여자 최대 10명</li>
+              <li>🚀 모임 최대 10개 생성</li>
+              <li>👨‍👩‍👧‍👦 참여자 최대 100명</li>
               <li>📚 전체 기록 영구 보관</li>
               <li>🎨 프로필 꾸미기 확장 (예정)</li>
             </ul>
