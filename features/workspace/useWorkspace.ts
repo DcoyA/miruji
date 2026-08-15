@@ -19,7 +19,6 @@ import type {
 
 export const memberSelect =
   "id, profile_id, display_name, role, is_virtual, requires_account, status";
-export const memberSelectWithAvatar = `${memberSelect}, profiles(avatar_url)`;
 export const taskSelect =
   "id, workspace_id, title, description, status, due_date, due_time, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url, evidence_text";
 export const taskTemplateSelect =
@@ -713,7 +712,7 @@ export function useWorkspace({
     const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const [membersResult, tasksResult, templatesResult, rewardsResult, rewardTransactionsResult, invitesResult] = await Promise.all([
-      supabase.from("workspace_members").select(memberSelectWithAvatar).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
+      supabase.from("workspace_members").select(memberSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
       (() => {
         let q = supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd);
         if (plan === "free") q = q.gte("due_date", thirtyDaysAgoKey);
@@ -754,11 +753,27 @@ export function useWorkspace({
       return;
     }
 
-    const membersWithAvatar = (membersResult.data || []).map((row: any) => ({
-      ...row,
-      avatar_url: row.profiles?.avatar_url ?? null,
+    const rawMembers = (membersResult.data || []) as Member[];
+    const profileIds = rawMembers.map((m) => m.profile_id).filter((id): id is string => Boolean(id));
+    
+    let avatarByProfileId: Record<string, string | null> = {};
+    if (profileIds.length > 0) {
+      const { data: avatarRows } = await supabase
+        .from("profiles")
+        .select("id, avatar_url")
+        .in("id", profileIds);
+    
+      avatarByProfileId = (avatarRows || []).reduce((acc, row) => {
+        acc[row.id] = row.avatar_url;
+        return acc;
+      }, {} as Record<string, string | null>);
+    }
+    
+    const membersWithAvatar = rawMembers.map((member) => ({
+      ...member,
+      avatar_url: member.profile_id ? avatarByProfileId[member.profile_id] ?? null : null,
     }));
-    setMembers(membersWithAvatar as Member[]);
+    setMembers(membersWithAvatar);
     setTasks((tasksResult.data || []) as Task[]);
     setTemplates((templatesResult.data || []) as TaskTemplate[]);
     setRewards((rewardsResult.data || []) as Reward[]);
