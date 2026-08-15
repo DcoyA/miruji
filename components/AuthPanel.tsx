@@ -48,6 +48,7 @@ export default function AuthPanel({
 }: AuthPanelProps) {
   const [resetRequestMessage, setResetRequestMessage] = useState("");
   const [resetContactEmail, setResetContactEmail] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   if (mode === "forgot") {
     return (
@@ -154,6 +155,23 @@ export default function AuthPanel({
         style={inputStyle}
       />
 
+      {mode === "signup" && (
+        <input
+          value={confirmPassword}
+          onChange={(event) => setConfirmPassword(event.target.value)}
+          placeholder="비밀번호 확인"
+          type="password"
+          autoComplete="new-password"
+          style={inputStyle}
+        />
+      )}
+      
+      {mode === "signup" && confirmPassword.length > 0 && password !== confirmPassword && (
+        <p style={{ marginTop: -6, marginBottom: 12, fontSize: 13, color: "#b91c1c" }}>
+          비밀번호가 일치하지 않습니다.
+        </p>
+      )}
+      
       <label style={agreementRowStyle}>
         <input
           type="checkbox"
@@ -218,8 +236,10 @@ export default function AuthPanel({
       ) : (
         <button
           onClick={onSignUp}
-          disabled={loading || !isHuman}
-          style={primaryButtonStyle(loading || !isHuman)}
+          disabled={loading || !isHuman || !password || !confirmPassword || password !== confirmPassword}
+          style={primaryButtonStyle(
+            loading || !isHuman || !password || !confirmPassword || password !== confirmPassword
+          )}
         >
           {loading ? "가입 중..." : "회원가입"}
         </button>
