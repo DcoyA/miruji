@@ -32,7 +32,7 @@ export type MemberRole = "manager" | "member";
 
 // ⚠️ 참여자 제한 인원. 원래 요구사항에 "제한 3명"이라고 하셨으니 3으로 고정했습니다.
 const MAX_MEMBER_COUNT_FREE = 3;
-const MAX_MEMBER_COUNT_PREMIUM = 10;
+const MAX_MEMBER_COUNT_PREMIUM = 100;
 
 type InviteAcceptResult = {
   workspace_id?: string;
