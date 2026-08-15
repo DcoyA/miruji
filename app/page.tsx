@@ -45,6 +45,7 @@ import { useWorkspace } from "@/features/workspace/useWorkspace";
 import { useTasks } from "@/features/tasks/useTasks";
 import { useRewards } from "@/features/rewards/useRewards";
 import Avatar from "@/components/Avatar";
+import SplashScreen from "@/components/SplashScreen";
 
 import type { ActiveTab } from "@/types/app";
 
@@ -57,6 +58,12 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
 
   const [summaryFilter, setSummaryFilter] = useState<"all" | "pending" | "approved" | null>(null);
+  const [minSplashElapsed, setMinSplashElapsed] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMinSplashElapsed(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const auth = useAuth({ setMessage, setLoading });
   const {
@@ -263,11 +270,10 @@ export default function Home() {
     return [];
   }, [tasks, summaryFilter]);
 
-  if (authLoading) {
+  if (authLoading || !minSplashElapsed) {
     return (
       <Shell>
-        <h1 style={titleStyle}>미루지</h1>
-        <p style={subTextStyle}>로그인 상태 확인 중...</p>
+        <SplashScreen progress={45} label="로그인 확인 중..." />
       </Shell>
     );
   }
@@ -303,8 +309,7 @@ export default function Home() {
   if (!workspacesLoaded) {
     return (
       <Shell>
-        <h1 style={titleStyle}>미루지</h1>
-        <p style={subTextStyle}>모임 정보 불러오는 중...</p>
+        <SplashScreen progress={85} label="데이터 불러오는 중..." />
       </Shell>
     );
   }
