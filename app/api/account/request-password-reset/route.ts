@@ -15,11 +15,13 @@ export async function POST(request: Request) {
   if (userMessage.length > 1000) {
     return NextResponse.json({ error: "MESSAGE_TOO_LONG" }, { status: 400 });
   }
-
   if (!contactEmail) {
     return NextResponse.json({ error: "CONTACT_EMAIL_REQUIRED" }, { status: 400 });
   }
-  
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    return NextResponse.json({ error: "CONTACT_EMAIL_INVALID" }, { status: 400 });
+  }
+
   const admin = createAdminClient();
 
   const { data: userListData } = await admin.auth.admin.listUsers();
@@ -38,10 +40,16 @@ export async function POST(request: Request) {
 
     accountInfo = [
       `표시 이름: ${profile?.display_name || "(없음)"}`,
-      `복구 이메일: ${profile?.recovery_email || "(등록 안 함)"}`,
+      `기존 복구 이메일: ${profile?.recovery_email || "(등록 안 함)"}`,
       `가입일: ${matchedAuthUser.created_at}`,
       `auth_user_id: ${matchedAuthUser.id}`,
     ].join("\n");
+
+    // 이번 요청에 입력한 이메일로 복구 이메일을 자동 등록/갱신합니다 (기존 값이 있어도 덮어씁니다).
+    await admin
+      .from("profiles")
+      .update({ recovery_email: contactEmail })
+      .eq("auth_user_id", matchedAuthUser.id);
   }
 
   const subject = `[미루지] 비밀번호 재설정 요청 - ${username}`;
