@@ -583,7 +583,6 @@ export function useWorkspace({
         suggested_name: inviteSuggestedName.trim() || null,
         status: "pending",
         expires_at: expiresAt,
-        created_by: profile?.id || null,
       })
       .select("id, invite_code, role, suggested_name, status, expires_at")
       .single();
