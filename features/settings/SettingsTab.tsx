@@ -131,6 +131,7 @@ export default function SettingsTab({
 
   const [avatarMessage, setAvatarMessage] = useState<ActionResult | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [planModalReason, setPlanModalReason] = useState("");
@@ -202,6 +203,7 @@ export default function SettingsTab({
   async function handleChangePassword() {
     const result = await onChangePassword();
     setPasswordMessage(result ?? null);
+    if (result?.ok) setConfirmNewPassword("");
   }
 
   async function handleDeleteWorkspace() {
@@ -420,9 +422,24 @@ export default function SettingsTab({
               autoComplete="new-password"
               style={inputStyle}
             />
-            <button onClick={handleChangePassword} disabled={loading || !newPassword.trim()} style={primaryButtonStyle(loading)}>
-              {loading ? "변경 중..." : "비밀번호 변경"}
-            </button>
+            <input
+              value={confirmNewPassword}
+              onChange={(event) => setConfirmNewPassword(event.target.value)}
+              placeholder="새 비밀번호 확인"
+              type="password"
+              autoComplete="new-password"
+              style={inputStyle}
+            />
+            {confirmNewPassword.length > 0 && newPassword !== confirmNewPassword && (
+              <p style={{ marginTop: -6, marginBottom: 12, fontSize: 13, color: "#b91c1c" }}>
+                비밀번호가 일치하지 않습니다.
+              </p>
+            )}
+            <button
+              onClick={handleChangePassword}
+              disabled={loading || !newPassword.trim() || !confirmNewPassword.trim() || newPassword !== confirmNewPassword}
+              style={primaryButtonStyle(loading)}
+            >
             <ResultMessage result={passwordMessage} />
           </div>
         </div>
@@ -559,7 +576,7 @@ export default function SettingsTab({
       </details>
 
       <details style={dangerAccordionStyle}>
-        <summary style={dangerAccordionSummaryStyle}>위험 구역</summary>
+        <summary style={dangerAccordionSummaryStyle}>탈퇴 및 삭제</summary>
         <div style={accordionBodyStyle}>
           {hasWorkspace && currentMember?.role === "owner" && (
             <div style={{ marginBottom: 22 }}>
