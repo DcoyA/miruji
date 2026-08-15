@@ -460,7 +460,9 @@ export function useAuth({ setMessage, setLoading }: UseAuthParams) {
       setMessage(text);
       return { ok: false, text };
     }
-  
+
+    await supabase.from("workspace_members").update({ avatar_url: avatarUrl }).eq("profile_id", profile.id);
+    
     setProfile(data as Profile);
     setLoading(false);
     const text = "프로필 사진을 변경했습니다.";
