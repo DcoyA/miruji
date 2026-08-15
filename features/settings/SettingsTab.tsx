@@ -135,7 +135,7 @@ export default function SettingsTab({
   
   function isPlanLimitError(text?: string) {
     if (!text) return false;
-    return text.includes("무료 플랜") || text.includes("제한(최대");
+    return text.includes("무료 플랜") || text.includes("제한(최대") || text.includes("한도(") || text.includes("업그레이드");
   }
   
   function openPlanModal(reasonText: string) {
