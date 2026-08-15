@@ -440,6 +440,8 @@ export default function SettingsTab({
               disabled={loading || !newPassword.trim() || !confirmNewPassword.trim() || newPassword !== confirmNewPassword}
               style={primaryButtonStyle(loading)}
             >
+              {loading ? "변경 중..." : "비밀번호 변경"}
+            </button>
             <ResultMessage result={passwordMessage} />
           </div>
         </div>
