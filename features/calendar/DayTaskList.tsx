@@ -278,6 +278,8 @@ const headerRowStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   marginBottom: 12,
+  flexWrap: "wrap",
+  gap: 8,
 };
 
 const sectionTitleStyle: CSSProperties = { margin: 0, fontSize: 20, letterSpacing: "-0.03em", color: "#3f1d24" };
@@ -289,6 +291,7 @@ const toggleGroupStyle: CSSProperties = {
   borderRadius: 999,
   padding: 4,
   boxShadow: "0 2px 8px rgba(219,39,119,0.08)",
+  flexShrink: 0,
 };
 
 const toggleButtonStyle: CSSProperties = {
@@ -300,6 +303,7 @@ const toggleButtonStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 800,
   cursor: "pointer",
+  whiteSpace: "nowrap",
 };
 
 const toggleButtonActiveStyle: CSSProperties = {
@@ -438,6 +442,8 @@ const panelHeaderStyle: CSSProperties = {
   alignItems: "center",
   padding: "6px 18px 12px",
   borderBottom: "1px solid #f6e8e6",
+  flexWrap: "wrap",
+  gap: 8,
 };
 
 const closeButtonStyle: CSSProperties = {
