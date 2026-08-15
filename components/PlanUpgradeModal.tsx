@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { CSSProperties } from "react";
+
+type BillingCycle = "monthly" | "yearly";
 
 type PlanUpgradeModalProps = {
   isOpen: boolean;
@@ -8,7 +11,19 @@ type PlanUpgradeModalProps = {
   onClose: () => void;
 };
 
+// ⚠️ 실제 가격이 정해지면 이 두 숫자만 바꿔주세요.
+const MONTHLY_PRICE = 4900;
+const YEARLY_PRICE = 39000;
+const YEARLY_MONTHLY_EQUIVALENT = Math.round(YEARLY_PRICE / 12);
+const DISCOUNT_PERCENT = Math.round((1 - YEARLY_MONTHLY_EQUIVALENT / MONTHLY_PRICE) * 100);
+
+function formatWon(value: number) {
+  return `${value.toLocaleString("ko-KR")}원`;
+}
+
 export default function PlanUpgradeModal({ isOpen, reasonText, onClose }: PlanUpgradeModalProps) {
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("yearly");
+
   if (!isOpen) return null;
 
   return (
@@ -20,6 +35,23 @@ export default function PlanUpgradeModal({ isOpen, reasonText, onClose }: PlanUp
         </div>
 
         {reasonText && <p style={reasonTextStyle}>{reasonText}</p>}
+
+        <div style={billingToggleStyle}>
+          <button
+            type="button"
+            onClick={() => setBillingCycle("monthly")}
+            style={billingCycle === "monthly" ? billingButtonActiveStyle : billingButtonStyle}
+          >
+            월간 결제
+          </button>
+          <button
+            type="button"
+            onClick={() => setBillingCycle("yearly")}
+            style={billingCycle === "yearly" ? billingButtonActiveStyle : billingButtonStyle}
+          >
+            연간 결제 <span style={discountBadgeStyle}>{DISCOUNT_PERCENT}% 할인</span>
+          </button>
+        </div>
 
         <div style={planGridStyle}>
           <div style={planCardStyle}>
@@ -34,23 +66,29 @@ export default function PlanUpgradeModal({ isOpen, reasonText, onClose }: PlanUp
           </div>
 
           <div style={{ ...planCardStyle, ...planCardPremiumStyle }}>
-            <div style={{ ...planBadgeStyle, ...planBadgePremiumStyle }}>커밍쑨</div>
-            <h3 style={planNameStyle}>유료 플랜</h3>
-            <div style={planPriceStyle}>준비 중</div>
+            <div style={{ ...planBadgeStyle, ...planBadgePremiumStyle }}>✨ 추천</div>
+            <h3 style={planNameStyle}>프리미엄</h3>
+            <div style={planPriceStyle}>
+              {billingCycle === "monthly" ? (
+                <>{formatWon(MONTHLY_PRICE)} / 월</>
+              ) : (
+                <>
+                  {formatWon(YEARLY_MONTHLY_EQUIVALENT)} / 월
+                  <span style={priceSubTextStyle}> (연 {formatWon(YEARLY_PRICE)})</span>
+                </>
+              )}
+            </div>
             <ul style={planListStyle}>
-              <li>모임 여러 개 생성</li>
-              <li>참여자 인원 확장</li>
-              <li>전체 기록 무제한 보관</li>
+              <li>🚀 모임 무제한 생성</li>
+              <li>👨‍👩‍👧‍👦 참여자 최대 10명</li>
+              <li>📚 전체 기록 영구 보관</li>
+              <li>🎨 프로필 꾸미기 확장 (예정)</li>
             </ul>
           </div>
         </div>
 
         <button type="button" disabled style={subscribeButtonStyle}>
-          구독하기 (커밍쑨)
-        </button>
-
-        <button type="button" onClick={onClose} style={laterButtonStyle}>
-          나중에 하기
+          구독하기 · 출시 예정
         </button>
       </div>
     </div>
@@ -112,6 +150,45 @@ const reasonTextStyle: CSSProperties = {
   borderRadius: 12,
 };
 
+const billingToggleStyle: CSSProperties = {
+  display: "flex",
+  gap: 6,
+  background: "#f3e8e8",
+  borderRadius: 999,
+  padding: 4,
+  marginBottom: 16,
+};
+
+const billingButtonStyle: CSSProperties = {
+  flex: 1,
+  border: "none",
+  background: "transparent",
+  borderRadius: 999,
+  padding: "8px 6px",
+  fontSize: 12,
+  fontWeight: 800,
+  color: "#9f6b75",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+
+const billingButtonActiveStyle: CSSProperties = {
+  ...billingButtonStyle,
+  background: "#ffffff",
+  color: "#db2777",
+  boxShadow: "0 2px 8px rgba(219,39,119,0.15)",
+};
+
+const discountBadgeStyle: CSSProperties = {
+  marginLeft: 4,
+  fontSize: 10,
+  fontWeight: 900,
+  color: "#fff",
+  background: "#e11d48",
+  padding: "1px 6px",
+  borderRadius: 999,
+};
+
 const planGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
@@ -127,8 +204,9 @@ const planCardStyle: CSSProperties = {
 };
 
 const planCardPremiumStyle: CSSProperties = {
-  border: "1px solid #fbcfe8",
-  background: "linear-gradient(160deg, #fff7f5, #fce7f3)",
+  border: "1.5px solid #f472b6",
+  background: "linear-gradient(160deg, #fff0f6, #fce7f3)",
+  boxShadow: "0 6px 18px rgba(219,39,119,0.20)",
 };
 
 const planBadgeStyle: CSSProperties = {
@@ -143,8 +221,8 @@ const planBadgeStyle: CSSProperties = {
 };
 
 const planBadgePremiumStyle: CSSProperties = {
-  color: "#be185d",
-  background: "#fbcfe8",
+  color: "#fff",
+  background: "linear-gradient(135deg, #fb7185, #e11d48)",
 };
 
 const planNameStyle: CSSProperties = {
@@ -155,10 +233,18 @@ const planNameStyle: CSSProperties = {
 };
 
 const planPriceStyle: CSSProperties = {
-  fontSize: 13,
-  fontWeight: 700,
+  fontSize: 14,
+  fontWeight: 800,
   color: "#db2777",
   marginBottom: 10,
+  lineHeight: 1.4,
+};
+
+const priceSubTextStyle: CSSProperties = {
+  display: "block",
+  fontSize: 11,
+  fontWeight: 700,
+  color: "#9f6b75",
 };
 
 const planListStyle: CSSProperties = {
@@ -166,7 +252,7 @@ const planListStyle: CSSProperties = {
   paddingLeft: 16,
   fontSize: 12,
   color: "#5c3a41",
-  lineHeight: 1.7,
+  lineHeight: 1.8,
 };
 
 const subscribeButtonStyle: CSSProperties = {
@@ -178,18 +264,4 @@ const subscribeButtonStyle: CSSProperties = {
   color: "#fff",
   fontWeight: 800,
   cursor: "not-allowed",
-};
-
-const laterButtonStyle: CSSProperties = {
-  display: "block",
-  width: "100%",
-  textAlign: "center",
-  background: "none",
-  border: "none",
-  color: "#9f6b75",
-  fontSize: 13,
-  fontWeight: 700,
-  cursor: "pointer",
-  marginTop: 12,
-  padding: 0,
 };
