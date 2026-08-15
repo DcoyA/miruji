@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import type { Member, Workspace, WorkspaceInvite } from "@/types/app";
 import { roleLabel } from "@/lib/labels";
 import { supabase } from "@/lib/supabase/client";
+import Avatar from "@/components/Avatar";
 
 type MemberRole = "manager" | "member";
 type ActionResult = { ok: boolean; text: string } | undefined;
@@ -49,6 +50,9 @@ type SettingsTabProps = {
   newPassword: string;
   onNewPasswordChange: (value: string) => void;
   onChangePassword: () => Promise<ActionResult>;
+  profileDisplayName: string;
+  avatarUrl: string | null;
+  onUploadAvatar: (file: File) => Promise<ActionResult>;
 };
 
 function ResultMessage({ result }: { result: ActionResult | null }) {
@@ -118,6 +122,19 @@ export default function SettingsTab({
   const [passwordMessage, setPasswordMessage] = useState<ActionResult | null>(null);
   const [deleteWorkspaceMessage, setDeleteWorkspaceMessage] = useState<ActionResult | null>(null);
   const [deleteAccountMessage, setDeleteAccountMessage] = useState<ActionResult | null>(null);
+
+  const [avatarMessage, setAvatarMessage] = useState<ActionResult | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  
+  async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    const result = await onUploadAvatar(file);
+    setAvatarMessage(result ?? null);
+    setAvatarUploading(false);
+    event.target.value = "";
+  }
 
   async function handleCreateInvite() {
     const result = await onCreateInvite();
@@ -288,6 +305,32 @@ export default function SettingsTab({
 
       <details style={accordionStyle}>
         <summary style={accordionSummaryStyle}>프로필</summary>
+        <div style={{ marginBottom: 22, display: "flex", alignItems: "center", gap: 16 }}>
+          <Avatar src={avatarUrl} name={profileDisplayName} size={64} />
+          <div style={{ flex: 1 }}>
+            <h3 style={subSectionTitleStyle}>프로필 사진</h3>
+            <label
+              style={{
+                ...primaryButtonStyle(avatarUploading),
+                display: "inline-block",
+                width: "auto",
+                padding: "10px 18px",
+                cursor: avatarUploading ? "not-allowed" : "pointer",
+              }}
+            >
+              {avatarUploading ? "업로드 중..." : "사진 변경"}
+              <input
+                type="file"
+                accept="image/png, image/jpeg, image/webp, image/gif"
+                onChange={handleAvatarChange}
+                disabled={avatarUploading}
+                style={{ display: "none" }}
+              />
+            </label>
+            <ResultMessage result={avatarMessage} />
+          </div>
+        </div>
+
         <div style={accordionBodyStyle}>
           {currentMember && (
             <div style={{ marginBottom: 22 }}>
@@ -555,14 +598,12 @@ function MemberList({
                 style={isRemoved ? { ...memberCardStyle, opacity: 0.55 } : memberCardStyle}
               >
                 <div>
-                  <div style={memberNameStyle}>{member.display_name}</div>
-                  <div style={memberMetaStyle}>
-                    {roleLabel(member.role)} ·{" "}
-                    {isRemoved
-                      ? "제외됨"
-                      : member.is_virtual
-                      ? "계정 없이 관리 중"
-                      : "계정 연결됨"}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Avatar src={member.avatar_url} name={member.display_name} size={40} />
+                    <div>
+                      <div style={memberNameStyle}>{member.display_name}</div>
+                      <div style={memberMetaStyle}>...</div>
+                    </div>
                   </div>
                 </div>
 
