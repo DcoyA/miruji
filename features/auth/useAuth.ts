@@ -272,6 +272,10 @@ export function useAuth({ setMessage, setLoading }: UseAuthParams) {
       setMessage("답장 받을 이메일 주소를 입력해주세요.");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedContactEmail)) {
+      setMessage("이메일 형식이 올바르지 않습니다.");
+      return;
+    }
   
     setLoading(true);
     setMessage("");
