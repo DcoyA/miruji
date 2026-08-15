@@ -12,8 +12,8 @@ type PlanUpgradeModalProps = {
 };
 
 // ⚠️ 실제 가격이 정해지면 이 두 숫자만 바꿔주세요.
-const MONTHLY_PRICE = 4900;
-const YEARLY_PRICE = 39000;
+const MONTHLY_PRICE = 2900;
+const YEARLY_PRICE = 29000;
 const YEARLY_MONTHLY_EQUIVALENT = Math.round(YEARLY_PRICE / 12);
 const DISCOUNT_PERCENT = Math.round((1 - YEARLY_MONTHLY_EQUIVALENT / MONTHLY_PRICE) * 100);
 
