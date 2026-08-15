@@ -7,6 +7,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const username = typeof body?.username === "string" ? body.username.trim() : "";
   const userMessage = typeof body?.message === "string" ? body.message.trim() : "";
+  const contactEmail = typeof body?.contactEmail === "string" ? body.contactEmail.trim() : "";
 
   if (!username) {
     return NextResponse.json({ error: "USERNAME_REQUIRED" }, { status: 400 });
@@ -15,6 +16,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "MESSAGE_TOO_LONG" }, { status: 400 });
   }
 
+  if (!contactEmail) {
+    return NextResponse.json({ error: "CONTACT_EMAIL_REQUIRED" }, { status: 400 });
+  }
+  
   const admin = createAdminClient();
 
   const { data: userListData } = await admin.auth.admin.listUsers();
@@ -43,6 +48,7 @@ export async function POST(request: Request) {
   const text = [
     `요청 시각: ${new Date().toLocaleString("ko-KR")}`,
     `요청 아이디: ${username}`,
+    `답장 받을 이메일: ${contactEmail}`,
     "",
     "[계정 정보]",
     accountInfo,
