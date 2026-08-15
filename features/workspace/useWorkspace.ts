@@ -18,7 +18,7 @@ import type {
 } from "@/types/app";
 
 export const memberSelect =
-  "id, profile_id, display_name, role, is_virtual, requires_account, status";
+  "id, profile_id, display_name, role, is_virtual, requires_account, status, avatar_url";
 export const taskSelect =
   "id, workspace_id, title, description, status, due_date, due_time, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url, evidence_text";
 export const taskTemplateSelect =
@@ -752,27 +752,7 @@ export function useWorkspace({
       return;
     }
 
-    const rawMembers = (membersResult.data || []) as Member[];
-    const profileIds = rawMembers.map((m) => m.profile_id).filter((id): id is string => Boolean(id));
-    
-    let avatarByProfileId: Record<string, string | null> = {};
-    if (profileIds.length > 0) {
-      const { data: avatarRows } = await supabase
-        .from("profiles")
-        .select("id, avatar_url")
-        .in("id", profileIds);
-    
-      avatarByProfileId = (avatarRows || []).reduce((acc, row) => {
-        acc[row.id] = row.avatar_url;
-        return acc;
-      }, {} as Record<string, string | null>);
-    }
-    
-    const membersWithAvatar = rawMembers.map((member) => ({
-      ...member,
-      avatar_url: member.profile_id ? avatarByProfileId[member.profile_id] ?? null : null,
-    }));
-    setMembers(membersWithAvatar);
+    setMembers((membersResult.data || []) as Member[]);
     setTasks((tasksResult.data || []) as Task[]);
     setTemplates((templatesResult.data || []) as TaskTemplate[]);
     setRewards((rewardsResult.data || []) as Reward[]);
