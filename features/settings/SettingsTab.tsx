@@ -472,7 +472,6 @@ export default function SettingsTab({
       <details style={accordionStyle} open={!hasWorkspace}>
         <summary style={accordionSummaryStyle}>모임 관리</summary>
         <div style={accordionBodyStyle}>
-
           <div style={{ marginBottom: 22 }}>
             <h3 style={subSectionTitleStyle}>{hasWorkspace ? "새 모임 참여하기" : "모임 참여하기"}</h3>
             <p style={subTextStyle}>다른 사람이 만든 모임에 참여하려면 초대코드를 입력하세요.</p>
@@ -481,7 +480,7 @@ export default function SettingsTab({
             <ResultMessage result={joinMessage} />
           </div>
 
-          <div style={{ marginBottom: 22 }}>
+          <div>
             <h3 style={subSectionTitleStyle}>{hasWorkspace ? "새 모임 만들기" : "첫 모임 만들기"}</h3>
             <p style={subTextStyle}>가족, 팀, 클래스처럼 별도 공간이 필요하면 새 모임을 만들 수 있습니다.</p>
             <input value={workspaceName} onChange={(event) => onWorkspaceNameChange(event.target.value)} placeholder="예) 우리집, 주말 프로젝트, 1학년 3반" style={inputStyle} />
@@ -489,29 +488,32 @@ export default function SettingsTab({
             <button onClick={handleCreateWorkspace} disabled={loading} style={primaryButtonStyle(loading)}>{loading ? "생성 중..." : "모임 만들기"}</button>
             <ResultMessage result={createWorkspaceMessage} />
           </div>
+        </div>
+      </details>
 
-          {hasWorkspace && isManager && (
-            <div style={{ marginBottom: 22 }}>
-              <h3 style={subSectionTitleStyle}>참여자 관리</h3>
-              <MemberList
-                members={members}
-                currentMember={currentMember}
-                loading={loading}
-                onRemoveMember={onRemoveMember}
-                onRestoreMember={onRestoreMember}
-                onTransferOwnership={onTransferOwnership}
-                onUpdateMemberRole={onUpdateMemberRole}
-                actionMessage={memberListMessage}
-                onActionResult={setMemberListMessage}
-              />
-            </div>
-          )}
-
-          {hasWorkspace && isManager && (
-            <div style={{ marginBottom: 22 }}>
-              <h3 style={subSectionTitleStyle}>초대하기</h3>
-
+      {hasWorkspace && (
+        <details style={accordionStyle}>
+          <summary style={accordionSummaryStyle}>참여자 관리</summary>
+          <div style={accordionBodyStyle}>
+            {isManager && (
               <div style={{ marginBottom: 22 }}>
+                <h3 style={subSectionTitleStyle}>참여자 목록</h3>
+                <MemberList
+                  members={members}
+                  currentMember={currentMember}
+                  loading={loading}
+                  onRemoveMember={onRemoveMember}
+                  onRestoreMember={onRestoreMember}
+                  onTransferOwnership={onTransferOwnership}
+                  onUpdateMemberRole={onUpdateMemberRole}
+                  actionMessage={memberListMessage}
+                  onActionResult={setMemberListMessage}
+                />
+              </div>
+            )}
+
+            {isManager && (
+              <div>
                 <h4 style={{ ...subSectionTitleStyle, fontSize: 15 }}>초대코드 발급</h4>
                 <p style={subTextStyle}>코드를 만들어 전달하면, 상대가 코드로 직접 가입해 참여자가 됩니다.</p>
                 <input
@@ -533,10 +535,10 @@ export default function SettingsTab({
                           <strong>{invite.invite_code}</strong> · {roleLabel(invite.role)}
                           {invite.suggested_name && ` · ${invite.suggested_name}`}
                         </div>
-                        <div style={{ fontSize: 12, marginTop: 4 }}>{formatExpiryDate(invite.expires_at)}까지</div>
+                        <div style={{ fontSize: 12, marginTop: 4 }}>만료: {formatExpiryDate(invite.expires_at)}</div>
                         <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
                           <button type="button" onClick={() => handleCopyInviteCode(invite.id, invite.invite_code)} style={copyLinkButtonStyle}>
-                            {copiedInviteId === invite.id ? "복사됐어요!" : "초대코드 복사"}
+                            {copiedInviteId === invite.id ? "복사됨!" : "코드 복사"}
                           </button>
                           <button type="button" onClick={() => handleCancelPendingInvite(invite)} disabled={loading} style={{ ...copyLinkButtonStyle, background: "#b91c1c" }}>
                             취소
@@ -547,35 +549,35 @@ export default function SettingsTab({
                     <ResultMessage result={cancelInviteMessage} />
                   </div>
                 )}
-              </div>
 
+                <div style={{ marginTop: 22 }}>
+                  <h4 style={{ ...subSectionTitleStyle, fontSize: 15 }}>계정 없이 참여자 추가</h4>
+                  <p style={subTextStyle}>아기, 반려동물처럼 로그인하지 않는 참여자는 방장/부방장이 대신 관리합니다.</p>
+                  <input value={newMemberName} onChange={(event) => onNewMemberNameChange(event.target.value)} placeholder="예) 첫째, 토끼" style={inputStyle} />
+                  <select value={newMemberRole} onChange={(event) => onNewMemberRoleChange(event.target.value as MemberRole)} style={inputStyle}>
+                    <option value="member">참여자</option>
+                    <option value="manager">부방장</option>
+                  </select>
+                  <button onClick={handleAddMember} disabled={loading} style={primaryButtonStyle(loading)}>
+                    {loading ? "추가 중..." : "참여자 추가"}
+                  </button>
+                  <ResultMessage result={addMemberMessage} />
+                </div>
+              </div>
+            )}
+
+            {!isManager && (
               <div>
-                <h4 style={{ ...subSectionTitleStyle, fontSize: 15 }}>계정 없이 참여자 추가</h4>
-                <p style={subTextStyle}>아기, 반려동물처럼 직접 로그인하지 않는 참여자는 방장/부방장이 대신 관리합니다.</p>
-                <input value={newMemberName} onChange={(event) => onNewMemberNameChange(event.target.value)} placeholder="예) 첫째, 토끼" style={inputStyle} />
-                <select value={newMemberRole} onChange={(event) => onNewMemberRoleChange(event.target.value as MemberRole)} style={inputStyle}>
-                  <option value="member">참여자</option>
-                  <option value="manager">부방장</option>
-                </select>
-                <button onClick={handleAddMember} disabled={loading} style={primaryButtonStyle(loading)}>
-                  {loading ? "추가 중..." : "참여자 추가"}
-                </button>
-                <ResultMessage result={addMemberMessage} />
+                <h3 style={subSectionTitleStyle}>내 참여 정보</h3>
+                <p style={subTextStyle}>참여자 관리는 방장/부방장만 할 수 있습니다.</p>
+                {currentMember && (
+                  <div style={settingLineStyle}>{currentMember.display_name} · {roleLabel(currentMember.role)}</div>
+                )}
               </div>
-            </div>
-          )}
-
-          {hasWorkspace && !isManager && (
-            <div style={{ marginBottom: 22 }}>
-              <h3 style={subSectionTitleStyle}>내 참여 정보</h3>
-              <p style={subTextStyle}>참여자는 참여자 추가와 초대코드 생성을 할 수 없습니다.</p>
-              {currentMember && (
-                <div style={settingLineStyle}>{currentMember.display_name} · {roleLabel(currentMember.role)}</div>
-              )}
-            </div>
-          )}
-        </div>
-      </details>
+            )}
+          </div>
+        </details>
+      )}
 
       <details style={dangerAccordionStyle}>
         <summary style={dangerAccordionSummaryStyle}>탈퇴 및 삭제</summary>
@@ -691,7 +693,7 @@ function MemberList({
                   ) : (
                     member.role !== "owner" && (
                       <button onClick={() => handle(() => onRemoveMember(member))} disabled={loading} style={{ ...smallButtonStyle, background: "#b91c1c" }}>
-                        제외하기
+                        내보내기
                       </button>
                     )
                   )}
