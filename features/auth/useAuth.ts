@@ -260,11 +260,20 @@ export function useAuth({ setMessage, setLoading }: UseAuthParams) {
     setLoading(false);
   }
 
-  async function requestPasswordReset(customMessage: string) {
+  async function requestPasswordReset(customMessage: string, contactEmail: string) {
     const trimmedUsername = authUsername.trim();
+    const trimmedContactEmail = contactEmail.trim();
   
     if (!trimmedUsername) {
       setMessage("아이디를 입력해주세요.");
+      return;
+    }
+    if (!trimmedContactEmail) {
+      setMessage("답장 받을 이메일 주소를 입력해주세요.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedContactEmail)) {
+      setMessage("이메일 형식이 올바르지 않습니다.");
       return;
     }
   
@@ -274,7 +283,11 @@ export function useAuth({ setMessage, setLoading }: UseAuthParams) {
     const response = await fetch("/api/account/request-password-reset", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: trimmedUsername, message: customMessage }),
+      body: JSON.stringify({
+        username: trimmedUsername,
+        message: customMessage,
+        contactEmail: trimmedContactEmail,
+      }),
     });
   
     if (!response.ok) {
@@ -283,7 +296,7 @@ export function useAuth({ setMessage, setLoading }: UseAuthParams) {
       return;
     }
   
-    setMessage("요청이 접수되었습니다. 확인 후 안내드릴게요.");
+    setMessage("요청이 접수되었습니다. 입력하신 이메일로 안내드릴게요.");
     setLoading(false);
   }
 

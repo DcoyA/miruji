@@ -31,7 +31,8 @@ export const rewardTxSelect =
 export type MemberRole = "manager" | "member";
 
 // ⚠️ 참여자 제한 인원. 원래 요구사항에 "제한 3명"이라고 하셨으니 3으로 고정했습니다.
-const MAX_MEMBER_COUNT = 3;
+const MAX_MEMBER_COUNT_FREE = 3;
+const MAX_MEMBER_COUNT_PREMIUM = 100;
 
 type InviteAcceptResult = {
   workspace_id?: string;
@@ -287,8 +288,10 @@ export function useWorkspace({
       setMessage("이름을 입력해주세요.");
       return { ok: false, text: "이름을 입력해주세요." };
     }
-    if (activeMembers.length + pendingInvites.length >= MAX_MEMBER_COUNT) {
-      const text = `참여자 제한(최대 ${MAX_MEMBER_COUNT}명)에 도달하여 추가할 수 없습니다.`;
+    const maxMemberCount = workspacePlan === "premium" ? MAX_MEMBER_COUNT_PREMIUM : MAX_MEMBER_COUNT_FREE;
+
+    if (activeMembers.length + pendingInvites.length >= maxMemberCount) {
+      const text = `참여자 제한(최대 ${maxMemberCount}명)에 도달하여 추가할 수 없습니다.`;
       setMessage(text);
       return { ok: false, text };
     }
@@ -374,8 +377,10 @@ export function useWorkspace({
       setMessage("방장/부방장만 가능합니다.");
       return { ok: false, text: "방장/부방장만 가능합니다." };
     }
-    if (activeMembers.length + pendingInvites.length >= MAX_MEMBER_COUNT) {
-      const text = `참여자 제한(최대 ${MAX_MEMBER_COUNT}명)에 도달하여 복구할 수 없습니다.`;
+    const maxMemberCount = workspacePlan === "premium" ? MAX_MEMBER_COUNT_PREMIUM : MAX_MEMBER_COUNT_FREE;
+
+    if (activeMembers.length + pendingInvites.length >= maxMemberCount) {
+      const text = `참여자 제한(최대 ${maxMemberCount}명)에 도달하여 복구할 수 없습니다.`;
       setMessage(text);
       return { ok: false, text };
     }
@@ -562,8 +567,10 @@ export function useWorkspace({
       setMessage(text);
       return { ok: false, text };
     }
-    if (activeMembers.length + pendingInvites.length >= MAX_MEMBER_COUNT) {
-      const text = `참여자 제한(최대 ${MAX_MEMBER_COUNT}명)에 도달하여 더 이상 초대할 수 없습니다.`;
+    const maxMemberCount = workspacePlan === "premium" ? MAX_MEMBER_COUNT_PREMIUM : MAX_MEMBER_COUNT_FREE;
+
+    if (activeMembers.length + pendingInvites.length >= maxMemberCount) {
+      const text = `참여자 제한(최대 ${maxMemberCount}명)에 도달하여 더 이상 초대할 수 없습니다.`;
       setMessage(text);
       return { ok: false, text };
     }

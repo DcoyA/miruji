@@ -4,6 +4,7 @@ import type { Member, Workspace, WorkspaceInvite } from "@/types/app";
 import { roleLabel } from "@/lib/labels";
 import { supabase } from "@/lib/supabase/client";
 import Avatar from "@/components/Avatar";
+import PlanUpgradeModal from "@/components/PlanUpgradeModal";
 
 type MemberRole = "manager" | "member";
 type ActionResult = { ok: boolean; text: string } | undefined;
@@ -128,6 +129,19 @@ export default function SettingsTab({
 
   const [avatarMessage, setAvatarMessage] = useState<ActionResult | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [planModalReason, setPlanModalReason] = useState("");
+  
+  function isPlanLimitError(text?: string) {
+    if (!text) return false;
+    return text.includes("무료 플랜") || text.includes("제한(최대");
+  }
+  
+  function openPlanModal(reasonText: string) {
+    setPlanModalReason(reasonText);
+    setPlanModalOpen(true);
+  }
   
   async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -142,6 +156,9 @@ export default function SettingsTab({
   async function handleCreateInvite() {
     const result = await onCreateInvite();
     if (result) setInviteMessage(result);
+    if (result && !result.ok && isPlanLimitError(result.text)) {
+      openPlanModal(result.text);
+    }
   }
 
   async function handleJoin() {
@@ -152,11 +169,17 @@ export default function SettingsTab({
   async function handleCreateWorkspace() {
     const result = await onCreateWorkspace();
     setCreateWorkspaceMessage(result ?? null);
+    if (result && !result.ok && isPlanLimitError(result.text)) {
+      openPlanModal(result.text);
+    }
   }
 
   async function handleAddMember() {
     const result = await onAddMember();
     setAddMemberMessage(result ?? null);
+    if (result && !result.ok && isPlanLimitError(result.text)) {
+      openPlanModal(result.text);
+    }
   }
 
   async function handleCancelPendingInvite(invite: WorkspaceInvite) {
@@ -291,6 +314,12 @@ export default function SettingsTab({
 
   return (
     <>
+      <PlanUpgradeModal
+        isOpen={planModalOpen}
+        reasonText={planModalReason}
+        onClose={() => setPlanModalOpen(false)}
+      />
+
       <section style={createBoxStyle}>
         <h2 style={sectionTitleStyle}>설정</h2>
         <p style={subTextStyle}>모임, 참여자, 초대코드를 관리합니다.</p>
