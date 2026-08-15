@@ -22,7 +22,7 @@ type AuthPanelProps = {
   onRememberUsernameChange: (value: boolean) => void;
   onSignIn: () => void;
   onSignUp: () => void;
-  onRequestPasswordReset: (message: string) => void;
+  onRequestPasswordReset: (message: string, contactEmail: string) => void;
 };
 
 export default function AuthPanel({
@@ -47,6 +47,7 @@ export default function AuthPanel({
   onRequestPasswordReset,
 }: AuthPanelProps) {
   const [resetRequestMessage, setResetRequestMessage] = useState("");
+  const [resetContactEmail, setResetContactEmail] = useState("");
 
   if (mode === "forgot") {
     return (
@@ -64,6 +65,15 @@ export default function AuthPanel({
           style={inputStyle}
         />
 
+        <input
+          value={resetContactEmail}
+          onChange={(event) => setResetContactEmail(event.target.value)}
+          placeholder="답장 받을 이메일 주소 (필수)"
+          type="email"
+          autoComplete="email"
+          style={inputStyle}
+        />
+        
         <textarea
           value={resetRequestMessage}
           onChange={(event) => setResetRequestMessage(event.target.value)}
@@ -74,7 +84,7 @@ export default function AuthPanel({
 
         <button
           type="button"
-          onClick={() => onRequestPasswordReset(resetRequestMessage)}
+          onClick={() => onRequestPasswordReset(resetRequestMessage, resetContactEmail)}
           disabled={loading}
           style={primaryButtonStyle(loading)}
         >
