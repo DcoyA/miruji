@@ -19,6 +19,7 @@ import type {
 
 export const memberSelect =
   "id, profile_id, display_name, role, is_virtual, requires_account, status";
+export const memberSelectWithAvatar = `${memberSelect}, profiles(avatar_url)`;
 export const taskSelect =
   "id, workspace_id, title, description, status, due_date, due_time, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url, evidence_text";
 export const taskTemplateSelect =
@@ -359,7 +360,7 @@ export function useWorkspace({
       return { ok: false, text: `제외 실패: ${error.message}` };
     }
 
-    setMembers((prev) => prev.map((item) => (item.id === member.id ? (data as Member) : item)));
+    setMembers((prev) => prev.map((item) => (item.id === member.id ? { ...item, ...(data as Member) } : item)));
     setMessage(`${member.display_name}님을 제외했습니다.`);
     setLoading(false);
     return { ok: true, text: `${member.display_name}님을 제외했습니다.` };
@@ -712,7 +713,7 @@ export function useWorkspace({
     const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const [membersResult, tasksResult, templatesResult, rewardsResult, rewardTransactionsResult, invitesResult] = await Promise.all([
-      supabase.from("workspace_members").select(memberSelect).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
+      supabase.from("workspace_members").select(memberSelectWithAvatar).eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
       (() => {
         let q = supabase.from("tasks").select(taskSelect).eq("workspace_id", workspaceId).gte("due_date", monthStart).lte("due_date", monthEnd);
         if (plan === "free") q = q.gte("due_date", thirtyDaysAgoKey);
@@ -753,7 +754,11 @@ export function useWorkspace({
       return;
     }
 
-    setMembers((membersResult.data || []) as Member[]);
+    const membersWithAvatar = (membersResult.data || []).map((row: any) => ({
+      ...row,
+      avatar_url: row.profiles?.avatar_url ?? null,
+    }));
+    setMembers(membersWithAvatar as Member[]);
     setTasks((tasksResult.data || []) as Task[]);
     setTemplates((templatesResult.data || []) as TaskTemplate[]);
     setRewards((rewardsResult.data || []) as Reward[]);
