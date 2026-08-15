@@ -497,5 +497,6 @@ export function useAuth({ setMessage, setLoading }: UseAuthParams) {
     saveRecoveryEmail,
     changePassword,
     markOnboardingComplete,
+    uploadAvatar,
   };
 }
