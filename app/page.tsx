@@ -526,6 +526,7 @@ export default function Home() {
           onChangePassword={changePassword}
           profileDisplayName={profile.display_name}
           avatarUrl={profile.avatar_url}
+          myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
           onUploadAvatar={uploadAvatar}
         />
       )}
