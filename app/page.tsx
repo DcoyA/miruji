@@ -456,7 +456,8 @@ export default function Home() {
         </Shell>
       );
     }
-
+  }
+  
   return (
     <Shell>
       <AppHeader title={tabTitle(activeTab)} loading={loading} onSignOut={signOut} />
