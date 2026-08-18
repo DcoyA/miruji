@@ -23,7 +23,6 @@ import Shell from "@/components/Shell";
 import AppHeader from "@/components/AppHeader";
 import AuthPanel from "@/components/AuthPanel";
 import BottomNav from "@/components/BottomNav";
-import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 
 import CalendarGrid from "@/features/calendar/CalendarGrid";
 import CalendarToolbar from "@/features/calendar/CalendarToolbar";
@@ -68,6 +67,30 @@ export default function Home() {
   const [plusSheetOpen, setPlusSheetOpen] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
 
+  const [notificationsByWorkspace, setNotificationsByWorkspace] = useState<Record<string, boolean>>({});
+
+  const currentWorkspaceIndex = workspace ? workspaces.findIndex((item) => item.id === workspace.id) : -1;
+  
+  function goToPrevWorkspace() {
+    if (workspaces.length < 2 || currentWorkspaceIndex < 0) return;
+    const nextIndex = (currentWorkspaceIndex - 1 + workspaces.length) % workspaces.length;
+    setWorkspace(workspaces[nextIndex]);
+  }
+  
+  function goToNextWorkspace() {
+    if (workspaces.length < 2 || currentWorkspaceIndex < 0) return;
+    const nextIndex = (currentWorkspaceIndex + 1) % workspaces.length;
+    setWorkspace(workspaces[nextIndex]);
+  }
+  
+  function toggleWorkspaceNotifications() {
+    if (!workspace) return;
+    setNotificationsByWorkspace((prev) => ({
+      ...prev,
+      [workspace.id]: !(prev[workspace.id] ?? true),
+    }));
+  }
+  
   const auth = useAuth({ setMessage, setLoading });
   const {
     authLoading,
@@ -312,7 +335,7 @@ export default function Home() {
   if (pendingInviteCode) {
     return (
       <Shell>
-        <AppHeader title="" loading={loading} onSignOut={signOut} />
+        <AppHeader />
         <h1 style={titleStyle}>초대 처리 중...</h1>
         <p style={subTextStyle}>잠시만 기다려주세요. 곧 연결됩니다.</p>
         {message && <div style={messageBoxStyle(message)}>{message}</div>}
@@ -321,6 +344,31 @@ export default function Home() {
   }
 
   if (showEmptyHome) {
+    if (showProfileSettings) {
+      return (
+        <Shell>
+          <ProfileSettingsPanel
+            profileDisplayName={profile.display_name}
+            avatarUrl={profile.avatar_url}
+            myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
+            loading={loading}
+            onUploadAvatar={uploadAvatar}
+            myNickname={myNickname}
+            onMyNicknameChange={setMyNickname}
+            onSaveMyNickname={saveMyNickname}
+            recoveryEmail={profileRecoveryEmail}
+            onRecoveryEmailChange={setProfileRecoveryEmail}
+            onSaveRecoveryEmail={saveRecoveryEmail}
+            currentNicknameLabel={currentMember?.display_name ?? profile.display_name}
+            newPassword={newPassword}
+            onNewPasswordChange={setNewPassword}
+            onChangePassword={changePassword}
+            onBack={() => setShowProfileSettings(false)}
+          />
+        </Shell>
+      );
+    }
+
     if (showProfileSettings) {
       return (
         <Shell>
@@ -423,30 +471,22 @@ export default function Home() {
 
   return (
     <Shell>
-      <AppHeader title={tabTitle(activeTab)} loading={loading} onSignOut={signOut} />
-
+      <AppHeader
+        workspaceName={workspace?.name ?? null}
+        showWorkspaceControls={Boolean(workspace)}
+        canSwitchWorkspace={workspaces.length > 1}
+        onPrevWorkspace={goToPrevWorkspace}
+        onNextWorkspace={goToNextWorkspace}
+        notificationsEnabled={workspace ? notificationsByWorkspace[workspace.id] ?? true : true}
+        onToggleNotifications={toggleWorkspaceNotifications}
+        onOpenMenu={() => setMenuOpen(true)}
+      />
+      
       <section style={accountBoxStyle}>
-        <Avatar src={profile.avatar_url} name={profile.display_name} size={44} />
-        <div style={accountInfoStyle}>
-          <strong style={accountNameStyle}>{currentMember?.display_name || profile.display_name}</strong>
-          {currentMember && (
-            <span style={roleBadgeStyle}>{roleLabel(currentMember.role)}</span>
-          )}
-        </div>
+        ...
       </section>
 
-      {workspace && <NotificationPrompt />}
-
-      {workspaces.length > 0 && (
-        <WorkspaceSwitcher
-          workspaces={workspaces}
-          currentWorkspaceId={workspace?.id ?? ""}
-          onSelect={(id) => {
-            const next = workspaces.find((item) => item.id === id) || null;
-            setWorkspace(next);
-          }}
-        />
-      )}
+{workspace && <NotificationPrompt />}
 
       {workspace && activeTab === "tasks" && (
         <>
@@ -647,6 +687,65 @@ export default function Home() {
                 />
               )}
             </div>
+          </div>
+        </div>
+      )}
+       <HamburgerMenu
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        workspaces={workspaces}
+        onSelectWorkspace={(id) => {
+          const next = workspaces.find((item) => item.id === id) || null;
+          setWorkspace(next);
+        }}
+        onGoProfileSettings={() => setShowProfileSettings(true)}
+        onCreateWorkspace={() => {
+          setOnboardingStep("create");
+          setPlusSheetOpen(true);
+        }}
+        onJoinWorkspace={() => {
+          setOnboardingStep("join");
+          setPlusSheetOpen(true);
+        }}
+        onShareApp={() => {
+          const link = typeof window !== "undefined" ? window.location.origin : "";
+          const text = `미루지말자 함께 해요! 참여 코드로 초대할게요!\n${link}`;
+          if (typeof navigator !== "undefined" && navigator.clipboard) {
+            navigator.clipboard.writeText(text);
+            setMessage("공유 링크를 복사했어요.");
+          }
+        }}
+        onSignOut={signOut}
+        onDeleteAccount={deleteAccount}
+      />
+      
+      {plusSheetOpen && (
+        <div style={plusSheetBackdropStyle} onClick={() => setPlusSheetOpen(false)}>
+          <div style={plusSheetPanelStyle} onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setPlusSheetOpen(false)}
+              style={plusSheetCloseButtonStyle}
+              aria-label="닫기"
+            >
+              ✕
+            </button>
+            <OnboardingGate
+              step={onboardingStep}
+              loading={loading}
+              message={message}
+              onChooseCreate={() => setOnboardingStep("create")}
+              onChooseJoin={() => setOnboardingStep("join")}
+              onBack={() => setOnboardingStep("choice")}
+              workspaceName={workspaceName}
+              workspaceDescription={workspaceDescription}
+              onWorkspaceNameChange={setWorkspaceName}
+              onWorkspaceDescriptionChange={setWorkspaceDescription}
+              onCreateWorkspace={createWorkspace}
+              joinInviteCode={joinInviteCode}
+              onJoinInviteCodeChange={setJoinInviteCode}
+              onAcceptInvite={() => acceptInviteCode()}
+            />
           </div>
         </div>
       )}
