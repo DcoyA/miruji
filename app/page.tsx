@@ -265,7 +265,7 @@ export default function Home() {
     return [];
   }, [tasks, summaryFilter]);
 
-  const isReady = !authLoading && workspacesLoaded;
+  const isReady = !authLoading && (!profile || workspacesLoaded);
 
   if (showSplash) {
     return <SplashScreen ready={isReady} onFinish={() => setShowSplash(false)} />;
