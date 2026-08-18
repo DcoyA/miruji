@@ -307,157 +307,153 @@ export default function Home() {
     );
   }
 
-  const needsOnboarding = !profile.onboarding_completed && workspaces.length === 0;
+  if (pendingInviteCode) {
+    return (
+      <Shell>
+        <AppHeader title="" loading={loading} onSignOut={signOut} />
+        <h1 style={titleStyle}>초대 처리 중...</h1>
+        <p style={subTextStyle}>잠시만 기다려주세요. 곧 연결됩니다.</p>
+        {message && <div style={messageBoxStyle(message)}>{message}</div>}
+      </Shell>
+    );
+  }
 
-  if (needsOnboarding) {
-    if (pendingInviteCode) {
-      return (
-        <Shell>
-          <AppHeader title="" loading={loading} onSignOut={signOut} />
-          <h1 style={titleStyle}>초대 처리 중...</h1>
-          <p style={subTextStyle}>잠시만 기다려주세요. 곧 연결됩니다.</p>
-          {message && <div style={messageBoxStyle(message)}>{message}</div>}
-        </Shell>
-      );
-    }
-    
-    if (showEmptyHome) {
-      return (
-        <Shell>
-          <EmptyWorkspaceHome
-            displayName={profile.display_name}
-            avatarUrl={profile.avatar_url}
-            onOpenMenu={() => setMenuOpen(true)}
-            onOpenPlus={() => {
-              setOnboardingStep("choice");
-              setPlusSheetOpen(true);
-            }}
-          />
-    
-          <HamburgerMenu
-            isOpen={menuOpen}
-            onClose={() => setMenuOpen(false)}
-            workspaces={workspaces}
-            onSelectWorkspace={(id) => {
-              const next = workspaces.find((item) => item.id === id) || null;
-              setWorkspace(next);
-            }}
-            onGoProfileSettings={() => setActiveTab("settings")}
-            onCreateWorkspace={() => {
-              setOnboardingStep("create");
-              setPlusSheetOpen(true);
-            }}
-            onJoinWorkspace={() => {
-              setOnboardingStep("join");
-              setPlusSheetOpen(true);
-            }}
-            onShareApp={() => {
-              const link = typeof window !== "undefined" ? window.location.origin : "";
-              const text = `미루지말자와 함께 할 일을 관리해보세요!\n${link}`;
-              if (typeof navigator !== "undefined" && navigator.clipboard) {
-                navigator.clipboard.writeText(text);
-                setMessage("공유 링크를 복사했어요.");
-              }
-            }}
-            onSignOut={signOut}
-            onDeleteAccount={deleteAccount}
-          />
-    
-          {plusSheetOpen && (
-            <div style={plusSheetBackdropStyle} onClick={() => setPlusSheetOpen(false)}>
-              <div style={plusSheetPanelStyle} onClick={(event) => event.stopPropagation()}>
-                <button
-                  type="button"
-                  onClick={() => setPlusSheetOpen(false)}
-                  style={plusSheetCloseButtonStyle}
-                  aria-label="닫기"
-                >
-                  ✕
-                </button>
-                <OnboardingGate
-                  step={onboardingStep}
-                  loading={loading}
-                  message={message}
-                  onChooseCreate={() => setOnboardingStep("create")}
-                  onChooseJoin={() => setOnboardingStep("join")}
-                  onBack={() => setOnboardingStep("choice")}
-                  workspaceName={workspaceName}
-                  workspaceDescription={workspaceDescription}
-                  onWorkspaceNameChange={setWorkspaceName}
-                  onWorkspaceDescriptionChange={setWorkspaceDescription}
-                  onCreateWorkspace={createWorkspace}
-                  joinInviteCode={joinInviteCode}
-                  onJoinInviteCodeChange={setJoinInviteCode}
-                  onAcceptInvite={() => acceptInviteCode()}
-                />
-              </div>
-            </div>
-          )}
-    
-          {activeTab === "settings" && (
-            <div style={{ marginTop: -20 }}>
-              <AppHeader title="설정" loading={loading} onSignOut={signOut} />
+  if (showEmptyHome) {
+    return (
+      <Shell>
+        <EmptyWorkspaceHome
+          displayName={profile.display_name}
+          avatarUrl={profile.avatar_url}
+          onOpenMenu={() => setMenuOpen(true)}
+          onOpenPlus={() => {
+            setOnboardingStep("choice");
+            setPlusSheetOpen(true);
+          }}
+        />
+
+        <HamburgerMenu
+          isOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          workspaces={workspaces}
+          onSelectWorkspace={(id) => {
+            const next = workspaces.find((item) => item.id === id) || null;
+            setWorkspace(next);
+          }}
+          onGoProfileSettings={() => setActiveTab("settings")}
+          onCreateWorkspace={() => {
+            setOnboardingStep("create");
+            setPlusSheetOpen(true);
+          }}
+          onJoinWorkspace={() => {
+            setOnboardingStep("join");
+            setPlusSheetOpen(true);
+          }}
+          onShareApp={() => {
+            const link = typeof window !== "undefined" ? window.location.origin : "";
+            const text = `미루지말자와 함께 할 일을 관리해보세요!\n${link}`;
+            if (typeof navigator !== "undefined" && navigator.clipboard) {
+              navigator.clipboard.writeText(text);
+              setMessage("공유 링크를 복사했어요.");
+            }
+          }}
+          onSignOut={signOut}
+          onDeleteAccount={deleteAccount}
+        />
+
+        {plusSheetOpen && (
+          <div style={plusSheetBackdropStyle} onClick={() => setPlusSheetOpen(false)}>
+            <div style={plusSheetPanelStyle} onClick={(event) => event.stopPropagation()}>
               <button
                 type="button"
-                onClick={() => setActiveTab("calendar")}
-                style={{ border: "none", background: "transparent", color: "#e11d48", fontWeight: 800, fontSize: 13, cursor: "pointer", marginBottom: 12 }}
+                onClick={() => setPlusSheetOpen(false)}
+                style={plusSheetCloseButtonStyle}
+                aria-label="닫기"
               >
-                ← 홈으로
+                ✕
               </button>
-              <SettingsTab
-                workspaces={workspaces}
-                workspace={workspace}
-                members={members}
-                currentMember={currentMember}
-                isManager={isManager}
+              <OnboardingGate
+                step={onboardingStep}
+                loading={loading}
+                message={message}
+                onChooseCreate={() => setOnboardingStep("create")}
+                onChooseJoin={() => setOnboardingStep("join")}
+                onBack={() => setOnboardingStep("choice")}
                 workspaceName={workspaceName}
                 workspaceDescription={workspaceDescription}
-                loading={loading}
                 onWorkspaceNameChange={setWorkspaceName}
                 onWorkspaceDescriptionChange={setWorkspaceDescription}
                 onCreateWorkspace={createWorkspace}
-                newMemberName={newMemberName}
-                newMemberRole={newMemberRole}
-                onNewMemberNameChange={setNewMemberName}
-                onNewMemberRoleChange={setNewMemberRole}
-                onAddMember={addVirtualMember}
-                inviteRole={inviteRole}
-                onInviteRoleChange={setInviteRole}
-                inviteSuggestedName={inviteSuggestedName}
-                onInviteSuggestedNameChange={setInviteSuggestedName}
-                onCreateInvite={createInvite}
-                pendingInvites={pendingInvites}
-                onCancelPendingInvite={cancelPendingInvite}
-                onRemoveMember={removeMember}
-                onRestoreMember={restoreMember}
                 joinInviteCode={joinInviteCode}
                 onJoinInviteCodeChange={setJoinInviteCode}
                 onAcceptInvite={() => acceptInviteCode()}
-                onDeleteAccount={deleteAccount}
-                onTransferOwnership={transferOwnership}
-                onUpdateMemberRole={updateMemberRole}
-                onDeleteWorkspace={deleteWorkspace}
-                myNickname={myNickname}
-                onMyNicknameChange={setMyNickname}
-                onSaveMyNickname={saveMyNickname}
-                recoveryEmail={profileRecoveryEmail}
-                onRecoveryEmailChange={setProfileRecoveryEmail}
-                onSaveRecoveryEmail={saveRecoveryEmail}
-                newPassword={newPassword}
-                onNewPasswordChange={setNewPassword}
-                onChangePassword={changePassword}
-                profileDisplayName={profile.display_name}
-                avatarUrl={profile.avatar_url}
-                myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
-                onUploadAvatar={uploadAvatar}
               />
             </div>
-          )}
-        </Shell>
-      );
-    }
+          </div>
+        )}
+
+        {activeTab === "settings" && (
+          <div style={{ marginTop: -20 }}>
+            <AppHeader title="설정" loading={loading} onSignOut={signOut} />
+            <button
+              type="button"
+              onClick={() => setActiveTab("calendar")}
+              style={{ border: "none", background: "transparent", color: "#e11d48", fontWeight: 800, fontSize: 13, cursor: "pointer", marginBottom: 12 }}
+            >
+              ← 홈으로
+            </button>
+            <SettingsTab
+              workspaces={workspaces}
+              workspace={workspace}
+              members={members}
+              currentMember={currentMember}
+              isManager={isManager}
+              workspaceName={workspaceName}
+              workspaceDescription={workspaceDescription}
+              loading={loading}
+              onWorkspaceNameChange={setWorkspaceName}
+              onWorkspaceDescriptionChange={setWorkspaceDescription}
+              onCreateWorkspace={createWorkspace}
+              newMemberName={newMemberName}
+              newMemberRole={newMemberRole}
+              onNewMemberNameChange={setNewMemberName}
+              onNewMemberRoleChange={setNewMemberRole}
+              onAddMember={addVirtualMember}
+              inviteRole={inviteRole}
+              onInviteRoleChange={setInviteRole}
+              inviteSuggestedName={inviteSuggestedName}
+              onInviteSuggestedNameChange={setInviteSuggestedName}
+              onCreateInvite={createInvite}
+              pendingInvites={pendingInvites}
+              onCancelPendingInvite={cancelPendingInvite}
+              onRemoveMember={removeMember}
+              onRestoreMember={restoreMember}
+              joinInviteCode={joinInviteCode}
+              onJoinInviteCodeChange={setJoinInviteCode}
+              onAcceptInvite={() => acceptInviteCode()}
+              onDeleteAccount={deleteAccount}
+              onTransferOwnership={transferOwnership}
+              onUpdateMemberRole={updateMemberRole}
+              onDeleteWorkspace={deleteWorkspace}
+              myNickname={myNickname}
+              onMyNicknameChange={setMyNickname}
+              onSaveMyNickname={saveMyNickname}
+              recoveryEmail={profileRecoveryEmail}
+              onRecoveryEmailChange={setProfileRecoveryEmail}
+              onSaveRecoveryEmail={saveRecoveryEmail}
+              newPassword={newPassword}
+              onNewPasswordChange={setNewPassword}
+              onChangePassword={changePassword}
+              profileDisplayName={profile.display_name}
+              avatarUrl={profile.avatar_url}
+              myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
+              onUploadAvatar={uploadAvatar}
+            />
+          </div>
+        )}
+      </Shell>
+    );
   }
-  
+
   return (
     <Shell>
       <AppHeader title={tabTitle(activeTab)} loading={loading} onSignOut={signOut} />
@@ -470,7 +466,6 @@ export default function Home() {
             <span style={roleBadgeStyle}>{roleLabel(currentMember.role)}</span>
           )}
         </div>
-        <a href="/dev" style={devLinkStyle}>dev</a>
       </section>
 
       {workspace && <NotificationPrompt />}
