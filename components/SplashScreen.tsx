@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const MIN_SPIN_MS = 1200;
 const MIN_TOTAL_MS = 2000;
 const REVEAL_HOLD_MS = 600;
 
@@ -14,9 +15,17 @@ export default function SplashScreen({ ready, onFinish }: SplashScreenProps) {
   const [phase, setPhase] = useState<"spin" | "reveal">("spin");
   const startedAtRef = useRef<number>(Date.now());
 
+  // ready가 true여도 회전을 MIN_SPIN_MS만큼은 반드시 보여준 뒤 reveal로 전환
   useEffect(() => {
     if (!ready || phase !== "spin") return;
-    setPhase("reveal");
+    const elapsed = Date.now() - startedAtRef.current;
+    const remaining = MIN_SPIN_MS - elapsed;
+    if (remaining <= 0) {
+      setPhase("reveal");
+      return;
+    }
+    const timer = setTimeout(() => setPhase("reveal"), remaining);
+    return () => clearTimeout(timer);
   }, [ready, phase]);
 
   useEffect(() => {
