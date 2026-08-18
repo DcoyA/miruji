@@ -246,6 +246,32 @@ export function useTasks({
     setMessage("미완료 할 일을 이월했습니다.");
     setLoading(false);
   }
+  
+  async function reorderTasks(dateKey: string, orderedTaskIds: string[]) {
+    if (!workspace) return;
+  
+    setTasks((prev) => {
+      const next = [...prev];
+      orderedTaskIds.forEach((id, index) => {
+        const targetIndex = next.findIndex((task) => task.id === id);
+        if (targetIndex !== -1) {
+          next[targetIndex] = { ...next[targetIndex], order_index: index };
+        }
+      });
+      return next;
+    });
+  
+    const results = await Promise.all(
+      orderedTaskIds.map((id, index) =>
+        supabase.from("tasks").update({ order_index: index }).eq("id", id)
+      )
+    );
+  
+    const failed = results.find((result) => result.error);
+    if (failed?.error) {
+      setMessage(`순서 저장 실패: ${failed.error.message}`);
+    }
+  }
 
   async function submitTask(task: Task) {
     if (!workspace) {
