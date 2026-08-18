@@ -37,7 +37,7 @@ export function useTasks({
 }: UseTasksParams) {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDescription, setNewTaskDescription] = useState("");
-  const [newTaskAssignedMemberId, setNewTaskAssignedMemberId] = useState("");
+  const [newTaskAssignedMemberIds, setNewTaskAssignedMemberIds] = useState<string[]>([]);
   const [newTaskVerificationType, setNewTaskVerificationType] = useState("none");
   const [newTaskDueTime, setNewTaskDueTime] = useState("");
   const [newTaskRewardPoints, setNewTaskRewardPoints] = useState(1);
@@ -47,7 +47,7 @@ export function useTasks({
   function resetTaskState() {
     setNewTaskTitle("");
     setNewTaskDescription("");
-    setNewTaskAssignedMemberId("");
+    setNewTaskAssignedMemberIds([]);
     setNewTaskVerificationType("none");
     setNewTaskRewardPoints(1);
     setNewTaskRepeatType("none");
@@ -61,16 +61,22 @@ export function useTasks({
     );
   }
 
+  function toggleAssignedMember(memberId: string) {
+    setNewTaskAssignedMemberIds((prev) =>
+      prev.includes(memberId) ? prev.filter((id) => id !== memberId) : [...prev, memberId]
+    );
+  }
+
   async function createTask() {
     if (!workspace) {
       setMessage("모임이 없습니다.");
       return;
     }
     if (!newTaskTitle.trim()) {
-      setMessage("제목을 입력해주세요.");
+      setMessage("할 일을 입력해주세요.");
       return;
     }
-    if (!newTaskAssignedMemberId) {
+    if (newTaskAssignedMemberIds.length === 0) {
       setMessage("담당자를 선택해주세요.");
       return;
     }
@@ -78,86 +84,90 @@ export function useTasks({
       setMessage("반복할 요일을 선택해주세요.");
       return;
     }
-
+  
     setLoading(true);
     setMessage("");
-
+  
     const creatorMemberId =
       currentMember?.id ||
       members.find((member) => member.role === "owner" || member.role === "manager")?.id ||
       null;
-
+  
     if (newTaskRepeatType === "none") {
-      const { data, error } = await supabase
-        .from("tasks")
-        .insert({
-          workspace_id: workspace.id,
-          title: newTaskTitle.trim(),
-          description: newTaskDescription.trim() || null,
-          task_type: "custom",
-          status: "todo",
-          due_date: selectedDate,
-          assigned_member_id: newTaskAssignedMemberId,
-          verification_type: newTaskVerificationType,
-          due_time: newTaskDueTime || null,
-          verification_required: newTaskVerificationType !== "none",
-          reward_points: newTaskRewardPoints,
-          rollover_enabled: true,
-          created_by_member_id: creatorMemberId,
-        })
-        .select(taskSelect)
-        .single();
-
+      const rows = newTaskAssignedMemberIds.map((memberId) => ({
+        workspace_id: workspace.id,
+        title: newTaskTitle.trim(),
+        description: newTaskDescription.trim() || null,
+        task_type: "custom",
+        status: "todo",
+        due_date: selectedDate,
+        assigned_member_id: memberId,
+        verification_type: newTaskVerificationType,
+        due_time: newTaskDueTime || null,
+        verification_required: newTaskVerificationType !== "none",
+        reward_points: newTaskRewardPoints,
+        rollover_enabled: true,
+        created_by_member_id: creatorMemberId,
+      }));
+  
+      const { data, error } = await supabase.from("tasks").insert(rows).select(taskSelect);
+  
       if (error) {
-        setMessage(`할 일 등록 실패: ${error.message}`);
+        setMessage(`할 일 생성 실패: ${error.message}`);
         setLoading(false);
         return;
       }
-
-      setTasks((prev) => [...prev, data as Task]);
-      setMessage("할 일 등록 완료");
+  
+      setTasks((prev) => [...prev, ...((data ?? []) as Task[])]);
+      setMessage(
+        newTaskAssignedMemberIds.length > 1
+          ? `${newTaskAssignedMemberIds.length}명에게 할 일을 각각 만들었어요`
+          : "할 일 생성 완료"
+      );
     } else {
+      const rows = newTaskAssignedMemberIds.map((memberId) => ({
+        workspace_id: workspace.id,
+        title: newTaskTitle.trim(),
+        description: newTaskDescription.trim() || null,
+        assigned_member_id: memberId,
+        verification_type: newTaskVerificationType,
+        due_time: newTaskDueTime || null,
+        reward_points: newTaskRewardPoints,
+        rollover_enabled: true,
+        repeat_type: newTaskRepeatType,
+        repeat_weekdays: newTaskRepeatType === "weekly" ? newTaskRepeatWeekdays : [],
+        is_active: true,
+        created_by_member_id: creatorMemberId,
+      }));
+  
       const { data: templateData, error: templateError } = await supabase
         .from("task_templates")
-        .insert({
-          workspace_id: workspace.id,
-          title: newTaskTitle.trim(),
-          description: newTaskDescription.trim() || null,
-          assigned_member_id: newTaskAssignedMemberId,
-          verification_type: newTaskVerificationType,
-          due_time: newTaskDueTime || null,
-          reward_points: newTaskRewardPoints,
-          rollover_enabled: true,
-          repeat_type: newTaskRepeatType,
-          repeat_weekdays: newTaskRepeatType === "weekly" ? newTaskRepeatWeekdays : [],
-          is_active: true,
-          created_by_member_id: creatorMemberId,
-        })
-        .select(taskTemplateSelect)
-        .single();
-
+        .insert(rows)
+        .select(taskTemplateSelect);
+  
       if (templateError) {
-        setMessage(`반복 할 일 등록 실패: ${templateError.message}`);
+        setMessage(`반복 할 일 생성 실패: ${templateError.message}`);
         setLoading(false);
         return;
       }
-
-      setTemplates((prev) => [...prev, templateData as TaskTemplate]);
-
+  
+      setTemplates((prev) => [...prev, ...((templateData ?? []) as TaskTemplate[])]);
+  
       const { error: generateError } = await supabase.rpc("generate_recurring_tasks");
-
+  
       if (generateError) {
         setMessage(`반복 할 일 생성 실패: ${generateError.message}`);
         setLoading(false);
         return;
       }
-
+  
       await loadWorkspaceData(workspace.id);
-      setMessage("반복 할 일 등록 완료");
+      setMessage("반복 할 일 생성 완료");
     }
-
+  
     setNewTaskTitle("");
     setNewTaskDescription("");
+    setNewTaskAssignedMemberIds([]);
     setNewTaskVerificationType("none");
     setNewTaskRewardPoints(1);
     setNewTaskRepeatType("none");
@@ -245,6 +255,32 @@ export function useTasks({
     await loadWorkspaceData(workspace.id);
     setMessage("미완료 할 일을 이월했습니다.");
     setLoading(false);
+  }
+  
+  async function reorderTasks(dateKey: string, orderedTaskIds: string[]) {
+    if (!workspace) return;
+  
+    setTasks((prev) => {
+      const next = [...prev];
+      orderedTaskIds.forEach((id, index) => {
+        const targetIndex = next.findIndex((task) => task.id === id);
+        if (targetIndex !== -1) {
+          next[targetIndex] = { ...next[targetIndex], order_index: index };
+        }
+      });
+      return next;
+    });
+  
+    const results = await Promise.all(
+      orderedTaskIds.map((id, index) =>
+        supabase.from("tasks").update({ order_index: index }).eq("id", id)
+      )
+    );
+  
+    const failed = results.find((result) => result.error);
+    if (failed?.error) {
+      setMessage(`순서 저장 실패: ${failed.error.message}`);
+    }
   }
 
   async function submitTask(task: Task) {
@@ -543,8 +579,8 @@ export function useTasks({
     setNewTaskTitle,
     newTaskDescription,
     setNewTaskDescription,
-    newTaskAssignedMemberId,
-    setNewTaskAssignedMemberId,
+    newTaskAssignedMemberIds,
+    toggleAssignedMember,
     newTaskVerificationType,
     setNewTaskVerificationType,
     newTaskDueTime,
@@ -559,6 +595,7 @@ export function useTasks({
     toggleTemplateActive,
     deleteTemplate,
     rolloverNow,
+    reorderTasks,
     submitTask,
     submitTaskWithText,
     submitTaskWithEvidence,

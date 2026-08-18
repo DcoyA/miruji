@@ -31,6 +31,7 @@ export type Member = {
   requires_account: boolean;
   status: string;
   avatar_url: string | null;
+  notifications_enabled: boolean;
 };
 
 export type Task = {
@@ -48,6 +49,7 @@ export type Task = {
   created_by_member_id: string | null;
   evidence_url: string | null;
   evidence_text: string | null;
+  order_index: number | null;
 };
 
 export type TaskTemplate = {
@@ -87,4 +89,4 @@ export type RewardTransaction = {
   created_at: string;
 };
 
-export type ActiveTab = "calendar" | "missions" | "rewards" | "settings";
+export type ActiveTab = "tasks" | "members" | "rewards";

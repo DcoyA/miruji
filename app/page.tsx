@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   titleStyle,
   subTextStyle,
@@ -23,16 +23,16 @@ import Shell from "@/components/Shell";
 import AppHeader from "@/components/AppHeader";
 import AuthPanel from "@/components/AuthPanel";
 import BottomNav from "@/components/BottomNav";
-import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 
-import CalendarGrid from "@/features/calendar/CalendarGrid";
-import CalendarToolbar from "@/features/calendar/CalendarToolbar";
 import DayTaskList from "@/features/calendar/DayTaskList";
-import SummaryStrip from "@/features/calendar/SummaryStrip";
-import MissionTab from "@/features/missions/MissionTab";
+import AddTaskModal from "@/features/tasks/AddTaskModal";
+import TemplateManagerPanel from "@/features/tasks/TemplateManagerPanel";
 import RewardTab from "@/features/rewards/RewardTab";
 import TaskList from "@/features/tasks/TaskList";
 import SettingsTab from "@/features/settings/SettingsTab";
+import ViewSwitchTabs, { type CalendarViewMode } from "@/features/tasks/ViewSwitchTabs";
+import TaskStatsCards from "@/features/tasks/TaskStatsCards";
+import MonthView from "@/features/tasks/MonthView";
 
 import { addMonths, startOfMonth, toDateKey } from "@/lib/date";
 import { tabTitle, roleLabel } from "@/lib/labels";
@@ -47,24 +47,30 @@ import { useRewards } from "@/features/rewards/useRewards";
 import Avatar from "@/components/Avatar";
 import SplashScreen from "@/components/SplashScreen";
 
+import EmptyWorkspaceHome from "@/features/onboarding/EmptyWorkspaceHome";
+import HamburgerMenu from "@/components/HamburgerMenu";
+import ProfileSettingsPanel from "@/features/settings/ProfileSettingsPanel";
+
 import type { ActiveTab } from "@/types/app";
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>("calendar");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("tasks");
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
 
   const [summaryFilter, setSummaryFilter] = useState<"all" | "pending" | "approved" | null>(null);
-  const [minSplashElapsed, setMinSplashElapsed] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewMode>("month");
 
-  useEffect(() => {
-    const timer = setTimeout(() => setMinSplashElapsed(true), 2000);
-    return () => clearTimeout(timer);
-  }, []);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [plusSheetOpen, setPlusSheetOpen] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
 
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+    
   const auth = useAuth({ setMessage, setLoading });
   const {
     authLoading,
@@ -158,8 +164,23 @@ export default function Home() {
     deleteWorkspace,
     resetWorkspaceState,
     balanceByMemberId,
+    toggleMyNotifications,
   } = workspaceHook;
 
+  const currentWorkspaceIndex = workspace ? workspaces.findIndex((item) => item.id === workspace.id) : -1;
+  
+  function goToPrevWorkspace() {
+    if (workspaces.length < 2 || currentWorkspaceIndex < 0) return;
+    const nextIndex = (currentWorkspaceIndex - 1 + workspaces.length) % workspaces.length;
+    setWorkspace(workspaces[nextIndex]);
+  }
+  
+  function goToNextWorkspace() {
+    if (workspaces.length < 2 || currentWorkspaceIndex < 0) return;
+    const nextIndex = (currentWorkspaceIndex + 1) % workspaces.length;
+    setWorkspace(workspaces[nextIndex]);
+  }
+  
   const tasksHook = useTasks({
     workspace,
     isManager,
@@ -178,8 +199,8 @@ export default function Home() {
     setNewTaskTitle,
     newTaskDescription,
     setNewTaskDescription,
-    newTaskAssignedMemberId,
-    setNewTaskAssignedMemberId,
+    newTaskAssignedMemberIds,
+    toggleAssignedMember,
     newTaskVerificationType,
     setNewTaskVerificationType,
     newTaskDueTime,
@@ -202,6 +223,7 @@ export default function Home() {
     approveTask,
     rejectTask,
     resetTaskState,
+    reorderTasks
   } = tasksHook;
 
   const rewardsHook = useRewards({
@@ -260,6 +282,11 @@ export default function Home() {
   }, [tasks, selectedDate]);
 
   const monthTaskCount = tasks.length;
+  const todayKeyForStats = toDateKey(new Date());
+  const todayTasks = tasks.filter((task) => task.due_date === todayKeyForStats);
+  const todayDoneCount = todayTasks.filter((task) => task.status === "approved").length;
+  const todayTotalCount = todayTasks.length;
+  const monthUnfinishedCount = tasks.filter((task) => task.status !== "approved").length;
   const pendingCount = tasks.filter((task) => task.status === "submitted").length;
   const approvedCount = tasks.filter((task) => task.status === "approved").length;
 
@@ -270,14 +297,14 @@ export default function Home() {
     return [];
   }, [tasks, summaryFilter]);
 
-  if (authLoading || !minSplashElapsed) {
-    return (
-      <Shell>
-        <SplashScreen progress={45} label="로그인 확인 중..." />
-      </Shell>
-    );
+  const isReady = !authLoading && (!profile || workspacesLoaded);
+
+  if (showSplash) {
+    return <SplashScreen ready={isReady} onFinish={() => setShowSplash(false)} />;
   }
 
+  const showEmptyHome = Boolean(profile) && !pendingInviteCode && workspaces.length === 0;
+  
   if (!profile) {
     return (
       <Shell>
@@ -306,100 +333,186 @@ export default function Home() {
     );
   }
 
-  if (!workspacesLoaded) {
+  if (pendingInviteCode) {
     return (
       <Shell>
-        <SplashScreen progress={85} label="데이터 불러오는 중..." />
+        <AppHeader />
+        <h1 style={titleStyle}>초대 처리 중...</h1>
+        <p style={subTextStyle}>잠시만 기다려주세요. 곧 연결됩니다.</p>
+        {message && <div style={messageBoxStyle(message)}>{message}</div>}
       </Shell>
     );
   }
 
-  const needsOnboarding = !profile.onboarding_completed && workspaces.length === 0;
-
-  if (needsOnboarding) {
-    if (pendingInviteCode) {
+  if (showEmptyHome) {
+    if (showProfileSettings) {
       return (
         <Shell>
-          <AppHeader title="미루지" loading={loading} onSignOut={signOut} />
-          <h1 style={titleStyle}>초대 확인 중...</h1>
-          <p style={subTextStyle}>잠시만 기다려주세요. 초대코드를 처리하고 있습니다.</p>
-          {message && <div style={messageBoxStyle(message)}>{message}</div>}
+          <ProfileSettingsPanel
+            profileDisplayName={profile.display_name}
+            avatarUrl={profile.avatar_url}
+            myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
+            loading={loading}
+            onUploadAvatar={uploadAvatar}
+            myNickname={myNickname}
+            onMyNicknameChange={setMyNickname}
+            onSaveMyNickname={saveMyNickname}
+            recoveryEmail={profileRecoveryEmail}
+            onRecoveryEmailChange={setProfileRecoveryEmail}
+            onSaveRecoveryEmail={saveRecoveryEmail}
+            currentNicknameLabel={currentMember?.display_name ?? profile.display_name}
+            newPassword={newPassword}
+            onNewPasswordChange={setNewPassword}
+            onChangePassword={changePassword}
+            onBack={() => setShowProfileSettings(false)}
+          />
         </Shell>
       );
     }
 
+    if (showProfileSettings) {
+      return (
+        <Shell>
+          <ProfileSettingsPanel
+            profileDisplayName={profile.display_name}
+            avatarUrl={profile.avatar_url}
+            myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
+            loading={loading}
+            onUploadAvatar={uploadAvatar}
+            myNickname={myNickname}
+            onMyNicknameChange={setMyNickname}
+            onSaveMyNickname={saveMyNickname}
+            recoveryEmail={profileRecoveryEmail}
+            onRecoveryEmailChange={setProfileRecoveryEmail}
+            onSaveRecoveryEmail={saveRecoveryEmail}
+            currentNicknameLabel={currentMember?.display_name ?? profile.display_name}
+            newPassword={newPassword}
+            onNewPasswordChange={setNewPassword}
+            onChangePassword={changePassword}
+            onBack={() => setShowProfileSettings(false)}
+          />
+        </Shell>
+      );
+    }
+  
     return (
       <Shell>
-        <AppHeader title="미루지" loading={loading} onSignOut={signOut} />
-        <OnboardingGate
-          step={onboardingStep}
-          loading={loading}
-          message={message}
-          onChooseCreate={() => setOnboardingStep("create")}
-          onChooseJoin={() => setOnboardingStep("join")}
-          onBack={() => setOnboardingStep("choice")}
-          workspaceName={workspaceName}
-          workspaceDescription={workspaceDescription}
-          onWorkspaceNameChange={setWorkspaceName}
-          onWorkspaceDescriptionChange={setWorkspaceDescription}
-          onCreateWorkspace={createWorkspace}
-          joinInviteCode={joinInviteCode}
-          onJoinInviteCodeChange={setJoinInviteCode}
-          onAcceptInvite={() => acceptInviteCode()}
+        <EmptyWorkspaceHome
+          displayName={profile.display_name}
+          avatarUrl={profile.avatar_url}
+          onOpenMenu={() => setMenuOpen(true)}
+          onOpenPlus={() => {
+            setOnboardingStep("choice");
+            setPlusSheetOpen(true);
+          }}
         />
+  
+        <HamburgerMenu
+          isOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          workspaces={workspaces}
+          onSelectWorkspace={(id) => {
+            const next = workspaces.find((item) => item.id === id) || null;
+            setWorkspace(next);
+          }}
+          onGoProfileSettings={() => setShowProfileSettings(true)}
+          onCreateWorkspace={() => {
+            setOnboardingStep("create");
+            setPlusSheetOpen(true);
+          }}
+          onJoinWorkspace={() => {
+            setOnboardingStep("join");
+            setPlusSheetOpen(true);
+          }}
+          onShareApp={() => {
+            const link = typeof window !== "undefined" ? window.location.origin : "";
+            const text = `미루지말자와 함께 할 일을 관리해보세요!\n${link}`;
+            if (typeof navigator !== "undefined" && navigator.clipboard) {
+              navigator.clipboard.writeText(text);
+              setMessage("공유 링크를 복사했어요.");
+            }
+          }}
+          onSignOut={signOut}
+          onDeleteAccount={deleteAccount}
+        />
+  
+        {plusSheetOpen && (
+          <div style={plusSheetBackdropStyle} onClick={() => setPlusSheetOpen(false)}>
+            <div style={plusSheetPanelStyle} onClick={(event) => event.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => setPlusSheetOpen(false)}
+                style={plusSheetCloseButtonStyle}
+                aria-label="닫기"
+              >
+                ✕
+              </button>
+              <OnboardingGate
+                step={onboardingStep}
+                loading={loading}
+                message={message}
+                onChooseCreate={() => setOnboardingStep("create")}
+                onChooseJoin={() => setOnboardingStep("join")}
+                onBack={() => setOnboardingStep("choice")}
+                workspaceName={workspaceName}
+                workspaceDescription={workspaceDescription}
+                onWorkspaceNameChange={setWorkspaceName}
+                onWorkspaceDescriptionChange={setWorkspaceDescription}
+                onCreateWorkspace={createWorkspace}
+                joinInviteCode={joinInviteCode}
+                onJoinInviteCodeChange={setJoinInviteCode}
+                onAcceptInvite={() => acceptInviteCode()}
+              />
+            </div>
+          </div>
+        )}
       </Shell>
     );
   }
 
   return (
     <Shell>
-      <AppHeader title={tabTitle(activeTab)} loading={loading} onSignOut={signOut} />
-
+      <AppHeader
+        workspaceName={workspace?.name ?? null}
+        showWorkspaceControls={Boolean(workspace)}
+        canSwitchWorkspace={workspaces.length > 1}
+        onPrevWorkspace={goToPrevWorkspace}
+        onNextWorkspace={goToNextWorkspace}
+        notificationsEnabled={currentMember?.notifications_enabled ?? true}
+        onToggleNotifications={toggleMyNotifications}
+        onOpenMenu={() => setMenuOpen(true)}
+      />
+      
       <section style={accountBoxStyle}>
-        <Avatar src={profile.avatar_url} name={profile.display_name} size={44} />
-        <div style={accountInfoStyle}>
-          <strong style={accountNameStyle}>{currentMember?.display_name || profile.display_name}</strong>
-          {currentMember && (
-            <span style={roleBadgeStyle}>{roleLabel(currentMember.role)}</span>
-          )}
-        </div>
-        <a href="/dev" style={devLinkStyle}>dev</a>
+        ...
       </section>
 
-      {workspace && <NotificationPrompt />}
+{workspace && <NotificationPrompt />}
 
-      {workspaces.length > 0 && (
-        <WorkspaceSwitcher
-          workspaces={workspaces}
-          currentWorkspaceId={workspace?.id ?? ""}
-          onSelect={(id) => {
-            const next = workspaces.find((item) => item.id === id) || null;
-            setWorkspace(next);
-          }}
-        />
-      )}
-
-      {workspace && activeTab === "calendar" && (
+      {workspace && activeTab === "tasks" && (
         <>
-          <SummaryStrip
-            monthTaskCount={monthTaskCount}
-            pendingCount={pendingCount}
-            approvedCount={approvedCount}
-            onClickMonth={() => setSummaryFilter("all")}
-            onClickPending={() => setSummaryFilter("pending")}
-            onClickApproved={() => setSummaryFilter("approved")}
+          <TaskStatsCards
+            todayDoneCount={todayDoneCount}
+            todayTotalCount={todayTotalCount}
+            monthUnfinishedCount={monthUnfinishedCount}
+            onClickToday={() => setSelectedDate(todayKeyForStats)}
+            onClickUnfinished={() => setSummaryFilter("all")}
           />
-          <CalendarToolbar
-            currentMonth={currentMonth}
-            onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))}
-            onNext={() => setCurrentMonth(addMonths(currentMonth, 1))}
-            onToday={() => {
-              const today = new Date();
-              setCurrentMonth(startOfMonth(today));
-              setSelectedDate(toDateKey(today));
-            }}
-          />
-          <CalendarGrid currentMonth={currentMonth} selectedDate={selectedDate} tasks={tasks} onSelectDate={setSelectedDate} />
+          <ViewSwitchTabs mode={calendarViewMode} onChange={setCalendarViewMode} />
+          {calendarViewMode === "month" && (
+            <MonthView
+              currentMonth={currentMonth}
+              selectedDate={selectedDate}
+              tasks={tasks}
+              onSelectDate={setSelectedDate}
+              onPrevMonth={() => setCurrentMonth((prev) => addMonths(prev, -1))}
+              onNextMonth={() => setCurrentMonth((prev) => addMonths(prev, 1))}
+              onToday={() => {
+                setCurrentMonth(startOfMonth(new Date()));
+                setSelectedDate(toDateKey(new Date()));
+              }}
+            />
+          )}
           <DayTaskList
             selectedDate={selectedDate}
             tasks={selectedTasks}
@@ -414,79 +527,52 @@ export default function Home() {
             onRejectTask={rejectTask}
             onCancelTask={cancelSubmission}
             onDeleteTask={deleteTask}
-            onAddTask={() => setActiveTab("missions")}
+            onAddTask={() => setShowAddTaskModal(true)}
             onSubmitWithEvidence={submitTaskWithEvidence}
             onSubmitWithText={submitTaskWithText}
+            onReorderTasks={reorderTasks}
           />
         </>
       )}
 
-      {workspace && activeTab === "missions" && (
-        <MissionTab
-          selectedDate={selectedDate}
-          members={activeMembers}
-          tasks={selectedTasks}
+      {workspace && activeTab === "tasks" && (
+        <TemplateManagerPanel
           templates={templates}
-          currentMember={currentMember}
-          isManager={isManager}
-          title={newTaskTitle}
-          description={newTaskDescription}
-          assignedMemberId={newTaskAssignedMemberId}
-          verificationType={newTaskVerificationType}
-          dueTime={newTaskDueTime}
-          onDueTimeChange={setNewTaskDueTime}
-          rewardPoints={newTaskRewardPoints}
-          repeatType={newTaskRepeatType}
-          repeatWeekdays={newTaskRepeatWeekdays}
           loading={loading}
-          onTitleChange={setNewTaskTitle}
-          onDescriptionChange={setNewTaskDescription}
-          onAssignedMemberIdChange={setNewTaskAssignedMemberId}
-          onVerificationTypeChange={setNewTaskVerificationType}
-          onRewardPointsChange={setNewTaskRewardPoints}
-          onRepeatTypeChange={setNewTaskRepeatType}
-          onToggleRepeatWeekday={toggleRepeatWeekday}
-          onCreate={createTask}
-          onSubmitTask={submitTask}
-          onApproveTask={approveTask}
-          onRejectTask={rejectTask}
+          isManager={isManager}
           onToggleTemplateActive={toggleTemplateActive}
           onDeleteTemplate={deleteTemplate}
           onRolloverNow={rolloverNow}
-          onSelectedDateChange={setSelectedDate}
-          onCancelTask={cancelSubmission}
-          onDeleteTask={deleteTask}
-          onSubmitWithEvidence={submitTaskWithEvidence}
-          onSubmitWithText={submitTaskWithText}
         />
       )}
+      
+      <AddTaskModal
+        isOpen={showAddTaskModal}
+        onClose={() => setShowAddTaskModal(false)}
+        selectedDate={selectedDate}
+        members={activeMembers}
+        title={newTaskTitle}
+        description={newTaskDescription}
+        assignedMemberIds={newTaskAssignedMemberIds}
+        verificationType={newTaskVerificationType}
+        dueTime={newTaskDueTime}
+        rewardPoints={newTaskRewardPoints}
+        repeatType={newTaskRepeatType}
+        repeatWeekdays={newTaskRepeatWeekdays}
+        loading={loading}
+        onSelectedDateChange={setSelectedDate}
+        onTitleChange={setNewTaskTitle}
+        onDescriptionChange={setNewTaskDescription}
+        onToggleAssignedMember={toggleAssignedMember}
+        onVerificationTypeChange={setNewTaskVerificationType}
+        onDueTimeChange={setNewTaskDueTime}
+        onRewardPointsChange={setNewTaskRewardPoints}
+        onRepeatTypeChange={setNewTaskRepeatType}
+        onToggleRepeatWeekday={toggleRepeatWeekday}
+        onCreate={createTask}
+      />
 
-      {workspace && activeTab === "rewards" && (
-        <RewardTab
-          members={activeMembers}
-          rewards={rewards}
-          transactions={rewardTransactions}
-          currentMember={currentMember}
-          isManager={isManager}
-          title={newRewardTitle}
-          description={newRewardDescription}
-          targetMemberId={newRewardTargetMemberId}
-          costPoints={newRewardCostPoints}
-          loading={loading}
-          balanceByMemberId={balanceByMemberId}
-          onTitleChange={setNewRewardTitle}
-          onDescriptionChange={setNewRewardDescription}
-          onTargetMemberIdChange={setNewRewardTargetMemberId}
-          onCostPointsChange={setNewRewardCostPoints}
-          onCreate={createReward}
-          onRequestRedeem={requestRedeem}
-          onConfirmRedeem={confirmRedeem}
-          onRejectRedeem={rejectRedeem}
-          onDeleteReward={deleteReward}
-        />
-      )}
-
-      {activeTab === "settings" && (
+      {activeTab === "members" && (
         <SettingsTab
           workspaces={workspaces}
           workspace={workspace}
@@ -536,7 +622,7 @@ export default function Home() {
         />
       )}
 
-      {!workspace && activeTab !== "settings" && <NoWorkspacePrompt onGoSettings={() => setActiveTab("settings")} />}
+      {!workspace && activeTab !== "members" && <NoWorkspacePrompt onGoSettings={() => setActiveTab("members")} />}
 
       {message && <div style={messageBoxStyle(message)}>{message}</div>}
       {summaryFilter && (
@@ -581,7 +667,96 @@ export default function Home() {
           </div>
         </div>
       )}
+       <HamburgerMenu
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        workspaces={workspaces}
+        onSelectWorkspace={(id) => {
+          const next = workspaces.find((item) => item.id === id) || null;
+          setWorkspace(next);
+        }}
+        onGoProfileSettings={() => setShowProfileSettings(true)}
+        onCreateWorkspace={() => {
+          setOnboardingStep("create");
+          setPlusSheetOpen(true);
+        }}
+        onJoinWorkspace={() => {
+          setOnboardingStep("join");
+          setPlusSheetOpen(true);
+        }}
+        onShareApp={() => {
+          const link = typeof window !== "undefined" ? window.location.origin : "";
+          const text = `미루지말자 함께 해요! 참여 코드로 초대할게요!\n${link}`;
+          if (typeof navigator !== "undefined" && navigator.clipboard) {
+            navigator.clipboard.writeText(text);
+            setMessage("공유 링크를 복사했어요.");
+          }
+        }}
+        onSignOut={signOut}
+        onDeleteAccount={deleteAccount}
+      />
+      
+      {plusSheetOpen && (
+        <div style={plusSheetBackdropStyle} onClick={() => setPlusSheetOpen(false)}>
+          <div style={plusSheetPanelStyle} onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setPlusSheetOpen(false)}
+              style={plusSheetCloseButtonStyle}
+              aria-label="닫기"
+            >
+              ✕
+            </button>
+            <OnboardingGate
+              step={onboardingStep}
+              loading={loading}
+              message={message}
+              onChooseCreate={() => setOnboardingStep("create")}
+              onChooseJoin={() => setOnboardingStep("join")}
+              onBack={() => setOnboardingStep("choice")}
+              workspaceName={workspaceName}
+              workspaceDescription={workspaceDescription}
+              onWorkspaceNameChange={setWorkspaceName}
+              onWorkspaceDescriptionChange={setWorkspaceDescription}
+              onCreateWorkspace={createWorkspace}
+              joinInviteCode={joinInviteCode}
+              onJoinInviteCodeChange={setJoinInviteCode}
+              onAcceptInvite={() => acceptInviteCode()}
+            />
+          </div>
+        </div>
+      )}
       <BottomNav activeTab={activeTab} onChange={setActiveTab} />
     </Shell>
   );
 }
+
+const plusSheetBackdropStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(15, 10, 12, 0.4)",
+  zIndex: 1000,
+  display: "flex",
+  alignItems: "flex-end",
+  justifyContent: "center",
+};
+const plusSheetPanelStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 480,
+  maxHeight: "86vh",
+  overflowY: "auto",
+  background: "#fffaf9",
+  borderRadius: "24px 24px 0 0",
+  padding: 20,
+  position: "relative",
+};
+const plusSheetCloseButtonStyle: CSSProperties = {
+  position: "absolute",
+  right: 16,
+  top: 16,
+  border: "none",
+  background: "transparent",
+  fontSize: 18,
+  color: "#3f1d24",
+  cursor: "pointer",
+};

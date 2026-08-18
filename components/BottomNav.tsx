@@ -7,10 +7,9 @@ type BottomNavProps = {
 };
 
 const items: { key: ActiveTab; label: string; icon: string }[] = [
-  { key: "calendar", label: "캘린더", icon: "📅" },
-  { key: "missions", label: "할 일", icon: "✅" },
+  { key: "tasks", label: "할 일", icon: "✅" },
+  { key: "members", label: "참여자", icon: "👥" },
   { key: "rewards", label: "보상", icon: "🎁" },
-  { key: "settings", label: "설정", icon: "⚙️" },
 ];
 
 export default function BottomNav({ activeTab, onChange }: BottomNavProps) {
@@ -44,7 +43,7 @@ const bottomNavWrapStyle: CSSProperties = {
 
 const bottomNavStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(4, 1fr)",
+  gridTemplateColumns: "repeat(3, 1fr)",
   gap: 6,
   background: "#ffffff",
   padding: 8,

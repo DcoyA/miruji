@@ -18,9 +18,9 @@ import type {
 } from "@/types/app";
 
 export const memberSelect =
-  "id, profile_id, display_name, role, is_virtual, requires_account, status, avatar_url";
+  "id, profile_id, display_name, role, is_virtual, requires_account, status, avatar_url, notifications_enabled";
 export const taskSelect =
-  "id, workspace_id, title, description, status, due_date, due_time, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url, evidence_text";
+  "id, workspace_id, title, description, status, due_date, due_time, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url, evidence_text, order_index";
 export const taskTemplateSelect =
   "id, workspace_id, title, description, assigned_member_id, verification_type, reward_points, rollover_enabled, repeat_type, repeat_weekdays, is_active, due_time";
 export const rewardSelect =
@@ -269,7 +269,7 @@ export function useWorkspace({
     setWorkspace(newWorkspace);
     setWorkspaceName("");
     setWorkspaceDescription("");
-    setActiveTab("settings");
+    setActiveTab("members");
     setMessage(`모임 생성 완료: ${newWorkspace.name}`);
     setLoading(false);
     return { ok: true, text: `모임 생성 완료: ${newWorkspace.name}` };
@@ -521,6 +521,30 @@ export function useWorkspace({
     return { ok: true, text };
   }
 
+  async function toggleMyNotifications() {
+    if (!workspace || !currentMember) {
+      setMessage("연결된 참여자가 없습니다.");
+      return { ok: false, text: "연결된 참여자가 없습니다." };
+    }
+  
+    const nextValue = !currentMember.notifications_enabled;
+  
+    const { data, error } = await supabase
+      .from("workspace_members")
+      .update({ notifications_enabled: nextValue })
+      .eq("id", currentMember.id)
+      .select(memberSelect)
+      .single();
+  
+    if (error) {
+      setMessage(`알림 설정 변경 실패: ${error.message}`);
+      return { ok: false, text: `알림 설정 변경 실패: ${error.message}` };
+    }
+  
+    setMembers((prev) => prev.map((item) => (item.id === currentMember.id ? (data as Member) : item)));
+    return { ok: true, text: nextValue ? "알림을 켰습니다." : "알림을 껐습니다." };
+  }
+
   async function deleteWorkspace(targetWorkspace: Workspace) {
     if (currentMember?.role !== "owner") {
       setMessage("방장만 삭제할 수 있습니다.");
@@ -648,7 +672,7 @@ export function useWorkspace({
       if (joinedWorkspace) setWorkspace(joinedWorkspace as Workspace);
     }
 
-    setActiveTab("calendar");
+    setActiveTab("tasks");
     setLoading(false);
     return { ok: true, text: "참여 완료" };
   }
@@ -825,5 +849,6 @@ export function useWorkspace({
     deleteWorkspace,
     resetWorkspaceState,
     balanceByMemberId,
+    toggleMyNotifications,
   };
 }

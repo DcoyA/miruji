@@ -6,6 +6,7 @@ import type { Member, Task } from "@/types/app";
 import { formatKoreanDate, buildWeekDays, toDateKey } from "@/lib/date";
 import { memberNameById } from "@/lib/labels";
 import TaskList from "@/features/tasks/TaskList";
+import SortableTaskList from "@/features/tasks/SortableTaskList";
 
 type ViewMode = "day" | "week";
 
@@ -26,6 +27,7 @@ type DayTaskListProps = {
   onAddTask: () => void;
   onSubmitWithEvidence?: (task: Task, file: File) => void;
   onSubmitWithText?: (task: Task, text: string) => void;
+  onReorderTasks: (dateKey: string, orderedTaskIds: string[]) => void;
 };
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -48,6 +50,7 @@ export default function DayTaskList({
   onAddTask,
   onSubmitWithEvidence,
   onSubmitWithText,
+  onReorderTasks,
 }: DayTaskListProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [expanded, setExpanded] = useState(false);
@@ -58,8 +61,8 @@ export default function DayTaskList({
   const weekTasks = monthTasks.filter((task) =>
     weekDays.some((day) => toDateKey(day) === task.due_date)
   );
-
-  const sourceTasks = viewMode === "day" ? tasks : weekTasks;
+  const sortedDayTasks = sortByOrderIndex(tasks);
+  const sourceTasks = viewMode === "day" ? sortedDayTasks : weekTasks;
   const unfinishedTasks = sourceTasks.filter((task) => task.status !== "approved");
   const approvedCount = sourceTasks.filter((task) => task.status === "approved").length;
   const totalCount = sourceTasks.length;
@@ -77,6 +80,14 @@ export default function DayTaskList({
     };
   }, [expanded]);
 
+  function sortByOrderIndex(list: Task[]) {
+    return [...list].sort((a, b) => {
+      const orderA = a.order_index ?? Number.MAX_SAFE_INTEGER;
+      const orderB = b.order_index ?? Number.MAX_SAFE_INTEGER;
+      return orderA - orderB;
+    });
+  }
+  
   function openPanel() {
     setExpanded(true);
   }
@@ -195,8 +206,8 @@ export default function DayTaskList({
             tasks.length === 0 ? (
               <div style={emptyStateStyle}>이 날짜에 등록된 할 일이 없습니다.</div>
             ) : (
-              <TaskList
-                tasks={tasks}
+              <SortableTaskList
+                tasks={sortedDayTasks}
                 members={members}
                 currentMember={currentMember}
                 isManager={isManager}
@@ -208,13 +219,14 @@ export default function DayTaskList({
                 onReject={onRejectTask}
                 onCancel={onCancelTask}
                 onDelete={onDeleteTask}
+                onReorder={(orderedIds) => onReorderTasks(selectedDate, orderedIds)}
               />
             )
           ) : (
             <div style={weekListStyle}>
               {weekDays.map((day) => {
                 const dateKey = toDateKey(day);
-                const dayTasks = monthTasks.filter((task) => task.due_date === dateKey);
+                const dayTasks = sortByOrderIndex(monthTasks.filter((task) => task.due_date === dateKey));
                 const dayApprovedCount = dayTasks.filter((task) => task.status === "approved").length;
                 const dayTotalCount = dayTasks.length;
                 const isPast = dateKey < todayKey;
@@ -244,7 +256,7 @@ export default function DayTaskList({
 
                     {dayTasks.length > 0 && (
                       <div style={weekDayTaskListStyle}>
-                        <TaskList
+                        <SortableTaskList
                           tasks={dayTasks}
                           members={members}
                           currentMember={currentMember}
@@ -257,6 +269,7 @@ export default function DayTaskList({
                           onReject={onRejectTask}
                           onCancel={onCancelTask}
                           onDelete={onDeleteTask}
+                          onReorder={(orderedIds) => onReorderTasks(dateKey, orderedIds)}
                         />
                       </div>
                     )}
