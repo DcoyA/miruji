@@ -585,6 +585,7 @@ export function useTasks({
     toggleTemplateActive,
     deleteTemplate,
     rolloverNow,
+    reorderTasks,
     submitTask,
     submitTaskWithText,
     submitTaskWithEvidence,
