@@ -494,7 +494,7 @@ export default function Home() {
 
 {workspace && <NotificationPrompt />}
 
-      {workspace && activeTab === "tasks" && calendarViewMode !== "month" && (
+      {workspace && activeTab === "tasks" && (
         <>
           <TaskStatsCards
             todayDoneCount={todayDoneCount}
