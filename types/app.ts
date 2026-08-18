@@ -87,4 +87,4 @@ export type RewardTransaction = {
   created_at: string;
 };
 
-export type ActiveTab = "calendar" | "missions" | "rewards" | "settings";
+export type ActiveTab = "tasks" | "members" | "rewards";
