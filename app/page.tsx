@@ -299,14 +299,6 @@ export default function Home() {
     );
   }
 
-  if (!workspacesLoaded) {
-    return (
-      <Shell>
-        <SplashScreen progress={85} label="데이터 불러오는 중..." />
-      </Shell>
-    );
-  }
-
   const needsOnboarding = !profile.onboarding_completed && workspaces.length === 0;
 
   if (needsOnboarding) {
