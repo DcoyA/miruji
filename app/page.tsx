@@ -49,6 +49,7 @@ import SplashScreen from "@/components/SplashScreen";
 
 import EmptyWorkspaceHome from "@/features/onboarding/EmptyWorkspaceHome";
 import HamburgerMenu from "@/components/HamburgerMenu";
+import ProfileSettingsPanel from "@/features/settings/ProfileSettingsPanel";
 
 import type { ActiveTab } from "@/types/app";
 
@@ -65,7 +66,8 @@ export default function Home() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [plusSheetOpen, setPlusSheetOpen] = useState(false);
-  
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
+
   const auth = useAuth({ setMessage, setLoading });
   const {
     authLoading,
@@ -319,6 +321,28 @@ export default function Home() {
   }
 
   if (showEmptyHome) {
+    if (showProfileSettings) {
+      return (
+        <Shell>
+          <ProfileSettingsPanel
+            profileDisplayName={profile.display_name}
+            avatarUrl={profile.avatar_url}
+            myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
+            loading={loading}
+            onUploadAvatar={uploadAvatar}
+            myNickname={myNickname}
+            onMyNicknameChange={setMyNickname}
+            onSaveMyNickname={saveMyNickname}
+            currentNicknameLabel={currentMember?.display_name ?? profile.display_name}
+            newPassword={newPassword}
+            onNewPasswordChange={setNewPassword}
+            onChangePassword={changePassword}
+            onBack={() => setShowProfileSettings(false)}
+          />
+        </Shell>
+      );
+    }
+  
     return (
       <Shell>
         <EmptyWorkspaceHome
@@ -330,7 +354,7 @@ export default function Home() {
             setPlusSheetOpen(true);
           }}
         />
-
+  
         <HamburgerMenu
           isOpen={menuOpen}
           onClose={() => setMenuOpen(false)}
@@ -339,7 +363,7 @@ export default function Home() {
             const next = workspaces.find((item) => item.id === id) || null;
             setWorkspace(next);
           }}
-          onGoProfileSettings={() => setActiveTab("settings")}
+          onGoProfileSettings={() => setShowProfileSettings(true)}
           onCreateWorkspace={() => {
             setOnboardingStep("create");
             setPlusSheetOpen(true);
@@ -359,7 +383,7 @@ export default function Home() {
           onSignOut={signOut}
           onDeleteAccount={deleteAccount}
         />
-
+  
         {plusSheetOpen && (
           <div style={plusSheetBackdropStyle} onClick={() => setPlusSheetOpen(false)}>
             <div style={plusSheetPanelStyle} onClick={(event) => event.stopPropagation()}>
@@ -390,6 +414,9 @@ export default function Home() {
             </div>
           </div>
         )}
+      </Shell>
+    );
+  }
 
         {activeTab === "settings" && (
           <div style={{ marginTop: -20 }}>
