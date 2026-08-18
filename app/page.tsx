@@ -47,6 +47,9 @@ import { useRewards } from "@/features/rewards/useRewards";
 import Avatar from "@/components/Avatar";
 import SplashScreen from "@/components/SplashScreen";
 
+import EmptyWorkspaceHome from "@/features/onboarding/EmptyWorkspaceHome";
+import HamburgerMenu from "@/components/HamburgerMenu";
+
 import type { ActiveTab } from "@/types/app";
 
 export default function Home() {
@@ -59,6 +62,9 @@ export default function Home() {
 
   const [summaryFilter, setSummaryFilter] = useState<"all" | "pending" | "approved" | null>(null);
   const [showSplash, setShowSplash] = useState(true);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [plusSheetOpen, setPlusSheetOpen] = useState(false);
   
   const auth = useAuth({ setMessage, setLoading });
   const {
@@ -270,6 +276,8 @@ export default function Home() {
   if (showSplash) {
     return <SplashScreen ready={isReady} onFinish={() => setShowSplash(false)} />;
   }
+
+  const showEmptyHome = Boolean(profile) && !pendingInviteCode && workspaces.length === 0;
   
   if (!profile) {
     return (
@@ -305,36 +313,149 @@ export default function Home() {
     if (pendingInviteCode) {
       return (
         <Shell>
-          <AppHeader title="미루지" loading={loading} onSignOut={signOut} />
-          <h1 style={titleStyle}>초대 확인 중...</h1>
-          <p style={subTextStyle}>잠시만 기다려주세요. 초대코드를 처리하고 있습니다.</p>
+          <AppHeader title="" loading={loading} onSignOut={signOut} />
+          <h1 style={titleStyle}>초대 처리 중...</h1>
+          <p style={subTextStyle}>잠시만 기다려주세요. 곧 연결됩니다.</p>
           {message && <div style={messageBoxStyle(message)}>{message}</div>}
         </Shell>
       );
     }
-
-    return (
-      <Shell>
-        <AppHeader title="미루지" loading={loading} onSignOut={signOut} />
-        <OnboardingGate
-          step={onboardingStep}
-          loading={loading}
-          message={message}
-          onChooseCreate={() => setOnboardingStep("create")}
-          onChooseJoin={() => setOnboardingStep("join")}
-          onBack={() => setOnboardingStep("choice")}
-          workspaceName={workspaceName}
-          workspaceDescription={workspaceDescription}
-          onWorkspaceNameChange={setWorkspaceName}
-          onWorkspaceDescriptionChange={setWorkspaceDescription}
-          onCreateWorkspace={createWorkspace}
-          joinInviteCode={joinInviteCode}
-          onJoinInviteCodeChange={setJoinInviteCode}
-          onAcceptInvite={() => acceptInviteCode()}
-        />
-      </Shell>
-    );
-  }
+    
+    if (showEmptyHome) {
+      return (
+        <Shell>
+          <EmptyWorkspaceHome
+            displayName={profile.display_name}
+            avatarUrl={profile.avatar_url}
+            onOpenMenu={() => setMenuOpen(true)}
+            onOpenPlus={() => {
+              setOnboardingStep("choice");
+              setPlusSheetOpen(true);
+            }}
+          />
+    
+          <HamburgerMenu
+            isOpen={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            workspaces={workspaces}
+            onSelectWorkspace={(id) => {
+              const next = workspaces.find((item) => item.id === id) || null;
+              setWorkspace(next);
+            }}
+            onGoProfileSettings={() => setActiveTab("settings")}
+            onCreateWorkspace={() => {
+              setOnboardingStep("create");
+              setPlusSheetOpen(true);
+            }}
+            onJoinWorkspace={() => {
+              setOnboardingStep("join");
+              setPlusSheetOpen(true);
+            }}
+            onShareApp={() => {
+              const link = typeof window !== "undefined" ? window.location.origin : "";
+              const text = `미루지말자와 함께 할 일을 관리해보세요!\n${link}`;
+              if (typeof navigator !== "undefined" && navigator.clipboard) {
+                navigator.clipboard.writeText(text);
+                setMessage("공유 링크를 복사했어요.");
+              }
+            }}
+            onSignOut={signOut}
+            onDeleteAccount={deleteAccount}
+          />
+    
+          {plusSheetOpen && (
+            <div style={plusSheetBackdropStyle} onClick={() => setPlusSheetOpen(false)}>
+              <div style={plusSheetPanelStyle} onClick={(event) => event.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={() => setPlusSheetOpen(false)}
+                  style={plusSheetCloseButtonStyle}
+                  aria-label="닫기"
+                >
+                  ✕
+                </button>
+                <OnboardingGate
+                  step={onboardingStep}
+                  loading={loading}
+                  message={message}
+                  onChooseCreate={() => setOnboardingStep("create")}
+                  onChooseJoin={() => setOnboardingStep("join")}
+                  onBack={() => setOnboardingStep("choice")}
+                  workspaceName={workspaceName}
+                  workspaceDescription={workspaceDescription}
+                  onWorkspaceNameChange={setWorkspaceName}
+                  onWorkspaceDescriptionChange={setWorkspaceDescription}
+                  onCreateWorkspace={createWorkspace}
+                  joinInviteCode={joinInviteCode}
+                  onJoinInviteCodeChange={setJoinInviteCode}
+                  onAcceptInvite={() => acceptInviteCode()}
+                />
+              </div>
+            </div>
+          )}
+    
+          {activeTab === "settings" && (
+            <div style={{ marginTop: -20 }}>
+              <AppHeader title="설정" loading={loading} onSignOut={signOut} />
+              <button
+                type="button"
+                onClick={() => setActiveTab("calendar")}
+                style={{ border: "none", background: "transparent", color: "#e11d48", fontWeight: 800, fontSize: 13, cursor: "pointer", marginBottom: 12 }}
+              >
+                ← 홈으로
+              </button>
+              <SettingsTab
+                workspaces={workspaces}
+                workspace={workspace}
+                members={members}
+                currentMember={currentMember}
+                isManager={isManager}
+                workspaceName={workspaceName}
+                workspaceDescription={workspaceDescription}
+                loading={loading}
+                onWorkspaceNameChange={setWorkspaceName}
+                onWorkspaceDescriptionChange={setWorkspaceDescription}
+                onCreateWorkspace={createWorkspace}
+                newMemberName={newMemberName}
+                newMemberRole={newMemberRole}
+                onNewMemberNameChange={setNewMemberName}
+                onNewMemberRoleChange={setNewMemberRole}
+                onAddMember={addVirtualMember}
+                inviteRole={inviteRole}
+                onInviteRoleChange={setInviteRole}
+                inviteSuggestedName={inviteSuggestedName}
+                onInviteSuggestedNameChange={setInviteSuggestedName}
+                onCreateInvite={createInvite}
+                pendingInvites={pendingInvites}
+                onCancelPendingInvite={cancelPendingInvite}
+                onRemoveMember={removeMember}
+                onRestoreMember={restoreMember}
+                joinInviteCode={joinInviteCode}
+                onJoinInviteCodeChange={setJoinInviteCode}
+                onAcceptInvite={() => acceptInviteCode()}
+                onDeleteAccount={deleteAccount}
+                onTransferOwnership={transferOwnership}
+                onUpdateMemberRole={updateMemberRole}
+                onDeleteWorkspace={deleteWorkspace}
+                myNickname={myNickname}
+                onMyNicknameChange={setMyNickname}
+                onSaveMyNickname={saveMyNickname}
+                recoveryEmail={profileRecoveryEmail}
+                onRecoveryEmailChange={setProfileRecoveryEmail}
+                onSaveRecoveryEmail={saveRecoveryEmail}
+                newPassword={newPassword}
+                onNewPasswordChange={setNewPassword}
+                onChangePassword={changePassword}
+                profileDisplayName={profile.display_name}
+                avatarUrl={profile.avatar_url}
+                myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
+                onUploadAvatar={uploadAvatar}
+              />
+            </div>
+          )}
+        </Shell>
+      );
+    }
 
   return (
     <Shell>
@@ -570,3 +691,33 @@ export default function Home() {
     </Shell>
   );
 }
+
+const plusSheetBackdropStyle: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(15, 10, 12, 0.4)",
+  zIndex: 1000,
+  display: "flex",
+  alignItems: "flex-end",
+  justifyContent: "center",
+};
+const plusSheetPanelStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 480,
+  maxHeight: "86vh",
+  overflowY: "auto",
+  background: "#fffaf9",
+  borderRadius: "24px 24px 0 0",
+  padding: 20,
+  position: "relative",
+};
+const plusSheetCloseButtonStyle: CSSProperties = {
+  position: "absolute",
+  right: 16,
+  top: 16,
+  border: "none",
+  background: "transparent",
+  fontSize: 18,
+  color: "#3f1d24",
+  cursor: "pointer",
+};
