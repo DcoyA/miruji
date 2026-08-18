@@ -333,6 +333,9 @@ export default function Home() {
             myNickname={myNickname}
             onMyNicknameChange={setMyNickname}
             onSaveMyNickname={saveMyNickname}
+            recoveryEmail={profileRecoveryEmail}
+            onRecoveryEmailChange={setProfileRecoveryEmail}
+            onSaveRecoveryEmail={saveRecoveryEmail}
             currentNicknameLabel={currentMember?.display_name ?? profile.display_name}
             newPassword={newPassword}
             onNewPasswordChange={setNewPassword}
