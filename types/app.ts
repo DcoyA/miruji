@@ -48,6 +48,7 @@ export type Task = {
   created_by_member_id: string | null;
   evidence_url: string | null;
   evidence_text: string | null;
+  order_index: number | null;
 };
 
 export type TaskTemplate = {
