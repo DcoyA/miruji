@@ -269,7 +269,7 @@ export function useWorkspace({
     setWorkspace(newWorkspace);
     setWorkspaceName("");
     setWorkspaceDescription("");
-    setActiveTab("settings");
+    setActiveTab("members");
     setMessage(`모임 생성 완료: ${newWorkspace.name}`);
     setLoading(false);
     return { ok: true, text: `모임 생성 완료: ${newWorkspace.name}` };
@@ -648,7 +648,7 @@ export function useWorkspace({
       if (joinedWorkspace) setWorkspace(joinedWorkspace as Workspace);
     }
 
-    setActiveTab("calendar");
+    setActiveTab("tasks");
     setLoading(false);
     return { ok: true, text: "참여 완료" };
   }
