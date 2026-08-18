@@ -20,7 +20,7 @@ import type {
 export const memberSelect =
   "id, profile_id, display_name, role, is_virtual, requires_account, status, avatar_url";
 export const taskSelect =
-  "id, workspace_id, title, description, status, due_date, due_time, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url, evidence_text";
+  "id, workspace_id, title, description, status, due_date, due_time, assigned_member_id, verification_type, reward_points, template_id, created_by_member_id, evidence_url, evidence_text, order_index";
 export const taskTemplateSelect =
   "id, workspace_id, title, description, assigned_member_id, verification_type, reward_points, rollover_enabled, repeat_type, repeat_weekdays, is_active, due_time";
 export const rewardSelect =
