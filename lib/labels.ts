@@ -1,10 +1,9 @@
 import type { ActiveTab, Member } from "@/types/app";
 
 export function tabTitle(tab: ActiveTab) {
-  if (tab === "missions") return "할 일";
+  if (tab === "members") return "참여자";
   if (tab === "rewards") return "보상";
-  if (tab === "settings") return "설정";
-  return "캘린더";
+  return "할 일";
 }
 
 export function roleLabel(role: string) {
