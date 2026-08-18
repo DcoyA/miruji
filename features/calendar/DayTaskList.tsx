@@ -50,6 +50,7 @@ export default function DayTaskList({
   onAddTask,
   onSubmitWithEvidence,
   onSubmitWithText,
+  onReorderTasks,
 }: DayTaskListProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [expanded, setExpanded] = useState(false);
