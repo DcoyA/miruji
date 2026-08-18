@@ -68,29 +68,7 @@ export default function Home() {
   const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   const [notificationsByWorkspace, setNotificationsByWorkspace] = useState<Record<string, boolean>>({});
-
-  const currentWorkspaceIndex = workspace ? workspaces.findIndex((item) => item.id === workspace.id) : -1;
-  
-  function goToPrevWorkspace() {
-    if (workspaces.length < 2 || currentWorkspaceIndex < 0) return;
-    const nextIndex = (currentWorkspaceIndex - 1 + workspaces.length) % workspaces.length;
-    setWorkspace(workspaces[nextIndex]);
-  }
-  
-  function goToNextWorkspace() {
-    if (workspaces.length < 2 || currentWorkspaceIndex < 0) return;
-    const nextIndex = (currentWorkspaceIndex + 1) % workspaces.length;
-    setWorkspace(workspaces[nextIndex]);
-  }
-  
-  function toggleWorkspaceNotifications() {
-    if (!workspace) return;
-    setNotificationsByWorkspace((prev) => ({
-      ...prev,
-      [workspace.id]: !(prev[workspace.id] ?? true),
-    }));
-  }
-  
+    
   const auth = useAuth({ setMessage, setLoading });
   const {
     authLoading,
@@ -186,6 +164,28 @@ export default function Home() {
     balanceByMemberId,
   } = workspaceHook;
 
+  const currentWorkspaceIndex = workspace ? workspaces.findIndex((item) => item.id === workspace.id) : -1;
+  
+  function goToPrevWorkspace() {
+    if (workspaces.length < 2 || currentWorkspaceIndex < 0) return;
+    const nextIndex = (currentWorkspaceIndex - 1 + workspaces.length) % workspaces.length;
+    setWorkspace(workspaces[nextIndex]);
+  }
+  
+  function goToNextWorkspace() {
+    if (workspaces.length < 2 || currentWorkspaceIndex < 0) return;
+    const nextIndex = (currentWorkspaceIndex + 1) % workspaces.length;
+    setWorkspace(workspaces[nextIndex]);
+  }
+  
+  function toggleWorkspaceNotifications() {
+    if (!workspace) return;
+    setNotificationsByWorkspace((prev) => ({
+      ...prev,
+      [workspace.id]: !(prev[workspace.id] ?? true),
+    }));
+  }
+  
   const tasksHook = useTasks({
     workspace,
     isManager,
