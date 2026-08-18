@@ -24,14 +24,14 @@ import AppHeader from "@/components/AppHeader";
 import AuthPanel from "@/components/AuthPanel";
 import BottomNav from "@/components/BottomNav";
 
-import CalendarGrid from "@/features/calendar/CalendarGrid";
-import CalendarToolbar from "@/features/calendar/CalendarToolbar";
 import DayTaskList from "@/features/calendar/DayTaskList";
-import SummaryStrip from "@/features/calendar/SummaryStrip";
 import MissionTab from "@/features/missions/MissionTab";
 import RewardTab from "@/features/rewards/RewardTab";
 import TaskList from "@/features/tasks/TaskList";
 import SettingsTab from "@/features/settings/SettingsTab";
+import ViewSwitchTabs, { type CalendarViewMode } from "@/features/tasks/ViewSwitchTabs";
+import TaskStatsCards from "@/features/tasks/TaskStatsCards";
+import MonthView from "@/features/tasks/MonthView";
 
 import { addMonths, startOfMonth, toDateKey } from "@/lib/date";
 import { tabTitle, roleLabel } from "@/lib/labels";
@@ -62,6 +62,7 @@ export default function Home() {
 
   const [summaryFilter, setSummaryFilter] = useState<"all" | "pending" | "approved" | null>(null);
   const [showSplash, setShowSplash] = useState(true);
+  const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewMode>("month");
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [plusSheetOpen, setPlusSheetOpen] = useState(false);
@@ -286,6 +287,11 @@ export default function Home() {
   }, [tasks, selectedDate]);
 
   const monthTaskCount = tasks.length;
+  const todayKeyForStats = toDateKey(new Date());
+  const todayTasks = tasks.filter((task) => task.due_date === todayKeyForStats);
+  const todayDoneCount = todayTasks.filter((task) => task.status === "approved").length;
+  const todayTotalCount = todayTasks.length;
+  const monthUnfinishedCount = tasks.filter((task) => task.status !== "approved").length;
   const pendingCount = tasks.filter((task) => task.status === "submitted").length;
   const approvedCount = tasks.filter((task) => task.status === "approved").length;
 
@@ -488,27 +494,30 @@ export default function Home() {
 
 {workspace && <NotificationPrompt />}
 
-      {workspace && activeTab === "tasks" && (
+      {workspace && activeTab === "tasks" && calendarViewMode !== "month" && (
         <>
-          <SummaryStrip
-            monthTaskCount={monthTaskCount}
-            pendingCount={pendingCount}
-            approvedCount={approvedCount}
-            onClickMonth={() => setSummaryFilter("all")}
-            onClickPending={() => setSummaryFilter("pending")}
-            onClickApproved={() => setSummaryFilter("approved")}
+          <TaskStatsCards
+            todayDoneCount={todayDoneCount}
+            todayTotalCount={todayTotalCount}
+            monthUnfinishedCount={monthUnfinishedCount}
+            onClickToday={() => setSelectedDate(todayKeyForStats)}
+            onClickUnfinished={() => setSummaryFilter("all")}
           />
-          <CalendarToolbar
-            currentMonth={currentMonth}
-            onPrev={() => setCurrentMonth(addMonths(currentMonth, -1))}
-            onNext={() => setCurrentMonth(addMonths(currentMonth, 1))}
-            onToday={() => {
-              const today = new Date();
-              setCurrentMonth(startOfMonth(today));
-              setSelectedDate(toDateKey(today));
-            }}
-          />
-          <CalendarGrid currentMonth={currentMonth} selectedDate={selectedDate} tasks={tasks} onSelectDate={setSelectedDate} />
+          <ViewSwitchTabs mode={calendarViewMode} onChange={setCalendarViewMode} />
+          {calendarViewMode === "month" && (
+            <MonthView
+              currentMonth={currentMonth}
+              selectedDate={selectedDate}
+              tasks={tasks}
+              onSelectDate={setSelectedDate}
+              onPrevMonth={() => setCurrentMonth((prev) => addMonths(prev, -1))}
+              onNextMonth={() => setCurrentMonth((prev) => addMonths(prev, 1))}
+              onToday={() => {
+                setCurrentMonth(startOfMonth(new Date()));
+                setSelectedDate(toDateKey(new Date()));
+              }}
+            />
+          )}
           <DayTaskList
             selectedDate={selectedDate}
             tasks={selectedTasks}
