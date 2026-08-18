@@ -58,13 +58,8 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
 
   const [summaryFilter, setSummaryFilter] = useState<"all" | "pending" | "approved" | null>(null);
-  const [minSplashElapsed, setMinSplashElapsed] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setMinSplashElapsed(true), 2000);
-    return () => clearTimeout(timer);
-  }, []);
-
+  const [showSplash, setShowSplash] = useState(true);
+  
   const auth = useAuth({ setMessage, setLoading });
   const {
     authLoading,
@@ -270,14 +265,12 @@ export default function Home() {
     return [];
   }, [tasks, summaryFilter]);
 
-  if (authLoading || !minSplashElapsed) {
-    return (
-      <Shell>
-        <SplashScreen progress={45} label="로그인 확인 중..." />
-      </Shell>
-    );
-  }
+  const isReady = !authLoading && workspacesLoaded;
 
+  if (showSplash) {
+    return <SplashScreen ready={isReady} onFinish={() => setShowSplash(false)} />;
+  }
+  
   if (!profile) {
     return (
       <Shell>
