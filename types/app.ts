@@ -31,6 +31,7 @@ export type Member = {
   requires_account: boolean;
   status: string;
   avatar_url: string | null;
+  notifications_enabled: boolean;
 };
 
 export type Task = {
