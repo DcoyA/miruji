@@ -69,7 +69,6 @@ export default function Home() {
   const [plusSheetOpen, setPlusSheetOpen] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
 
-  const [notificationsByWorkspace, setNotificationsByWorkspace] = useState<Record<string, boolean>>({});
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
     
   const auth = useAuth({ setMessage, setLoading });
@@ -165,6 +164,7 @@ export default function Home() {
     deleteWorkspace,
     resetWorkspaceState,
     balanceByMemberId,
+    toggleMyNotifications,
   } = workspaceHook;
 
   const currentWorkspaceIndex = workspace ? workspaces.findIndex((item) => item.id === workspace.id) : -1;
@@ -179,14 +179,6 @@ export default function Home() {
     if (workspaces.length < 2 || currentWorkspaceIndex < 0) return;
     const nextIndex = (currentWorkspaceIndex + 1) % workspaces.length;
     setWorkspace(workspaces[nextIndex]);
-  }
-  
-  function toggleWorkspaceNotifications() {
-    if (!workspace) return;
-    setNotificationsByWorkspace((prev) => ({
-      ...prev,
-      [workspace.id]: !(prev[workspace.id] ?? true),
-    }));
   }
   
   const tasksHook = useTasks({
@@ -486,8 +478,8 @@ export default function Home() {
         canSwitchWorkspace={workspaces.length > 1}
         onPrevWorkspace={goToPrevWorkspace}
         onNextWorkspace={goToNextWorkspace}
-        notificationsEnabled={workspace ? notificationsByWorkspace[workspace.id] ?? true : true}
-        onToggleNotifications={toggleWorkspaceNotifications}
+        notificationsEnabled={currentMember?.notifications_enabled ?? true}
+        onToggleNotifications={toggleMyNotifications}
         onOpenMenu={() => setMenuOpen(true)}
       />
       
