@@ -57,7 +57,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>("calendar");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("tasks");
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
 
@@ -448,7 +448,7 @@ export default function Home() {
         />
       )}
 
-      {workspace && activeTab === "calendar" && (
+      {workspace && activeTab === "tasks" && (
         <>
           <SummaryStrip
             monthTaskCount={monthTaskCount}
@@ -483,14 +483,14 @@ export default function Home() {
             onRejectTask={rejectTask}
             onCancelTask={cancelSubmission}
             onDeleteTask={deleteTask}
-            onAddTask={() => setActiveTab("missions")}
+            onAddTask={() => setActiveTab("tasks")}
             onSubmitWithEvidence={submitTaskWithEvidence}
             onSubmitWithText={submitTaskWithText}
           />
         </>
       )}
 
-      {workspace && activeTab === "missions" && (
+      {workspace && activeTab === "tasks" && (
         <MissionTab
           selectedDate={selectedDate}
           members={activeMembers}
@@ -555,7 +555,7 @@ export default function Home() {
         />
       )}
 
-      {activeTab === "settings" && (
+      {activeTab === "members" && (
         <SettingsTab
           workspaces={workspaces}
           workspace={workspace}
@@ -605,7 +605,7 @@ export default function Home() {
         />
       )}
 
-      {!workspace && activeTab !== "settings" && <NoWorkspacePrompt onGoSettings={() => setActiveTab("settings")} />}
+      {!workspace && activeTab !== "members" && <NoWorkspacePrompt onGoSettings={() => setActiveTab("members")} />}
 
       {message && <div style={messageBoxStyle(message)}>{message}</div>}
       {summaryFilter && (
