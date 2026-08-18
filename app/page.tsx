@@ -418,69 +418,6 @@ export default function Home() {
     );
   }
 
-        {activeTab === "settings" && (
-          <div style={{ marginTop: -20 }}>
-            <AppHeader title="설정" loading={loading} onSignOut={signOut} />
-            <button
-              type="button"
-              onClick={() => setActiveTab("calendar")}
-              style={{ border: "none", background: "transparent", color: "#e11d48", fontWeight: 800, fontSize: 13, cursor: "pointer", marginBottom: 12 }}
-            >
-              ← 홈으로
-            </button>
-            <SettingsTab
-              workspaces={workspaces}
-              workspace={workspace}
-              members={members}
-              currentMember={currentMember}
-              isManager={isManager}
-              workspaceName={workspaceName}
-              workspaceDescription={workspaceDescription}
-              loading={loading}
-              onWorkspaceNameChange={setWorkspaceName}
-              onWorkspaceDescriptionChange={setWorkspaceDescription}
-              onCreateWorkspace={createWorkspace}
-              newMemberName={newMemberName}
-              newMemberRole={newMemberRole}
-              onNewMemberNameChange={setNewMemberName}
-              onNewMemberRoleChange={setNewMemberRole}
-              onAddMember={addVirtualMember}
-              inviteRole={inviteRole}
-              onInviteRoleChange={setInviteRole}
-              inviteSuggestedName={inviteSuggestedName}
-              onInviteSuggestedNameChange={setInviteSuggestedName}
-              onCreateInvite={createInvite}
-              pendingInvites={pendingInvites}
-              onCancelPendingInvite={cancelPendingInvite}
-              onRemoveMember={removeMember}
-              onRestoreMember={restoreMember}
-              joinInviteCode={joinInviteCode}
-              onJoinInviteCodeChange={setJoinInviteCode}
-              onAcceptInvite={() => acceptInviteCode()}
-              onDeleteAccount={deleteAccount}
-              onTransferOwnership={transferOwnership}
-              onUpdateMemberRole={updateMemberRole}
-              onDeleteWorkspace={deleteWorkspace}
-              myNickname={myNickname}
-              onMyNicknameChange={setMyNickname}
-              onSaveMyNickname={saveMyNickname}
-              recoveryEmail={profileRecoveryEmail}
-              onRecoveryEmailChange={setProfileRecoveryEmail}
-              onSaveRecoveryEmail={saveRecoveryEmail}
-              newPassword={newPassword}
-              onNewPasswordChange={setNewPassword}
-              onChangePassword={changePassword}
-              profileDisplayName={profile.display_name}
-              avatarUrl={profile.avatar_url}
-              myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
-              onUploadAvatar={uploadAvatar}
-            />
-          </div>
-        )}
-      </Shell>
-    );
-  }
-
   return (
     <Shell>
       <AppHeader title={tabTitle(activeTab)} loading={loading} onSignOut={signOut} />
