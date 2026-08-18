@@ -25,7 +25,8 @@ import AuthPanel from "@/components/AuthPanel";
 import BottomNav from "@/components/BottomNav";
 
 import DayTaskList from "@/features/calendar/DayTaskList";
-import MissionTab from "@/features/missions/MissionTab";
+import AddTaskModal from "@/features/tasks/AddTaskModal";
+import TemplateManagerPanel from "@/features/tasks/TemplateManagerPanel";
 import RewardTab from "@/features/rewards/RewardTab";
 import TaskList from "@/features/tasks/TaskList";
 import SettingsTab from "@/features/settings/SettingsTab";
@@ -69,6 +70,7 @@ export default function Home() {
   const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   const [notificationsByWorkspace, setNotificationsByWorkspace] = useState<Record<string, boolean>>({});
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
     
   const auth = useAuth({ setMessage, setLoading });
   const {
@@ -205,8 +207,8 @@ export default function Home() {
     setNewTaskTitle,
     newTaskDescription,
     setNewTaskDescription,
-    newTaskAssignedMemberId,
-    setNewTaskAssignedMemberId,
+    newTaskAssignedMemberIds,
+    toggleAssignedMember,
     newTaskVerificationType,
     setNewTaskVerificationType,
     newTaskDueTime,
@@ -533,7 +535,7 @@ export default function Home() {
             onRejectTask={rejectTask}
             onCancelTask={cancelSubmission}
             onDeleteTask={deleteTask}
-            onAddTask={() => setActiveTab("tasks")}
+            onAddTask={() => setShowAddTaskModal(true)}
             onSubmitWithEvidence={submitTaskWithEvidence}
             onSubmitWithText={submitTaskWithText}
             onReorderTasks={reorderTasks}
@@ -542,69 +544,41 @@ export default function Home() {
       )}
 
       {workspace && activeTab === "tasks" && (
-        <MissionTab
-          selectedDate={selectedDate}
-          members={activeMembers}
-          tasks={selectedTasks}
+        <TemplateManagerPanel
           templates={templates}
-          currentMember={currentMember}
-          isManager={isManager}
-          title={newTaskTitle}
-          description={newTaskDescription}
-          assignedMemberId={newTaskAssignedMemberId}
-          verificationType={newTaskVerificationType}
-          dueTime={newTaskDueTime}
-          onDueTimeChange={setNewTaskDueTime}
-          rewardPoints={newTaskRewardPoints}
-          repeatType={newTaskRepeatType}
-          repeatWeekdays={newTaskRepeatWeekdays}
           loading={loading}
-          onTitleChange={setNewTaskTitle}
-          onDescriptionChange={setNewTaskDescription}
-          onAssignedMemberIdChange={setNewTaskAssignedMemberId}
-          onVerificationTypeChange={setNewTaskVerificationType}
-          onRewardPointsChange={setNewTaskRewardPoints}
-          onRepeatTypeChange={setNewTaskRepeatType}
-          onToggleRepeatWeekday={toggleRepeatWeekday}
-          onCreate={createTask}
-          onSubmitTask={submitTask}
-          onApproveTask={approveTask}
-          onRejectTask={rejectTask}
+          isManager={isManager}
           onToggleTemplateActive={toggleTemplateActive}
           onDeleteTemplate={deleteTemplate}
           onRolloverNow={rolloverNow}
-          onSelectedDateChange={setSelectedDate}
-          onCancelTask={cancelSubmission}
-          onDeleteTask={deleteTask}
-          onSubmitWithEvidence={submitTaskWithEvidence}
-          onSubmitWithText={submitTaskWithText}
         />
       )}
-
-      {workspace && activeTab === "rewards" && (
-        <RewardTab
-          members={activeMembers}
-          rewards={rewards}
-          transactions={rewardTransactions}
-          currentMember={currentMember}
-          isManager={isManager}
-          title={newRewardTitle}
-          description={newRewardDescription}
-          targetMemberId={newRewardTargetMemberId}
-          costPoints={newRewardCostPoints}
-          loading={loading}
-          balanceByMemberId={balanceByMemberId}
-          onTitleChange={setNewRewardTitle}
-          onDescriptionChange={setNewRewardDescription}
-          onTargetMemberIdChange={setNewRewardTargetMemberId}
-          onCostPointsChange={setNewRewardCostPoints}
-          onCreate={createReward}
-          onRequestRedeem={requestRedeem}
-          onConfirmRedeem={confirmRedeem}
-          onRejectRedeem={rejectRedeem}
-          onDeleteReward={deleteReward}
-        />
-      )}
+      
+      <AddTaskModal
+        isOpen={showAddTaskModal}
+        onClose={() => setShowAddTaskModal(false)}
+        selectedDate={selectedDate}
+        members={activeMembers}
+        title={newTaskTitle}
+        description={newTaskDescription}
+        assignedMemberIds={newTaskAssignedMemberIds}
+        verificationType={newTaskVerificationType}
+        dueTime={newTaskDueTime}
+        rewardPoints={newTaskRewardPoints}
+        repeatType={newTaskRepeatType}
+        repeatWeekdays={newTaskRepeatWeekdays}
+        loading={loading}
+        onSelectedDateChange={setSelectedDate}
+        onTitleChange={setNewTaskTitle}
+        onDescriptionChange={setNewTaskDescription}
+        onToggleAssignedMember={toggleAssignedMember}
+        onVerificationTypeChange={setNewTaskVerificationType}
+        onDueTimeChange={setNewTaskDueTime}
+        onRewardPointsChange={setNewTaskRewardPoints}
+        onRepeatTypeChange={setNewTaskRepeatType}
+        onToggleRepeatWeekday={toggleRepeatWeekday}
+        onCreate={createTask}
+      />
 
       {activeTab === "members" && (
         <SettingsTab
