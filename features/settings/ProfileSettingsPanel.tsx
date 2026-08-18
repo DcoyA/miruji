@@ -14,6 +14,9 @@ type ProfileSettingsPanelProps = {
   myNickname: string;
   onMyNicknameChange: (value: string) => void;
   onSaveMyNickname: () => Promise<ActionResult>;
+  recoveryEmail: string;
+  onRecoveryEmailChange: (value: string) => void;
+  onSaveRecoveryEmail: () => Promise<ActionResult>;
   currentNicknameLabel: string;
   newPassword: string;
   onNewPasswordChange: (value: string) => void;
@@ -44,11 +47,15 @@ export default function ProfileSettingsPanel({
   onNewPasswordChange,
   onChangePassword,
   onBack,
+  recoveryEmail,
+  onRecoveryEmailChange,
+  onSaveRecoveryEmail,
 }: ProfileSettingsPanelProps) {
   const [avatarMessage, setAvatarMessage] = useState<ActionResult | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [nicknameMessage, setNicknameMessage] = useState<ActionResult | null>(null);
   const [passwordMessage, setPasswordMessage] = useState<ActionResult | null>(null);
+  const [recoveryEmailMessage, setRecoveryEmailMessage] = useState<ActionResult | null>(null);
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
   async function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
@@ -66,6 +73,11 @@ export default function ProfileSettingsPanel({
     setNicknameMessage(result ?? null);
   }
 
+  async function handleSaveRecoveryEmail() {
+    const result = await onSaveRecoveryEmail();
+    setRecoveryEmailMessage(result ?? null);
+  }
+  
   async function handleChangePassword() {
     const result = await onChangePassword();
     setPasswordMessage(result ?? null);
@@ -129,6 +141,28 @@ export default function ProfileSettingsPanel({
           <ResultMessage result={nicknameMessage} />
         </div>
 
+        <div style={{ marginBottom: 22 }}>
+          <h3 style={subTitleStyle}>복구용 이메일</h3>
+          <p style={descStyle}>
+            비밀번호를 잊었을 때 재설정 코드를 받을 이메일을 등록해두세요.
+          </p>
+          <input
+            value={recoveryEmail}
+            onChange={(event) => onRecoveryEmailChange(event.target.value)}
+            placeholder="example@email.com"
+            type="email"
+            style={inputStyle}
+          />
+          <button
+            onClick={handleSaveRecoveryEmail}
+            disabled={loading || !recoveryEmail.trim()}
+            style={primaryButtonStyle(loading)}
+          >
+            {loading ? "저장 중..." : "복구용 이메일 저장"}
+          </button>
+          <ResultMessage result={recoveryEmailMessage} />
+        </div>
+        
         <div>
           <h3 style={subTitleStyle}>비밀번호 변경</h3>
           <p style={descStyle}>새 비밀번호는 6자 이상으로 입력해주세요.</p>
