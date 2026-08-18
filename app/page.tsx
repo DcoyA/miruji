@@ -229,6 +229,7 @@ export default function Home() {
     approveTask,
     rejectTask,
     resetTaskState,
+    reorderTasks
   } = tasksHook;
 
   const rewardsHook = useRewards({
@@ -535,6 +536,7 @@ export default function Home() {
             onAddTask={() => setActiveTab("tasks")}
             onSubmitWithEvidence={submitTaskWithEvidence}
             onSubmitWithText={submitTaskWithText}
+            onReorderTasks={reorderTasks}
           />
         </>
       )}
