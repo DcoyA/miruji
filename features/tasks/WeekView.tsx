@@ -3,7 +3,8 @@
 import type { CSSProperties } from "react";
 import type { Member, Task } from "@/types/app";
 import { buildWeekDays, toDateKey } from "@/lib/date";
-import SortableTaskList from "@/features/tasks/SortableTaskList";
+import TaskList from "@/features/tasks/TaskList";
+import { useDragReorder } from "@/features/tasks/useDragReorder";
 
 type WeekViewProps = {
   selectedDate: string;
@@ -21,10 +22,15 @@ type WeekViewProps = {
   onRejectTask: (task: Task) => void;
   onCancelTask: (task: Task) => void;
   onDeleteTask: (task: Task) => void;
-  onReorderTasks: (dateKey: string, orderedTaskIds: string[]) => void;
+  onEditTask: (task: Task) => void;
+  onReorderAcrossDates: (assignments: { id: string; dueDate: string; orderIndex: number }[]) => void;
 };
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+
+type Row =
+  | { id: string; kind: "header"; dateKey: string }
+  | { id: string; kind: "task"; task: Task; dateKey: string };
 
 function sortByOrderIndex(list: Task[]) {
   return [...list].sort((a, b) => {
@@ -50,11 +56,46 @@ export default function WeekView({
   onRejectTask,
   onCancelTask,
   onDeleteTask,
-  onReorderTasks,
+  onEditTask,
+  onReorderAcrossDates,
 }: WeekViewProps) {
   const todayKey = toDateKey(new Date());
   const weekDays = buildWeekDays(selectedDate);
   const weekTasks = tasks.filter((task) => weekDays.some((day) => toDateKey(day) === task.due_date));
+
+  const rows: Row[] = [];
+  weekDays.forEach((day) => {
+    const dateKey = toDateKey(day);
+    rows.push({ id: `header-${dateKey}`, kind: "header", dateKey });
+    const dayTasks = sortByOrderIndex(tasks.filter((task) => task.due_date === dateKey));
+    dayTasks.forEach((task) => {
+      rows.push({ id: task.id, kind: "task", task, dateKey });
+    });
+  });
+
+  function handleCommit(orderedIds: string[]) {
+    let currentDateKey = weekDays.length > 0 ? toDateKey(weekDays[0]) : selectedDate;
+    let indexInDate = 0;
+    const assignments: { id: string; dueDate: string; orderIndex: number }[] = [];
+
+    orderedIds.forEach((id) => {
+      if (id.startsWith("header-")) {
+        currentDateKey = id.replace("header-", "");
+        indexInDate = 0;
+        return;
+      }
+      assignments.push({ id, dueDate: currentDateKey, orderIndex: indexInDate });
+      indexInDate += 1;
+    });
+
+    onReorderAcrossDates(assignments);
+  }
+
+  const { order, draggingId, registerItemRef, getHandleProps } = useDragReorder(
+    rows,
+    (row) => row.id,
+    handleCommit
+  );
 
   if (weekTasks.length === 0) {
     return (
@@ -78,18 +119,23 @@ export default function WeekView({
 
   return (
     <div style={wrapStyle}>
-      {weekDays.map((day) => {
-        const dateKey = toDateKey(day);
-        const dayTasks = sortByOrderIndex(tasks.filter((task) => task.due_date === dateKey));
-        const approvedCount = dayTasks.filter((task) => task.status === "approved").length;
-        const totalCount = dayTasks.length;
-        const isToday = dateKey === todayKey;
-        const isSelected = dateKey === selectedDate;
+      {order.map((row) => {
+        if (row.kind === "header") {
+          const day = weekDays.find((item) => toDateKey(item) === row.dateKey);
+          if (!day) return null;
+          const dayTasksCount = tasks.filter((task) => task.due_date === row.dateKey);
+          const approvedCount = dayTasksCount.filter((task) => task.status === "approved").length;
+          const totalCount = dayTasksCount.length;
+          const isToday = row.dateKey === todayKey;
+          const isSelected = row.dateKey === selectedDate;
 
-        return (
-          <div key={dateKey} style={isSelected ? dayCardActiveStyle : dayCardStyle}>
-            <div style={dayHeaderStyle}>
-              <button type="button" onClick={() => onSelectDate(dateKey)} style={dayLabelButtonStyle}>
+          return (
+            <div
+              key={row.id}
+              ref={registerItemRef(row.id)}
+              style={isSelected ? dayHeaderRowActiveStyle : dayHeaderRowStyle}
+            >
+              <button type="button" onClick={() => onSelectDate(row.dateKey)} style={dayLabelButtonStyle}>
                 <span style={dayLabelStyle}>
                   {WEEKDAY_LABELS[day.getDay()]} {day.getDate()}
                   {isToday && <span style={todayDotStyle}> ・ 오늘</span>}
@@ -102,35 +148,40 @@ export default function WeekView({
               </button>
               <button
                 type="button"
-                onClick={() => onAddTask(dateKey)}
+                onClick={() => onAddTask(row.dateKey)}
                 style={addRowButtonStyle}
                 aria-label="할 일 추가"
               >
                 +
               </button>
             </div>
+          );
+        }
 
-            {dayTasks.length > 0 ? (
-              <div style={dayTaskListStyle}>
-                <SortableTaskList
-                  tasks={dayTasks}
-                  members={members}
-                  currentMember={currentMember}
-                  isManager={isManager}
-                  loading={loading}
-                  onSubmit={onSubmitTask}
-                  onSubmitWithEvidence={onSubmitWithEvidence}
-                  onSubmitWithText={onSubmitWithText}
-                  onApprove={onApproveTask}
-                  onReject={onRejectTask}
-                  onCancel={onCancelTask}
-                  onDelete={onDeleteTask}
-                  onReorder={(orderedIds) => onReorderTasks(dateKey, orderedIds)}
-                />
-              </div>
-            ) : (
-              <div style={dayEmptyRowStyle}>등록된 할 일이 없습니다.</div>
-            )}
+        const isDragging = draggingId === row.id;
+
+        return (
+          <div key={row.id} ref={registerItemRef(row.id)} style={taskRowStyle(isDragging)}>
+            <button type="button" {...getHandleProps(row.id)} style={handleStyle} aria-label="순서 변경">
+              ⠿
+            </button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <TaskList
+                tasks={[row.task]}
+                members={members}
+                currentMember={currentMember}
+                isManager={isManager}
+                loading={loading}
+                onSubmit={onSubmitTask}
+                onSubmitWithEvidence={onSubmitWithEvidence}
+                onSubmitWithText={onSubmitWithText}
+                onApprove={onApproveTask}
+                onReject={onRejectTask}
+                onCancel={onCancelTask}
+                onDelete={onDeleteTask}
+                onEdit={onEditTask}
+              />
+            </div>
           </div>
         );
       })}
@@ -138,7 +189,7 @@ export default function WeekView({
   );
 }
 
-const wrapStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 10, paddingBottom: 12 };
+const wrapStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 6, paddingBottom: 12 };
 
 const emptyWrapStyle: CSSProperties = {
   minHeight: 160,
@@ -172,24 +223,19 @@ const emptyAddButtonStyle: CSSProperties = {
   boxShadow: "0 6px 16px rgba(108, 99, 255, 0.35)",
 };
 
-const dayCardStyle: CSSProperties = {
-  borderRadius: 18,
-  background: "#FBFAFF",
-  boxShadow: "0 3px 12px rgba(108, 99, 255, 0.06)",
-  overflow: "hidden",
-};
-
-const dayCardActiveStyle: CSSProperties = {
-  ...dayCardStyle,
-  background: "#F1EEFE",
-  boxShadow: "0 4px 16px rgba(108, 99, 255, 0.18)",
-};
-
-const dayHeaderStyle: CSSProperties = {
+const dayHeaderRowStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  padding: "10px 10px 10px 14px",
+  padding: "10px 4px 6px",
+  marginTop: 6,
+};
+
+const dayHeaderRowActiveStyle: CSSProperties = {
+  ...dayHeaderRowStyle,
+  background: "#F1EEFE",
+  borderRadius: 12,
+  padding: "10px 10px 6px",
 };
 
 const dayLabelButtonStyle: CSSProperties = {
@@ -203,25 +249,47 @@ const dayLabelButtonStyle: CSSProperties = {
   padding: 0,
 };
 
-const dayLabelStyle: CSSProperties = { fontSize: 15, fontWeight: 800, color: "#2b2140" };
+const dayLabelStyle: CSSProperties = { fontSize: 14, fontWeight: 800, color: "#2b2140" };
 
 const todayDotStyle: CSSProperties = { color: "#6C63FF", fontWeight: 800, fontSize: 12 };
 
 const dayCountStyle: CSSProperties = { fontSize: 13, fontWeight: 800, color: "#6C63FF", marginRight: 6 };
 
 const addRowButtonStyle: CSSProperties = {
-  width: 28,
-  height: 28,
+  width: 26,
+  height: 26,
   borderRadius: "50%",
   border: "none",
   background: "#EDEBFF",
   color: "#6C63FF",
-  fontSize: 15,
+  fontSize: 14,
   fontWeight: 800,
   cursor: "pointer",
   flexShrink: 0,
 };
 
-const dayTaskListStyle: CSSProperties = { padding: "0 14px 14px" };
+function taskRowStyle(isDragging: boolean): CSSProperties {
+  return {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 4,
+    position: "relative",
+    zIndex: isDragging ? 5 : 1,
+    opacity: isDragging ? 0.85 : 1,
+  };
+}
 
-const dayEmptyRowStyle: CSSProperties = { padding: "0 14px 14px", fontSize: 12, color: "#B9B4D9" };
+const handleStyle: CSSProperties = {
+  width: 26,
+  height: 44,
+  flexShrink: 0,
+  border: "none",
+  background: "transparent",
+  color: "#C7C1EE",
+  fontSize: 18,
+  fontWeight: 900,
+  cursor: "grab",
+  touchAction: "none",
+  userSelect: "none",
+  marginTop: 14,
+};
