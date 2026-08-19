@@ -630,6 +630,7 @@ export default function Home() {
             onSubmitWithEvidence={submitTaskWithEvidence}
             onSubmitWithText={submitTaskWithText}
             onReorderTasks={reorderTasks}
+            onReorderAcrossDates={reorderTasksAcrossDates}
             templates={templates}
             onToggleTemplateActive={toggleTemplateActive}
             onDeleteTemplate={deleteTemplate}
