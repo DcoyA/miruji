@@ -226,41 +226,41 @@ function formatShortDate(iso: string) {
 }
 
 const rewardListSectionStyle: CSSProperties = { marginBottom: 80 };
-const sectionTitleStyle: CSSProperties = { margin: "0 0 14px", fontSize: 20, letterSpacing: "-0.03em", color: "#3f1d24" };
-const subTextStyle: CSSProperties = { color: "#9f6b75", lineHeight: 1.6, marginBottom: 20 };
-const inputStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #fde68a", marginBottom: 12, outline: "none", fontSize: 15 };
-const emptyStateStyle: CSSProperties = { padding: 20, borderRadius: 18, background: "#fffbeb", color: "#b45309", textAlign: "center", boxShadow: "0 2px 10px rgba(245,158,11,0.10)" };
+const sectionTitleStyle: CSSProperties = { margin: "0 0 14px", fontSize: 20, letterSpacing: "-0.03em", color: "#2b2140" };
+const subTextStyle: CSSProperties = { color: "#8b83b0", lineHeight: 1.6, marginBottom: 20 };
+const inputStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #E7E3FB", marginBottom: 12, outline: "none", fontSize: 15, background: "#FBFAFF" };
+const emptyStateStyle: CSSProperties = { padding: 20, borderRadius: 18, background: "#FBFAFF", color: "#8b83b0", textAlign: "center", boxShadow: "0 2px 10px rgba(108, 99, 255, 0.08)" };
 const rewardListStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 12 };
-const rewardCardStyle: CSSProperties = { padding: 16, borderRadius: 18, background: "#ffffff", boxShadow: "0 3px 12px rgba(245,158,11,0.10)", display: "flex", flexDirection: "column", gap: 12 };
-const rewardTitleStyle: CSSProperties = { fontWeight: 900, fontSize: 16, color: "#3f1d24" };
-const rewardSubTextStyle: CSSProperties = { marginTop: 5, color: "#9f6b75", fontSize: 13 };
-const rewardButtonStyle: CSSProperties = { flex: 1, padding: 12, borderRadius: 14, border: "none", background: "#f59e0b", color: "#fff", fontWeight: 800, cursor: "pointer" };
-const rejectButtonStyle: CSSProperties = { flex: 1, padding: 12, borderRadius: 14, border: "none", background: "#ef4444", color: "#fff", fontWeight: 800, cursor: "pointer" };
-const disabledRewardButtonStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#f5ead9", color: "#b8926f", fontWeight: 800, cursor: "not-allowed" };
+const rewardCardStyle: CSSProperties = { padding: 16, borderRadius: 18, background: "#ffffff", boxShadow: "0 3px 12px rgba(108, 99, 255, 0.08)", display: "flex", flexDirection: "column", gap: 12 };
+const rewardTitleStyle: CSSProperties = { fontWeight: 900, fontSize: 16, color: "#2b2140" };
+const rewardSubTextStyle: CSSProperties = { marginTop: 5, color: "#8b83b0", fontSize: 13 };
+const rewardButtonStyle: CSSProperties = { flex: 1, padding: 12, borderRadius: 14, border: "none", background: "linear-gradient(135deg, #8B83EA, #6C63FF)", color: "#fff", fontWeight: 800, cursor: "pointer" };
+const rejectButtonStyle: CSSProperties = { flex: 1, padding: 12, borderRadius: 14, border: "1px solid #F2B8B8", background: "#fff", color: "#E23D3D", fontWeight: 800, cursor: "pointer" };
+const disabledRewardButtonStyle: CSSProperties = { width: "100%", padding: 12, borderRadius: 14, border: "none", background: "#EDEBFF", color: "#B9B4D9", fontWeight: 800, cursor: "not-allowed" };
 const redeemedBadgeStyle: CSSProperties = { width: "fit-content", padding: "6px 10px", borderRadius: 999, background: "#dcfce7", color: "#15803d", fontSize: 12, fontWeight: 800 };
-const requestedBadgeStyle: CSSProperties = { width: "fit-content", padding: "6px 10px", borderRadius: 999, background: "#fef3c7", color: "#b45309", fontSize: 12, fontWeight: 800 };
+const requestedBadgeStyle: CSSProperties = { width: "fit-content", padding: "6px 10px", borderRadius: 999, background: "#F1EEFE", color: "#6C63FF", fontSize: 12, fontWeight: 800 };
 const reviewButtonRowStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" };
-const fieldLabelStyle: CSSProperties = { display: "block", fontSize: 13, fontWeight: 800, color: "#5c3a41", marginBottom: 6 };
-const fieldHintStyle: CSSProperties = { fontSize: 12, color: "#9f6b75", marginTop: -6, marginBottom: 14, lineHeight: 1.5 };
+const fieldLabelStyle: CSSProperties = { display: "block", fontSize: 13, fontWeight: 800, color: "#5b5470", marginBottom: 6 };
+const fieldHintStyle: CSSProperties = { fontSize: 12, color: "#8b83b0", marginTop: -6, marginBottom: 14, lineHeight: 1.5 };
 const presetRowStyle: CSSProperties = { display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" };
-const presetButtonStyle: CSSProperties = { flex: 1, minWidth: 60, padding: "10px 0", borderRadius: 12, border: "1px solid #fde68a", background: "#fff", color: "#b45309", fontWeight: 800, cursor: "pointer" };
-const presetButtonActiveStyle: CSSProperties = { ...presetButtonStyle, background: "linear-gradient(135deg, #fbbf24, #f59e0b)", borderColor: "#f59e0b", color: "#fff", boxShadow: "0 6px 14px rgba(245,158,11,0.35)" };
-const goalTitleStyle: CSSProperties = { fontWeight: 800, color: "#b45309", marginBottom: 8, fontSize: 14 };
-const progressTrackStyle: CSSProperties = { height: 10, borderRadius: 999, background: "#fde68a", overflow: "hidden" };
-const progressFillStyle: CSSProperties = { height: "100%", borderRadius: 999, background: "linear-gradient(135deg, #fbbf24, #f59e0b)" };
-const goalSubTextStyle: CSSProperties = { marginTop: 6, fontSize: 12, color: "#b45309", fontWeight: 700 };
-const historyTitleStyle: CSSProperties = { fontSize: 14, fontWeight: 800, color: "#5c3a41", marginBottom: 8 };
-const historyEmptyStyle: CSSProperties = { fontSize: 13, color: "#c2a394", padding: "8px 0" };
-const historyMemoStyle: CSSProperties = { fontSize: 13, color: "#7c5c52" };
-const historyDateStyle: CSSProperties = { fontSize: 11, color: "#c2a394", marginTop: 2 };
+const presetButtonStyle: CSSProperties = { flex: 1, minWidth: 60, padding: "10px 0", borderRadius: 999, border: "1px solid #D8D4F5", background: "#fff", color: "#6C63FF", fontWeight: 800, cursor: "pointer" };
+const presetButtonActiveStyle: CSSProperties = { ...presetButtonStyle, background: "linear-gradient(135deg, #8B83EA, #6C63FF)", borderColor: "#6C63FF", color: "#fff", boxShadow: "0 6px 14px rgba(108, 99, 255, 0.35)" };
+const goalTitleStyle: CSSProperties = { fontWeight: 800, color: "#6C63FF", marginBottom: 8, fontSize: 14 };
+const progressTrackStyle: CSSProperties = { height: 10, borderRadius: 999, background: "#E7E3FB", overflow: "hidden" };
+const progressFillStyle: CSSProperties = { height: "100%", borderRadius: 999, background: "linear-gradient(135deg, #8B83EA, #6C63FF)" };
+const goalSubTextStyle: CSSProperties = { marginTop: 6, fontSize: 12, color: "#6C63FF", fontWeight: 700 };
+const historyTitleStyle: CSSProperties = { fontSize: 14, fontWeight: 800, color: "#5b5470", marginBottom: 8 };
+const historyEmptyStyle: CSSProperties = { fontSize: 13, color: "#c7c1ee", padding: "8px 0" };
+const historyMemoStyle: CSSProperties = { fontSize: 13, color: "#5b5470" };
+const historyDateStyle: CSSProperties = { fontSize: 11, color: "#c7c1ee", marginTop: 2 };
 const historyAmountPlusStyle: CSSProperties = { color: "#15803d", fontWeight: 800 };
-const historyAmountMinusStyle: CSSProperties = { color: "#b91c1c", fontWeight: 800 };
+const historyAmountMinusStyle: CSSProperties = { color: "#E23D3D", fontWeight: 800 };
 const walletCardStyle: CSSProperties = {
   padding: 22,
   borderRadius: 24,
-  background: "linear-gradient(135deg, #fffbeb, #fef3c7)",
+  background: "linear-gradient(135deg, #8B83EA, #6C63FF)",
   marginBottom: 22,
-  boxShadow: "0 8px 24px rgba(245, 158, 11, 0.16)",
+  boxShadow: "0 8px 24px rgba(108, 99, 255, 0.28)",
 };
 
 const walletHeaderStyle: CSSProperties = {
@@ -273,7 +273,7 @@ const walletHeaderStyle: CSSProperties = {
 const walletEyebrowStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 800,
-  color: "#b45309",
+  color: "rgba(255,255,255,0.85)",
 };
 
 const walletIconStyle: CSSProperties = {
@@ -290,14 +290,14 @@ const walletBalanceRowStyle: CSSProperties = {
 const walletBalanceNumberStyle: CSSProperties = {
   fontSize: 40,
   fontWeight: 900,
-  color: "#d97706",
+  color: "#fff",
   letterSpacing: "-0.03em",
 };
 
 const walletBalanceUnitStyle: CSSProperties = {
   fontSize: 16,
   fontWeight: 800,
-  color: "#d97706",
+  color: "#fff",
 };
 
 const goalBoxStyle: CSSProperties = {
@@ -305,7 +305,7 @@ const goalBoxStyle: CSSProperties = {
   borderRadius: 16,
   background: "#ffffff",
   marginBottom: 14,
-  boxShadow: "0 2px 8px rgba(245, 158, 11, 0.10)",
+  boxShadow: "0 2px 8px rgba(43, 33, 64, 0.10)",
 };
 
 const historyBoxStyle: CSSProperties = {
@@ -322,15 +322,27 @@ const historyRowStyle: CSSProperties = {
   padding: "10px 12px",
   borderRadius: 14,
   background: "#ffffff",
-  boxShadow: "0 1px 4px rgba(245, 158, 11, 0.08)",
+  boxShadow: "0 1px 4px rgba(43, 33, 64, 0.08)",
 };
 
 const createBoxStyle: CSSProperties = {
   padding: 20,
   borderRadius: 22,
-  background: "#fffbeb",
+  background: "#fff",
   marginBottom: 22,
-  boxShadow: "0 6px 20px rgba(245,158,11,0.10)",
+  boxShadow: "0 6px 20px rgba(108, 99, 255, 0.08)",
 };
 
-function primaryButtonStyle(loading: boolean): CSSProperties { return { width: "100%", padding: 14, borderRadius: 14, border: "none", background: loading ? "#e6d7cf" : "linear-gradient(135deg, #fbbf24, #f59e0b)", color: "#fff", fontWeight: 800, cursor: loading ? "not-allowed" : "pointer", boxShadow: loading ? "none" : "0 6px 14px rgba(245,158,11,0.30)" }; }
+function primaryButtonStyle(loading: boolean): CSSProperties {
+  return {
+    width: "100%",
+    padding: 14,
+    borderRadius: 14,
+    border: "none",
+    background: loading ? "#D8D4F5" : "linear-gradient(135deg, #8B83EA, #6C63FF)",
+    color: "#fff",
+    fontWeight: 800,
+    cursor: loading ? "not-allowed" : "pointer",
+    boxShadow: loading ? "none" : "0 6px 14px rgba(108, 99, 255, 0.30)",
+  };
+}
