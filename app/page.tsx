@@ -576,17 +576,6 @@ export default function Home() {
           />
         </>
       )}
-
-      {workspace && activeTab === "tasks" && (
-        <TemplateManagerPanel
-          templates={templates}
-          loading={loading}
-          isManager={isManager}
-          onToggleTemplateActive={toggleTemplateActive}
-          onDeleteTemplate={deleteTemplate}
-          onRolloverNow={rolloverNow}
-        />
-      )}
       
       <AddTaskModal
         isOpen={showAddTaskModal}
