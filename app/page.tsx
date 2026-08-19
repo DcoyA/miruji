@@ -26,7 +26,6 @@ import BottomNav from "@/components/BottomNav";
 
 import DayTaskList from "@/features/calendar/DayTaskList";
 import AddTaskModal from "@/features/tasks/AddTaskModal";
-import TemplateManagerPanel from "@/features/tasks/TemplateManagerPanel";
 import RewardTab from "@/features/rewards/RewardTab";
 import TaskList from "@/features/tasks/TaskList";
 import MembersTab from "@/features/members/MembersTab";
@@ -70,7 +69,14 @@ export default function Home() {
   const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
-    
+  const [taskPanelOpen, setTaskPanelOpen] = useState(false);
+  const [taskPanelViewMode, setTaskPanelViewMode] = useState<"day" | "week">("day");
+  
+  function selectDateAndOpenPanel(dateKey: string) {
+    setSelectedDate(dateKey);
+    setTaskPanelOpen(true);
+  }
+
   const auth = useAuth({ setMessage, setLoading });
   const {
     authLoading,
@@ -514,31 +520,38 @@ export default function Home() {
 
 {workspace && <NotificationPrompt />}
 
-      {workspace && activeTab === "tasks" && (
-        <>
-          <TaskStatsCards
-            todayDoneCount={todayDoneCount}
-            todayTotalCount={todayTotalCount}
-            monthUnfinishedCount={monthUnfinishedCount}
-            onClickToday={() => setSelectedDate(todayKeyForStats)}
-            onClickUnfinished={() => setSummaryFilter("all")}
-          />
-          <ViewSwitchTabs mode={calendarViewMode} onChange={setCalendarViewMode} />
-          {calendarViewMode === "month" && (
-            <MonthView
-              currentMonth={currentMonth}
-              selectedDate={selectedDate}
-              tasks={tasks}
-              onSelectDate={setSelectedDate}
-              onPrevMonth={() => setCurrentMonth((prev) => addMonths(prev, -1))}
-              onNextMonth={() => setCurrentMonth((prev) => addMonths(prev, 1))}
-              onToday={() => {
-                setCurrentMonth(startOfMonth(new Date()));
-                setSelectedDate(toDateKey(new Date()));
-              }}
-            />
+          {workspace && activeTab === "tasks" && (
+            <>
+              <TaskStatsCards
+                todayDoneCount={todayDoneCount}
+                todayTotalCount={todayTotalCount}
+                monthUnfinishedCount={monthUnfinishedCount}
+                onClickToday={() => selectDateAndOpenPanel(todayKeyForStats)}
+                onClickUnfinished={() => setSummaryFilter("all")}
+              />
+              <ViewSwitchTabs mode={calendarViewMode} onChange={setCalendarViewMode} />
+              {calendarViewMode === "month" && (
+                <MonthView
+                  currentMonth={currentMonth}
+                  selectedDate={selectedDate}
+                  tasks={tasks}
+                  onSelectDate={selectDateAndOpenPanel}
+                  onPrevMonth={() => setCurrentMonth((prev) => addMonths(prev, -1))}
+                  onNextMonth={() => setCurrentMonth((prev) => addMonths(prev, 1))}
+                  onToday={() => {
+                    setCurrentMonth(startOfMonth(new Date()));
+                    setSelectedDate(toDateKey(new Date()));
+                  }}
+                />
+              )}
+            </>
           )}
+          
           <DayTaskList
+            isOpen={taskPanelOpen}
+            onOpenChange={setTaskPanelOpen}
+            viewMode={taskPanelViewMode}
+            onViewModeChange={setTaskPanelViewMode}
             selectedDate={selectedDate}
             tasks={selectedTasks}
             monthTasks={tasks}
@@ -546,7 +559,7 @@ export default function Home() {
             currentMember={currentMember}
             isManager={isManager}
             loading={loading}
-            onSelectDate={setSelectedDate}
+            onSelectDate={selectDateAndOpenPanel}
             onSubmitTask={submitTask}
             onApproveTask={approveTask}
             onRejectTask={rejectTask}
@@ -556,6 +569,10 @@ export default function Home() {
             onSubmitWithEvidence={submitTaskWithEvidence}
             onSubmitWithText={submitTaskWithText}
             onReorderTasks={reorderTasks}
+            templates={templates}
+            onToggleTemplateActive={toggleTemplateActive}
+            onDeleteTemplate={deleteTemplate}
+            onRolloverNow={rolloverNow}
           />
         </>
       )}
