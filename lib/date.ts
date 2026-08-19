@@ -57,3 +57,11 @@ export function buildWeekDays(dateKey: string) {
   const start = startOfWeek(base);
   return Array.from({ length: 7 }, (_, index) => addDays(start, index));
 }
+const WEEKDAY_SHORT_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+
+export function formatKoreanDateWithWeekday(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  const weekday = WEEKDAY_SHORT_LABELS[date.getDay()];
+  return `${month}월 ${day}일 (${weekday})`;
+}
