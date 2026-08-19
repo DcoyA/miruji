@@ -27,6 +27,7 @@ const phoneStyle: CSSProperties = {
   minHeight: "calc(100vh - 32px)",
   background: "#FFFFFF",
   borderRadius: 28,
-  padding: 22,
+  padding: "22px 22px 104px",
   boxShadow: "0 20px 60px rgba(108, 99, 255, 0.14)",
+  position: "relative",
 };
