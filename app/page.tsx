@@ -498,6 +498,10 @@ export default function Home() {
   return (
     <Shell>
       <AppHeader
+        avatarUrl={profile.avatar_url}
+        username={profile.display_name}
+        nickname={currentMember?.display_name ?? null}
+        roleText={currentMember ? roleLabel(currentMember.role) : null}
         workspaceName={workspace?.name ?? null}
         showWorkspaceControls={Boolean(workspace)}
         canSwitchWorkspace={workspaces.length > 1}
@@ -507,18 +511,6 @@ export default function Home() {
         onToggleNotifications={toggleMyNotifications}
         onOpenMenu={() => setMenuOpen(true)}
       />
-      
-      <section style={accountBoxStyle}>
-        <Avatar src={profile.avatar_url} name={profile.display_name} size={44} />
-        <div style={accountInfoStyle}>
-          <span style={accountNameStyle}>
-            {currentMember?.display_name ?? profile.display_name}
-          </span>
-          {currentMember && (
-            <span style={roleBadgeStyle}>{roleLabel(currentMember.role)}</span>
-          )}
-        </div>
-      </section>
 
 {workspace && <NotificationPrompt />}
 
