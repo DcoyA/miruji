@@ -151,17 +151,19 @@ const weekHeaderStyle: CSSProperties = {
 const calendarGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(7, 1fr)",
-  gap: 4,
+  gap: 6,
 };
 
 const calendarDayStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: 4,
-  padding: "8px 2px",
+  justifyContent: "center",
+  gap: 5,
+  minHeight: 52,
+  padding: "10px 2px",
   border: "none",
-  borderRadius: 12,
+  borderRadius: 14,
   background: "#fff",
   cursor: "pointer",
 };
