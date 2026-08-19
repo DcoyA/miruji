@@ -50,7 +50,7 @@ function StatIcon({ src, fallback }: { src: string; fallback: string }) {
   );
 }
 
-const gridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 14 };
+const gridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 };
 
 const cardStyle: CSSProperties = {
   display: "flex",
@@ -58,10 +58,9 @@ const cardStyle: CSSProperties = {
   gap: 8,
   padding: "10px 12px",
   borderRadius: 16,
-  background: "#FBFAFF",
-  boxShadow: "0 3px 10px rgba(108, 99, 255, 0.10)",
+  background: "rgba(255, 255, 255, 0.14)",
+  border: "1px solid rgba(255, 255, 255, 0.2)",
   textAlign: "left",
-  border: "none",
   cursor: "pointer",
 };
 
@@ -71,6 +70,6 @@ const iconImgStyle: CSSProperties = { flexShrink: 0 };
 
 const fallbackIconStyle: CSSProperties = { fontSize: 20, flexShrink: 0 };
 
-const numberStyle: CSSProperties = { fontSize: 16, fontWeight: 900, color: "#6C63FF", lineHeight: 1.1 };
+const numberStyle: CSSProperties = { fontSize: 16, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.1 };
 
-const labelStyle: CSSProperties = { fontSize: 11, color: "#8b83b0", fontWeight: 800, lineHeight: 1.1 };
+const labelStyle: CSSProperties = { fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: 800, lineHeight: 1.1 };
