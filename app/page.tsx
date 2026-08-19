@@ -580,7 +580,6 @@ export default function Home() {
                   onRejectTask={rejectTask}
                   onCancelTask={cancelSubmission}
                   onDeleteTask={deleteTask}
-                  onReorderTasks={reorderTasks}
                   onEditTask={openEditTask}
                   onReorderAcrossDates={reorderTasksAcrossDates}
                 />
