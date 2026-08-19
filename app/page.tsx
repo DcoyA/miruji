@@ -574,8 +574,6 @@ export default function Home() {
             onDeleteTemplate={deleteTemplate}
             onRolloverNow={rolloverNow}
           />
-        </>
-      )}
       
       <AddTaskModal
         isOpen={showAddTaskModal}
