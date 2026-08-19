@@ -470,6 +470,31 @@ export default function Home() {
     );
   }
 
+  if (showProfileSettings) {
+    return (
+      <Shell>
+        <ProfileSettingsPanel
+          profileDisplayName={profile.display_name}
+          avatarUrl={profile.avatar_url}
+          myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
+          loading={loading}
+          onUploadAvatar={uploadAvatar}
+          myNickname={myNickname}
+          onMyNicknameChange={setMyNickname}
+          onSaveMyNickname={saveMyNickname}
+          recoveryEmail={profileRecoveryEmail}
+          onRecoveryEmailChange={setProfileRecoveryEmail}
+          onSaveRecoveryEmail={saveRecoveryEmail}
+          currentNicknameLabel={currentMember?.display_name ?? profile.display_name}
+          newPassword={newPassword}
+          onNewPasswordChange={setNewPassword}
+          onChangePassword={changePassword}
+          onBack={() => setShowProfileSettings(false)}
+        />
+      </Shell>
+    );
+  }
+
   return (
     <Shell>
       <AppHeader
