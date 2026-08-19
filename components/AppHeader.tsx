@@ -104,9 +104,9 @@ export default function AppHeader({
 function HamburgerIcon() {
   return (
     <svg width={17} height={17} viewBox="0 0 24 24" fill="none">
-      <path d="M4 6H20" stroke="#6C63FF" strokeWidth={2.4} strokeLinecap="round" />
-      <path d="M4 12H20" stroke="#6C63FF" strokeWidth={2.4} strokeLinecap="round" />
-      <path d="M4 18H20" stroke="#6C63FF" strokeWidth={2.4} strokeLinecap="round" />
+      <path d="M4 6H20" stroke="#FFFFFF" strokeWidth={2.4} strokeLinecap="round" />
+      <path d="M4 12H20" stroke="#FFFFFF" strokeWidth={2.4} strokeLinecap="round" />
+      <path d="M4 18H20" stroke="#FFFFFF" strokeWidth={2.4} strokeLinecap="round" />
     </svg>
   );
 }
@@ -116,17 +116,25 @@ function BellIcon({ filled }: { filled: boolean }) {
     <svg width={17} height={17} viewBox="0 0 24 24" fill="none">
       <path
         d="M6 10a6 6 0 1 1 12 0v4l1.6 2.4a1 1 0 0 1-.8 1.6H5.2a1 1 0 0 1-.8-1.6L6 14z"
-        fill={filled ? "#6C63FF" : "none"}
-        stroke="#6C63FF"
+        fill={filled ? "#FFFFFF" : "none"}
+        stroke="#FFFFFF"
         strokeWidth={1.8}
         strokeLinejoin="round"
       />
-      <path d="M10 20a2 2 0 0 0 4 0" stroke="#6C63FF" strokeWidth={1.8} strokeLinecap="round" />
+      <path d="M10 20a2 2 0 0 0 4 0" stroke="#FFFFFF" strokeWidth={1.8} strokeLinecap="round" />
     </svg>
   );
 }
 
-const headerWrapStyle: CSSProperties = { marginBottom: 18 };
+const headerWrapStyle: CSSProperties = {
+  background: "linear-gradient(135deg, #7B72F2 0%, #6C63FF 55%, #5D53E8 100%)",
+  borderRadius: "24px 24px 0 0",
+  padding: "18px 18px 44px",
+  marginBottom: -32,
+  position: "relative",
+  zIndex: 1,
+  boxShadow: "0 12px 24px rgba(108, 99, 255, 0.25)",
+};
 
 const brandRowStyle: CSSProperties = {
   display: "flex",
@@ -138,7 +146,7 @@ const brandRowStyle: CSSProperties = {
 const brandTextStyle: CSSProperties = {
   fontSize: 12,
   fontWeight: 800,
-  color: "#8B83B0",
+  color: "rgba(255,255,255,0.75)",
   letterSpacing: "0.02em",
 };
 
@@ -156,21 +164,21 @@ const profileTextColStyle: CSSProperties = { display: "flex", flexDirection: "co
 const profileNameStyle: CSSProperties = {
   fontSize: 15,
   fontWeight: 800,
-  color: "#2b2140",
+  color: "#FFFFFF",
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
 };
 
-const nicknameStyle: CSSProperties = { fontWeight: 600, color: "#8b83b0" };
+const nicknameStyle: CSSProperties = { fontWeight: 600, color: "rgba(255,255,255,0.7)" };
 
 const roleBadgeStyle: CSSProperties = {
   display: "inline-flex",
   alignSelf: "flex-start",
   padding: "2px 9px",
   borderRadius: 999,
-  background: "#F1EEFE",
-  color: "#6C63FF",
+  background: "rgba(255,255,255,0.2)",
+  color: "#FFFFFF",
   fontSize: 11,
   fontWeight: 800,
 };
@@ -184,7 +192,7 @@ const iconButtonStyle: CSSProperties = {
   justifyContent: "center",
   border: "none",
   borderRadius: 12,
-  background: "#F1EEFE",
+  background: "rgba(255,255,255,0.18)",
   cursor: "pointer",
   flexShrink: 0,
 };
@@ -194,7 +202,7 @@ const workspaceRowStyle: CSSProperties = {
   gridTemplateColumns: "28px 1fr 28px 36px",
   gap: 6,
   alignItems: "center",
-  background: "#FBFAFF",
+  background: "rgba(255,255,255,0.12)",
   borderRadius: 16,
   padding: "8px 8px",
 };
@@ -203,7 +211,7 @@ const workspaceTitleStyle: CSSProperties = {
   margin: 0,
   fontSize: 16,
   fontWeight: 800,
-  color: "#2b2140",
+  color: "#FFFFFF",
   textAlign: "center",
   overflow: "hidden",
   textOverflow: "ellipsis",
@@ -216,7 +224,7 @@ function arrowButtonStyle(enabled: boolean): CSSProperties {
     background: "transparent",
     fontSize: 18,
     fontWeight: 800,
-    color: enabled ? "#6C63FF" : "#D8D4F5",
+    color: enabled ? "#FFFFFF" : "rgba(255,255,255,0.35)",
     cursor: enabled ? "pointer" : "default",
     padding: 0,
   };
