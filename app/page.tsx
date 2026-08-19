@@ -86,6 +86,15 @@ export default function Home() {
     setSelectedDate(dateKey);
     setTaskPanelOpen(true);
   }
+  
+  const [manageWorkspaceSignal, setManageWorkspaceSignal] = useState(0);
+  
+  function manageWorkspace(id: string) {
+    const next = workspaces.find((item) => item.id === id) || null;
+    setWorkspace(next);
+    setActiveTab("members");
+    setManageWorkspaceSignal((prev) => prev + 1);
+  }
 
   const auth = useAuth({ setMessage, setLoading });
   const {
@@ -429,10 +438,7 @@ export default function Home() {
           isOpen={menuOpen}
           onClose={() => setMenuOpen(false)}
           workspaces={workspaces}
-          onSelectWorkspace={(id) => {
-            const next = workspaces.find((item) => item.id === id) || null;
-            setWorkspace(next);
-          }}
+          onManageWorkspace={manageWorkspace}
           onGoProfileSettings={() => setShowProfileSettings(true)}
           onCreateWorkspace={() => {
             setOnboardingStep("create");
@@ -705,6 +711,7 @@ export default function Home() {
           onTransferOwnership={transferOwnership}
           onUpdateMemberRole={updateMemberRole}
           onDeleteWorkspace={deleteWorkspace}
+          focusWorkspaceManagementAt={manageWorkspaceSignal}
         />
       )}
 
