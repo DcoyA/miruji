@@ -311,6 +311,83 @@ export function useTasks({
     }
   }
 
+  async function updateTask(
+    taskId: string,
+    patch: {
+      title: string;
+      description: string;
+      verificationType: string;
+      dueTime: string;
+      rewardPoints: number;
+      dueDate: string;
+    }
+  ) {
+    if (!workspace) {
+      setMessage("모임이 없습니다.");
+      return;
+    }
+    if (!patch.title.trim()) {
+      setMessage("할 일을 입력해주세요.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({
+        title: patch.title.trim(),
+        description: patch.description.trim() || null,
+        verification_type: patch.verificationType,
+        verification_required: patch.verificationType !== "none",
+        due_time: patch.dueTime || null,
+        reward_points: patch.rewardPoints,
+        due_date: patch.dueDate,
+      })
+      .eq("id", taskId)
+      .select(taskSelect)
+      .single();
+
+    if (error) {
+      setMessage(`수정 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setTasks((prev) => prev.map((item) => (item.id === taskId ? (data as Task) : item)));
+    setMessage("할 일을 수정했습니다.");
+    setLoading(false);
+  }
+
+  async function reorderTasksAcrossDates(
+    assignments: { id: string; dueDate: string; orderIndex: number }[]
+  ) {
+    if (!workspace || assignments.length === 0) return;
+
+    setTasks((prev) => {
+      const next = [...prev];
+      assignments.forEach(({ id, dueDate, orderIndex }) => {
+        const targetIndex = next.findIndex((task) => task.id === id);
+        if (targetIndex !== -1) {
+          next[targetIndex] = { ...next[targetIndex], due_date: dueDate, order_index: orderIndex };
+        }
+      });
+      return next;
+    });
+
+    const results = await Promise.all(
+      assignments.map(({ id, dueDate, orderIndex }) =>
+        supabase.from("tasks").update({ due_date: dueDate, order_index: orderIndex }).eq("id", id)
+      )
+    );
+
+    const failed = results.find((result) => result.error);
+    if (failed?.error) {
+      setMessage(`순서 저장 실패: ${failed.error.message}`);
+    }
+  }
+
   async function submitTask(task: Task) {
     if (!workspace) {
       setMessage("모임이 없습니다.");
@@ -602,6 +679,8 @@ export function useTasks({
     deleteTemplate,
     rolloverNow,
     reorderTasks,
+    reorderTasksAcrossDates,
+    updateTask,
     submitTask,
     submitTaskWithText,
     submitTaskWithEvidence,
