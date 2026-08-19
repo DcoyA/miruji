@@ -93,9 +93,7 @@ export default function MonthView({
   );
 }
 
-const wrapStyle: CSSProperties = {
-  marginBottom: 20,
-};
+const wrapStyle: CSSProperties = { marginBottom: 20 };
 
 const toolbarStyle: CSSProperties = {
   display: "grid",
@@ -109,11 +107,11 @@ const monthButtonStyle: CSSProperties = {
   height: 40,
   border: "none",
   borderRadius: 14,
-  background: "#fff",
-  boxShadow: "0 2px 8px rgba(190, 24, 93, 0.08)",
+  background: "#FBFAFF",
+  boxShadow: "0 2px 8px rgba(108, 99, 255, 0.10)",
   fontSize: 22,
   fontWeight: 800,
-  color: "#be123c",
+  color: "#6C63FF",
   cursor: "pointer",
 };
 
@@ -121,19 +119,19 @@ const monthTitleStyle: CSSProperties = {
   textAlign: "center",
   fontWeight: 900,
   fontSize: 17,
-  color: "#3f1d24",
+  color: "#2b2140",
 };
 
 const todayButtonStyle: CSSProperties = {
   height: 40,
   border: "none",
   borderRadius: 14,
-  background: "linear-gradient(135deg, #fb7185, #e11d48)",
+  background: "linear-gradient(135deg, #8B83EA, #6C63FF)",
   color: "#fff",
   fontWeight: 800,
   fontSize: 12,
   cursor: "pointer",
-  boxShadow: "0 4px 12px rgba(225,29,72,0.30)",
+  boxShadow: "0 4px 12px rgba(108, 99, 255, 0.35)",
 };
 
 const weekHeaderGridStyle: CSSProperties = {
@@ -146,7 +144,7 @@ const weekHeaderStyle: CSSProperties = {
   textAlign: "center",
   fontSize: 12,
   fontWeight: 800,
-  color: "#c76b7d",
+  color: "#ABA3CC",
   padding: "4px 0",
 };
 
@@ -169,34 +167,34 @@ const calendarDayStyle: CSSProperties = {
 };
 
 const calendarDaySelectedStyle: CSSProperties = {
-  background: "#ffe4e6",
-  boxShadow: "0 0 0 2px #fb7185 inset",
+  background: "#F1EEFE",
+  boxShadow: "0 0 0 2px #6C63FF inset",
 };
 
 const calendarDayTodayStyle: CSSProperties = {
-  boxShadow: "0 0 0 1px #fb7185 inset",
+  boxShadow: "0 0 0 1px #8B83EA inset",
 };
 
 const dayNumberStyle: CSSProperties = {
   fontWeight: 800,
   fontSize: 13,
-  color: "#3f1d24",
+  color: "#2b2140",
 };
 
 const badgeDoneStyle: CSSProperties = {
   fontSize: 10,
   fontWeight: 800,
-  color: "#94a3b8",
+  color: "#B9B4D9",
 };
 
 const badgeUnfinishedStyle: CSSProperties = {
   fontSize: 10,
   fontWeight: 800,
-  color: "#2563eb",
+  color: "#6C63FF",
 };
 
 const badgeTodayUnfinishedStyle: CSSProperties = {
   fontSize: 10,
   fontWeight: 900,
-  color: "#dc2626",
+  color: "#F0553D",
 };
