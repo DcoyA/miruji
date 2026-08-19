@@ -714,6 +714,31 @@ export default function Home() {
           focusWorkspaceManagementAt={manageWorkspaceSignal}
         />
       )}
+      
+      {workspace && activeTab === "rewards" && (
+        <RewardTab
+          members={activeMembers}
+          rewards={rewards}
+          transactions={rewardTransactions}
+          currentMember={currentMember}
+          isManager={isManager}
+          title={newRewardTitle}
+          description={newRewardDescription}
+          targetMemberId={newRewardTargetMemberId}
+          costPoints={newRewardCostPoints}
+          loading={loading}
+          balanceByMemberId={balanceByMemberId}
+          onTitleChange={setNewRewardTitle}
+          onDescriptionChange={setNewRewardDescription}
+          onTargetMemberIdChange={setNewRewardTargetMemberId}
+          onCostPointsChange={setNewRewardCostPoints}
+          onCreate={createReward}
+          onRequestRedeem={requestRedeem}
+          onConfirmRedeem={confirmRedeem}
+          onRejectRedeem={rejectRedeem}
+          onDeleteReward={deleteReward}
+        />
+      )}
 
       {!workspace && activeTab !== "members" && <NoWorkspacePrompt onGoSettings={() => setActiveTab("members")} />}
 
