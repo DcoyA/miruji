@@ -519,9 +519,8 @@ export default function Home() {
       />
 
 {workspace && <NotificationPrompt />}
-
           {workspace && activeTab === "tasks" && (
-            <>
+            <div style={homeCardStyle}>
               <TaskStatsCards
                 todayDoneCount={todayDoneCount}
                 todayTotalCount={todayTotalCount}
@@ -544,7 +543,7 @@ export default function Home() {
                   }}
                 />
               )}
-            </>
+            </div>
           )}
           
           <DayTaskList
@@ -773,4 +772,12 @@ const plusSheetCloseButtonStyle: CSSProperties = {
   fontSize: 18,
   color: "#3f1d24",
   cursor: "pointer",
+};
+const homeCardStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 2,
+  background: "#FFFFFF",
+  borderRadius: 24,
+  padding: "18px 16px 6px",
+  boxShadow: "0 10px 28px rgba(108, 99, 255, 0.14)",
 };
