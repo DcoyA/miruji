@@ -31,6 +31,7 @@ type DayTaskListProps = {
   onSubmitWithEvidence?: (task: Task, file: File) => void;
   onSubmitWithText?: (task: Task, text: string) => void;
   onReorderTasks: (dateKey: string, orderedTaskIds: string[]) => void;
+  onEditTask: (task: Task) => void;
   templates: TaskTemplate[];
   onToggleTemplateActive: (template: TaskTemplate) => void;
   onDeleteTemplate: (template: TaskTemplate) => void;
@@ -61,6 +62,7 @@ export default function DayTaskList({
   onSubmitWithEvidence,
   onSubmitWithText,
   onReorderTasks,
+  onEditTask,
   templates,
   onToggleTemplateActive,
   onDeleteTemplate,
@@ -148,6 +150,7 @@ export default function DayTaskList({
                 onCancel={onCancelTask}
                 onDelete={onDeleteTask}
                 onReorder={(orderedIds) => onReorderTasks(selectedDate, orderedIds)}
+                onEdit={onEditTask}
               />
             )
           ) : (
@@ -194,6 +197,7 @@ export default function DayTaskList({
                           onCancel={onCancelTask}
                           onDelete={onDeleteTask}
                           onReorder={(orderedIds) => onReorderTasks(dateKey, orderedIds)}
+                          onEdit={onEditTask}
                         />
                       </div>
                     )}
