@@ -20,6 +20,7 @@ type DayViewProps = {
   onCancelTask: (task: Task) => void;
   onDeleteTask: (task: Task) => void;
   onReorderTasks: (dateKey: string, orderedTaskIds: string[]) => void;
+  onEditTask: (task: Task) => void; 
 };
 
 export default function DayView({
@@ -38,6 +39,7 @@ export default function DayView({
   onCancelTask,
   onDeleteTask,
   onReorderTasks,
+  onEditTask,
 }: DayViewProps) {
   const sorted = [...tasks].sort((a, b) => {
     const orderA = a.order_index ?? Number.MAX_SAFE_INTEGER;
@@ -85,6 +87,7 @@ export default function DayView({
         onCancel={onCancelTask}
         onDelete={onDeleteTask}
         onReorder={(orderedIds) => onReorderTasks(selectedDate, orderedIds)}
+        onEdit={onEditTask}
       />
     </div>
   );
