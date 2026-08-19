@@ -3,8 +3,8 @@
 import type { CSSProperties } from "react";
 import type { Member, Task, TaskTemplate } from "@/types/app";
 import { formatKoreanDate, buildWeekDays, toDateKey } from "@/lib/date";
-import TaskList from "@/features/tasks/TaskList";
 import SortableTaskList from "@/features/tasks/SortableTaskList";
+import WeekView from "@/features/tasks/WeekView";
 import TemplateManagerPanel from "@/features/tasks/TemplateManagerPanel";
 
 type ViewMode = "day" | "week";
@@ -31,14 +31,13 @@ type DayTaskListProps = {
   onSubmitWithEvidence?: (task: Task, file: File) => void;
   onSubmitWithText?: (task: Task, text: string) => void;
   onReorderTasks: (dateKey: string, orderedTaskIds: string[]) => void;
+  onReorderAcrossDates: (assignments: { id: string; dueDate: string; orderIndex: number }[]) => void;
   onEditTask: (task: Task) => void;
   templates: TaskTemplate[];
   onToggleTemplateActive: (template: TaskTemplate) => void;
   onDeleteTemplate: (template: TaskTemplate) => void;
   onRolloverNow: () => void;
 };
-
-const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 
 export default function DayTaskList({
   isOpen,
@@ -62,13 +61,13 @@ export default function DayTaskList({
   onSubmitWithEvidence,
   onSubmitWithText,
   onReorderTasks,
+  onReorderAcrossDates,
   onEditTask,
   templates,
   onToggleTemplateActive,
   onDeleteTemplate,
   onRolloverNow,
 }: DayTaskListProps) {
-  const todayKey = toDateKey(new Date());
   const weekDays = buildWeekDays(selectedDate);
 
   const weekTasks = monthTasks.filter((task) =>
@@ -149,62 +148,33 @@ export default function DayTaskList({
                 onReject={onRejectTask}
                 onCancel={onCancelTask}
                 onDelete={onDeleteTask}
-                onReorder={(orderedIds) => onReorderTasks(selectedDate, orderedIds)}
                 onEdit={onEditTask}
+                onReorder={(orderedIds) => onReorderTasks(selectedDate, orderedIds)}
               />
             )
           ) : (
-            <div style={weekListStyle}>
-              {weekDays.map((day) => {
-                const dateKey = toDateKey(day);
-                const dayTasks = sortByOrderIndex(monthTasks.filter((task) => task.due_date === dateKey));
-                const dayApprovedCount = dayTasks.filter((task) => task.status === "approved").length;
-                const dayTotalCount = dayTasks.length;
-                const isPast = dateKey < todayKey;
-                const isToday = dateKey === todayKey;
-                const hasOverdueUnfinished = isPast && dayTasks.some((task) => task.status !== "approved");
-                const isSelected = dateKey === selectedDate;
-
-                return (
-                  <div key={dateKey} style={isSelected ? weekDayCardActiveStyle : weekDayCardStyle}>
-                    <button type="button" onClick={() => onSelectDate(dateKey)} style={weekDayHeaderStyle}>
-                      <span style={weekDayLabelStyle}>
-                        {WEEKDAY_LABELS[day.getDay()]} {day.getDate()}
-                        {isToday && <span style={todayDotStyle}> ・ 오늘</span>}
-                      </span>
-                      {dayTotalCount > 0 ? (
-                        <span style={hasOverdueUnfinished ? weekDayCountOverdueStyle : weekDayCountStyle}>
-                          {dayApprovedCount}/{dayTotalCount}
-                        </span>
-                      ) : (
-                        <span style={weekDayCountEmptyStyle}>-</span>
-                      )}
-                    </button>
-
-                    {dayTasks.length > 0 && (
-                      <div style={weekDayTaskListStyle}>
-                        <SortableTaskList
-                          tasks={dayTasks}
-                          members={members}
-                          currentMember={currentMember}
-                          isManager={isManager}
-                          loading={loading}
-                          onSubmit={onSubmitTask}
-                          onSubmitWithEvidence={onSubmitWithEvidence}
-                          onSubmitWithText={onSubmitWithText}
-                          onApprove={onApproveTask}
-                          onReject={onRejectTask}
-                          onCancel={onCancelTask}
-                          onDelete={onDeleteTask}
-                          onReorder={(orderedIds) => onReorderTasks(dateKey, orderedIds)}
-                          onEdit={onEditTask}
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <WeekView
+              selectedDate={selectedDate}
+              tasks={monthTasks}
+              members={members}
+              currentMember={currentMember}
+              isManager={isManager}
+              loading={loading}
+              onSelectDate={onSelectDate}
+              onAddTask={(dateKey) => {
+                onSelectDate(dateKey);
+                onAddTask();
+              }}
+              onSubmitTask={onSubmitTask}
+              onSubmitWithEvidence={onSubmitWithEvidence}
+              onSubmitWithText={onSubmitWithText}
+              onApproveTask={onApproveTask}
+              onRejectTask={onRejectTask}
+              onCancelTask={onCancelTask}
+              onDeleteTask={onDeleteTask}
+              onEditTask={onEditTask}
+              onReorderAcrossDates={onReorderAcrossDates}
+            />
           )}
 
           <TemplateManagerPanel
@@ -331,44 +301,6 @@ const panelBodyStyle: CSSProperties = {
   padding: "14px 18px 28px",
   WebkitOverflowScrolling: "touch",
 };
-
-const weekListStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 };
-
-const weekDayCardStyle: CSSProperties = {
-  borderRadius: 18,
-  background: "#FBFAFF",
-  boxShadow: "0 3px 12px rgba(108, 99, 255, 0.06)",
-  overflow: "hidden",
-};
-
-const weekDayCardActiveStyle: CSSProperties = {
-  ...weekDayCardStyle,
-  boxShadow: "0 4px 16px rgba(108, 99, 255, 0.18)",
-  background: "#F1EEFE",
-};
-
-const weekDayHeaderStyle: CSSProperties = {
-  width: "100%",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "12px 14px",
-  border: "none",
-  background: "transparent",
-  cursor: "pointer",
-};
-
-const weekDayLabelStyle: CSSProperties = { fontSize: 15, fontWeight: 800, color: "#2b2140" };
-
-const todayDotStyle: CSSProperties = { color: "#6C63FF", fontWeight: 800, fontSize: 12 };
-
-const weekDayCountStyle: CSSProperties = { fontSize: 14, fontWeight: 800, color: "#6C63FF" };
-
-const weekDayCountOverdueStyle: CSSProperties = { fontSize: 14, fontWeight: 800, color: "#F0553D" };
-
-const weekDayCountEmptyStyle: CSSProperties = { fontSize: 14, fontWeight: 700, color: "#D8D4F5" };
-
-const weekDayTaskListStyle: CSSProperties = { padding: "0 14px 14px" };
 
 const addTaskButtonStyle: CSSProperties = {
   border: "none",
