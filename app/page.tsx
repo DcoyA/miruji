@@ -18,6 +18,7 @@ import {
   summaryModalBodyStyle,
 } from "@/features/home/styles";
 import NotificationPrompt from "@/features/notifications/NotificationPrompt";
+import EditTaskModal from "@/features/tasks/EditTaskModal";
 
 import Shell from "@/components/Shell";
 import AppHeader from "@/components/AppHeader";
@@ -73,7 +74,14 @@ export default function Home() {
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [taskPanelOpen, setTaskPanelOpen] = useState(false);
   const [taskPanelViewMode, setTaskPanelViewMode] = useState<"day" | "week">("day");
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [showEditTaskModal, setShowEditTaskModal] = useState(false);
   
+  function openEditTask(task: Task) {
+    setEditingTask(task);
+    setShowEditTaskModal(true);
+  }
+
   function selectDateAndOpenPanel(dateKey: string) {
     setSelectedDate(dateKey);
     setTaskPanelOpen(true);
@@ -231,7 +239,9 @@ export default function Home() {
     approveTask,
     rejectTask,
     resetTaskState,
-    reorderTasks
+    reorderTasks,
+    reorderTasksAcrossDates,
+    updateTask,
   } = tasksHook;
 
   const rewardsHook = useRewards({
@@ -571,6 +581,8 @@ export default function Home() {
                   onCancelTask={cancelSubmission}
                   onDeleteTask={deleteTask}
                   onReorderTasks={reorderTasks}
+                  onEditTask={openEditTask}
+                  onReorderAcrossDates={reorderTasksAcrossDates}
                 />
               )}
               {calendarViewMode === "day" && (
@@ -590,6 +602,7 @@ export default function Home() {
                   onCancelTask={cancelSubmission}
                   onDeleteTask={deleteTask}
                   onReorderTasks={reorderTasks}
+                  onEditTask={openEditTask}
                 />
               )}
             </div>
@@ -622,6 +635,7 @@ export default function Home() {
             onToggleTemplateActive={toggleTemplateActive}
             onDeleteTemplate={deleteTemplate}
             onRolloverNow={rolloverNow}
+            onEditTask={openEditTask}
           />
       
       <AddTaskModal
@@ -648,6 +662,14 @@ export default function Home() {
         onRepeatTypeChange={setNewTaskRepeatType}
         onToggleRepeatWeekday={toggleRepeatWeekday}
         onCreate={createTask}
+      />
+
+      <EditTaskModal
+        isOpen={showEditTaskModal}
+        task={editingTask}
+        loading={loading}
+        onClose={() => setShowEditTaskModal(false)}
+        onSave={updateTask}
       />
 
       {activeTab === "members" && (
