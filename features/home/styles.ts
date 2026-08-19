@@ -8,7 +8,7 @@ export const titleStyle: CSSProperties = {
   color: "#3f1d24",
 };
 
-export const subTextStyle: CSSProperties = { color: "#9f6b75", lineHeight: 1.6, marginBottom: 20 };
+export const subTextStyle: CSSProperties = { color: "#8b83b0", lineHeight: 1.6, marginBottom: 20 };
 
 export const accountBoxStyle: CSSProperties = {
   display: "flex",
@@ -85,22 +85,11 @@ export const messageBoxStyle = (message: string): CSSProperties => {
 export const summaryModalBackdropStyle: CSSProperties = {
   position: "fixed",
   inset: 0,
-  background: "rgba(63,29,36,0.45)",
+  background: "rgba(43, 33, 74, 0.45)",
   zIndex: 50,
   display: "flex",
   alignItems: "flex-end",
   justifyContent: "center",
-};
-
-export const summaryModalPanelStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 480,
-  maxHeight: "80dvh",
-  background: "#fff",
-  borderRadius: "24px 24px 0 0",
-  display: "flex",
-  flexDirection: "column",
-  paddingTop: "env(safe-area-inset-top)",
 };
 
 export const summaryModalHeaderStyle: CSSProperties = {
@@ -108,25 +97,37 @@ export const summaryModalHeaderStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   padding: "16px 18px 12px",
-  borderBottom: "1px solid #f6e8e6",
+  borderBottom: "1px solid #EDEBFF",
 };
 
 export const summaryModalTitleStyle: CSSProperties = {
   margin: 0,
   fontSize: 20,
   letterSpacing: "-0.03em",
-  color: "#3f1d24",
+  color: "#2b2140",
 };
 
 export const summaryModalCloseButtonStyle: CSSProperties = {
-  border: "1px solid #f1d9dd",
+  border: "1px solid #D8D4F5",
   background: "#fff",
-  color: "#9f6b75",
+  color: "#6C63FF",
   borderRadius: 999,
   padding: "6px 14px",
   fontWeight: 800,
   fontSize: 13,
   cursor: "pointer",
+};
+
+export const summaryModalPanelStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 480,
+  minHeight: "50vh",
+  maxHeight: "80dvh",
+  background: "#fff",
+  borderRadius: "24px 24px 0 0",
+  display: "flex",
+  flexDirection: "column",
+  paddingTop: "env(safe-area-inset-top)",
 };
 
 export const summaryModalBodyStyle: CSSProperties = {

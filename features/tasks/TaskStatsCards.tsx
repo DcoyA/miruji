@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useState } from "react";
 
 type TaskStatsCardsProps = {
   todayDoneCount: number;
@@ -20,46 +21,55 @@ export default function TaskStatsCards({
   return (
     <section style={gridStyle}>
       <button type="button" onClick={onClickToday} style={cardStyle}>
-        <div style={numberStyle}>
-          {todayDoneCount}/{todayTotalCount}
+        <StatIcon src="/icons/today-task.png" fallback="✅" />
+        <div style={textColStyle}>
+          <div style={numberStyle}>
+            {todayDoneCount}/{todayTotalCount}
+          </div>
+          <div style={labelStyle}>오늘의 할 일</div>
         </div>
-        <div style={labelStyle}>오늘의 할 일</div>
       </button>
 
       <button type="button" onClick={onClickUnfinished} style={cardStyle}>
-        <div style={numberStyle}>{monthUnfinishedCount}</div>
-        <div style={labelStyle}>이번 달 미완료</div>
+        <StatIcon src="/icons/month-unfinished.png" fallback="🗓️" />
+        <div style={textColStyle}>
+          <div style={numberStyle}>{monthUnfinishedCount}</div>
+          <div style={labelStyle}>이번 달 미완료</div>
+        </div>
       </button>
     </section>
   );
 }
 
-const gridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, 1fr)",
-  gap: 10,
-  marginBottom: 16,
-};
+function StatIcon({ src, fallback }: { src: string; fallback: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <span style={fallbackIconStyle}>{fallback}</span>;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt="" width={22} height={22} style={iconImgStyle} onError={() => setFailed(true)} />
+  );
+}
+
+const gridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 };
 
 const cardStyle: CSSProperties = {
-  padding: 16,
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "10px 12px",
   borderRadius: 16,
-  background: "#fff",
-  boxShadow: "0 3px 12px rgba(190, 24, 93, 0.08)",
-  textAlign: "center",
-  border: "none",
+  background: "rgba(255, 255, 255, 0.14)",
+  border: "1px solid rgba(255, 255, 255, 0.2)",
+  textAlign: "left",
   cursor: "pointer",
 };
 
-const numberStyle: CSSProperties = {
-  fontSize: 20,
-  fontWeight: 900,
-  color: "#e11d48",
-};
+const textColStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 1, minWidth: 0 };
 
-const labelStyle: CSSProperties = {
-  marginTop: 4,
-  fontSize: 11,
-  color: "#9f6b75",
-  fontWeight: 800,
-};
+const iconImgStyle: CSSProperties = { flexShrink: 0 };
+
+const fallbackIconStyle: CSSProperties = { fontSize: 20, flexShrink: 0 };
+
+const numberStyle: CSSProperties = { fontSize: 16, fontWeight: 900, color: "#FFFFFF", lineHeight: 1.1 };
+
+const labelStyle: CSSProperties = { fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: 800, lineHeight: 1.1 };

@@ -76,39 +76,34 @@ const headerRowStyle: CSSProperties = {
   flexWrap: "wrap",
 };
 
-const titleStyle: CSSProperties = { margin: 0, fontSize: 16, fontWeight: 900, color: "#3f1d24" };
-
+const titleStyle: CSSProperties = { margin: 0, fontSize: 16, fontWeight: 900, color: "#2b2140" };
 const rolloverButtonStyle: CSSProperties = {
   padding: "8px 12px",
   borderRadius: 12,
-  border: "1px solid #fbcfe8",
+  border: "1px solid #E7E3FB",
   background: "#fff",
-  color: "#db2777",
+  color: "#6C63FF",
   fontWeight: 800,
   fontSize: 12,
   cursor: "pointer",
   whiteSpace: "nowrap",
 };
-
-const hintStyle: CSSProperties = { fontSize: 13, color: "#9f6b75" };
-
-const listStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 10 };
-
+const hintStyle: CSSProperties = { fontSize: 13, color: "#8b83b0" };
 const cardStyle: CSSProperties = {
   padding: 14,
   borderRadius: 16,
   background: "#ffffff",
-  boxShadow: "0 3px 12px rgba(190, 24, 93, 0.06)",
+  boxShadow: "0 3px 12px rgba(108, 99, 255, 0.06)",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
   gap: 10,
   flexWrap: "wrap",
 };
+const templateTitleStyle: CSSProperties = { fontWeight: 900, fontSize: 14, color: "#2b2140" };
+const subTextStyle: CSSProperties = { marginTop: 4, color: "#8b83b0", fontSize: 12 };
 
-const templateTitleStyle: CSSProperties = { fontWeight: 900, fontSize: 14, color: "#3f1d24" };
-
-const subTextStyle: CSSProperties = { marginTop: 4, color: "#9f6b75", fontSize: 12 };
+const listStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 10 };
 
 const actionRowStyle: CSSProperties = { display: "flex", gap: 6 };
 

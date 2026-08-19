@@ -8,7 +8,7 @@ type BottomNavProps = {
 
 const items: { key: ActiveTab; label: string; icon: string }[] = [
   { key: "tasks", label: "할 일", icon: "✅" },
-  { key: "members", label: "참여자", icon: "👥" },
+  { key: "members", label: "모임/참여자 관리", icon: "👥" },
   { key: "rewards", label: "보상", icon: "🎁" },
 ];
 
@@ -35,20 +35,28 @@ export default function BottomNav({ activeTab, onChange }: BottomNavProps) {
 }
 
 const bottomNavWrapStyle: CSSProperties = {
-  position: "sticky",
+  position: "fixed",
+  left: 0,
+  right: 0,
   bottom: 0,
-  paddingTop: 14,
-  paddingBottom: 4,
+  display: "flex",
+  justifyContent: "center",
+  padding: "0 16px calc(16px + env(safe-area-inset-bottom))",
+  pointerEvents: "none",
+  zIndex: 30,
 };
 
 const bottomNavStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 480,
   display: "grid",
   gridTemplateColumns: "repeat(3, 1fr)",
   gap: 6,
   background: "#ffffff",
   padding: 8,
   borderRadius: 24,
-  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.12)",
+  boxShadow: "0 10px 30px rgba(108, 99, 255, 0.18)",
+  pointerEvents: "auto",
 };
 
 const bottomNavButtonStyle: CSSProperties = {
@@ -60,21 +68,20 @@ const bottomNavButtonStyle: CSSProperties = {
   background: "transparent",
   borderRadius: 18,
   padding: "8px 4px",
-  color: "#94a3b8",
+  color: "#a8a2cf",
   fontWeight: 700,
-  fontSize: 12,
+  fontSize: 11,
+  lineHeight: 1.2,
+  textAlign: "center",
   cursor: "pointer",
 };
 
 const bottomNavActiveStyle: CSSProperties = {
   ...bottomNavButtonStyle,
-  background: "linear-gradient(135deg, #fb7185, #e11d48)",
+  background: "linear-gradient(135deg, #8B83EA, #6C63FF)",
   color: "#ffffff",
   fontWeight: 800,
-  boxShadow: "0 6px 14px rgba(225, 29, 72, 0.35)",
+  boxShadow: "0 6px 14px rgba(108, 99, 255, 0.35)",
 };
 
-const iconStyle: CSSProperties = {
-  fontSize: 18,
-  lineHeight: 1,
-};
+const iconStyle: CSSProperties = { fontSize: 18, lineHeight: 1 };

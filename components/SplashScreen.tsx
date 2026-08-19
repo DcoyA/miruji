@@ -95,8 +95,8 @@ export default function SplashScreen({ ready, onFinish }: SplashScreenProps) {
           height: 2px;
           transform-origin: 0 50%;
         }
-        .sp-arm-a { animation: sp-spin-cw 2.2s linear infinite; }
-        .sp-arm-b { animation: sp-spin-ccw 3.4s linear infinite; }
+        .sp-arm-a { animation: sp-spin-tick-fast 2.2s steps(20, end) infinite; }
+        .sp-arm-b { animation: sp-spin-tick-slow 3.4s steps(12, end) infinite; }
         .sp-label {
           position: absolute;
           right: -4px;
@@ -107,13 +107,13 @@ export default function SplashScreen({ ready, onFinish }: SplashScreenProps) {
           color: #ffffff;
           white-space: nowrap;
         }
-        @keyframes sp-spin-cw {
+        @keyframes sp-spin-tick-fast {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        @keyframes sp-spin-ccw {
+        @keyframes sp-spin-tick-slow {
           from { transform: rotate(0deg); }
-          to { transform: rotate(-360deg); }
+          to { transform: rotate(360deg); }
         }
         .sp-reveal {
           display: flex;

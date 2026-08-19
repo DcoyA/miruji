@@ -18,6 +18,7 @@ import {
   summaryModalBodyStyle,
 } from "@/features/home/styles";
 import NotificationPrompt from "@/features/notifications/NotificationPrompt";
+import EditTaskModal from "@/features/tasks/EditTaskModal";
 
 import Shell from "@/components/Shell";
 import AppHeader from "@/components/AppHeader";
@@ -26,13 +27,14 @@ import BottomNav from "@/components/BottomNav";
 
 import DayTaskList from "@/features/calendar/DayTaskList";
 import AddTaskModal from "@/features/tasks/AddTaskModal";
-import TemplateManagerPanel from "@/features/tasks/TemplateManagerPanel";
 import RewardTab from "@/features/rewards/RewardTab";
 import TaskList from "@/features/tasks/TaskList";
-import SettingsTab from "@/features/settings/SettingsTab";
+import MembersTab from "@/features/members/MembersTab";
 import ViewSwitchTabs, { type CalendarViewMode } from "@/features/tasks/ViewSwitchTabs";
 import TaskStatsCards from "@/features/tasks/TaskStatsCards";
 import MonthView from "@/features/tasks/MonthView";
+import WeekView from "@/features/tasks/WeekView";
+import DayView from "@/features/tasks/DayView";
 
 import { addMonths, startOfMonth, toDateKey } from "@/lib/date";
 import { tabTitle, roleLabel } from "@/lib/labels";
@@ -51,7 +53,7 @@ import EmptyWorkspaceHome from "@/features/onboarding/EmptyWorkspaceHome";
 import HamburgerMenu from "@/components/HamburgerMenu";
 import ProfileSettingsPanel from "@/features/settings/ProfileSettingsPanel";
 
-import type { ActiveTab } from "@/types/app";
+import type { ActiveTab, Task } from "@/types/app";
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
@@ -70,7 +72,30 @@ export default function Home() {
   const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
-    
+  const [taskPanelOpen, setTaskPanelOpen] = useState(false);
+  const [taskPanelViewMode, setTaskPanelViewMode] = useState<"day" | "week">("day");
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [showEditTaskModal, setShowEditTaskModal] = useState(false);
+  
+  function openEditTask(task: Task) {
+    setEditingTask(task);
+    setShowEditTaskModal(true);
+  }
+
+  function selectDateAndOpenPanel(dateKey: string) {
+    setSelectedDate(dateKey);
+    setTaskPanelOpen(true);
+  }
+  
+  const [manageWorkspaceSignal, setManageWorkspaceSignal] = useState(0);
+  
+  function manageWorkspace(id: string) {
+    const next = workspaces.find((item) => item.id === id) || null;
+    setWorkspace(next);
+    setActiveTab("members");
+    setManageWorkspaceSignal((prev) => prev + 1);
+  }
+
   const auth = useAuth({ setMessage, setLoading });
   const {
     authLoading,
@@ -223,7 +248,9 @@ export default function Home() {
     approveTask,
     rejectTask,
     resetTaskState,
-    reorderTasks
+    reorderTasks,
+    reorderTasksAcrossDates,
+    updateTask,
   } = tasksHook;
 
   const rewardsHook = useRewards({
@@ -411,10 +438,7 @@ export default function Home() {
           isOpen={menuOpen}
           onClose={() => setMenuOpen(false)}
           workspaces={workspaces}
-          onSelectWorkspace={(id) => {
-            const next = workspaces.find((item) => item.id === id) || null;
-            setWorkspace(next);
-          }}
+          onManageWorkspace={manageWorkspace}
           onGoProfileSettings={() => setShowProfileSettings(true)}
           onCreateWorkspace={() => {
             setOnboardingStep("create");
@@ -470,9 +494,38 @@ export default function Home() {
     );
   }
 
+  if (showProfileSettings) {
+    return (
+      <Shell>
+        <ProfileSettingsPanel
+          profileDisplayName={profile.display_name}
+          avatarUrl={profile.avatar_url}
+          myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
+          loading={loading}
+          onUploadAvatar={uploadAvatar}
+          myNickname={myNickname}
+          onMyNicknameChange={setMyNickname}
+          onSaveMyNickname={saveMyNickname}
+          recoveryEmail={profileRecoveryEmail}
+          onRecoveryEmailChange={setProfileRecoveryEmail}
+          onSaveRecoveryEmail={saveRecoveryEmail}
+          currentNicknameLabel={currentMember?.display_name ?? profile.display_name}
+          newPassword={newPassword}
+          onNewPasswordChange={setNewPassword}
+          onChangePassword={changePassword}
+          onBack={() => setShowProfileSettings(false)}
+        />
+      </Shell>
+    );
+  }
+
   return (
     <Shell>
       <AppHeader
+        avatarUrl={profile.avatar_url}
+        username={profile.display_name}
+        nickname={currentMember?.display_name ?? null}
+        roleText={currentMember ? roleLabel(currentMember.role) : null}
         workspaceName={workspace?.name ?? null}
         showWorkspaceControls={Boolean(workspace)}
         canSwitchWorkspace={workspaces.length > 1}
@@ -482,38 +535,91 @@ export default function Home() {
         onToggleNotifications={toggleMyNotifications}
         onOpenMenu={() => setMenuOpen(true)}
       />
-      
-      <section style={accountBoxStyle}>
-        ...
-      </section>
-
-{workspace && <NotificationPrompt />}
 
       {workspace && activeTab === "tasks" && (
-        <>
+        <div style={statsSectionStyle}>
           <TaskStatsCards
             todayDoneCount={todayDoneCount}
             todayTotalCount={todayTotalCount}
             monthUnfinishedCount={monthUnfinishedCount}
-            onClickToday={() => setSelectedDate(todayKeyForStats)}
+            onClickToday={() => selectDateAndOpenPanel(todayKeyForStats)}
             onClickUnfinished={() => setSummaryFilter("all")}
           />
-          <ViewSwitchTabs mode={calendarViewMode} onChange={setCalendarViewMode} />
-          {calendarViewMode === "month" && (
-            <MonthView
-              currentMonth={currentMonth}
-              selectedDate={selectedDate}
-              tasks={tasks}
-              onSelectDate={setSelectedDate}
-              onPrevMonth={() => setCurrentMonth((prev) => addMonths(prev, -1))}
-              onNextMonth={() => setCurrentMonth((prev) => addMonths(prev, 1))}
-              onToday={() => {
-                setCurrentMonth(startOfMonth(new Date()));
-                setSelectedDate(toDateKey(new Date()));
-              }}
-            />
+        </div>
+      )}
+
+{workspace && <NotificationPrompt />}
+          {workspace && activeTab === "tasks" && (
+            <div style={homeCardStyle}>
+              <ViewSwitchTabs mode={calendarViewMode} onChange={setCalendarViewMode} />
+              {calendarViewMode === "month" && (
+                <MonthView
+                  currentMonth={currentMonth}
+                  selectedDate={selectedDate}
+                  tasks={tasks}
+                  onSelectDate={selectDateAndOpenPanel}
+                  onPrevMonth={() => setCurrentMonth((prev) => addMonths(prev, -1))}
+                  onNextMonth={() => setCurrentMonth((prev) => addMonths(prev, 1))}
+                  onToday={() => {
+                    setCurrentMonth(startOfMonth(new Date()));
+                    setSelectedDate(toDateKey(new Date()));
+                  }}
+                />
+              )}
+              {calendarViewMode === "week" && (
+                <WeekView
+                  selectedDate={selectedDate}
+                  tasks={tasks}
+                  members={activeMembers}
+                  currentMember={currentMember}
+                  isManager={isManager}
+                  loading={loading}
+                  onSelectDate={setSelectedDate}
+                  onAddTask={(dateKey) => {
+                    setSelectedDate(dateKey);
+                    setShowAddTaskModal(true);
+                  }}
+                  onSubmitTask={submitTask}
+                  onSubmitWithEvidence={submitTaskWithEvidence}
+                  onSubmitWithText={submitTaskWithText}
+                  onApproveTask={approveTask}
+                  onRejectTask={rejectTask}
+                  onCancelTask={cancelSubmission}
+                  onDeleteTask={deleteTask}
+                  onEditTask={openEditTask}
+                  onReorderAcrossDates={reorderTasksAcrossDates}
+                />
+              )}
+              {calendarViewMode === "day" && (
+                <DayView
+                  selectedDate={selectedDate}
+                  tasks={selectedTasks}
+                  members={activeMembers}
+                  currentMember={currentMember}
+                  isManager={isManager}
+                  loading={loading}
+                  onSelectDate={setSelectedDate}
+                  onAddTask={() => setShowAddTaskModal(true)}
+                  onSubmitTask={submitTask}
+                  onSubmitWithEvidence={submitTaskWithEvidence}
+                  onSubmitWithText={submitTaskWithText}
+                  onApproveTask={approveTask}
+                  onRejectTask={rejectTask}
+                  onCancelTask={cancelSubmission}
+                  onDeleteTask={deleteTask}
+                  onReorderTasks={reorderTasks}
+                  onEditTask={openEditTask}
+                />
+              )}
+            </div>
           )}
+
+          
           <DayTaskList
+            isOpen={taskPanelOpen}
+            onOpenChange={setTaskPanelOpen}
+            viewMode={taskPanelViewMode}
+            onViewModeChange={setTaskPanelViewMode}
             selectedDate={selectedDate}
             tasks={selectedTasks}
             monthTasks={tasks}
@@ -521,7 +627,7 @@ export default function Home() {
             currentMember={currentMember}
             isManager={isManager}
             loading={loading}
-            onSelectDate={setSelectedDate}
+            onSelectDate={selectDateAndOpenPanel}
             onSubmitTask={submitTask}
             onApproveTask={approveTask}
             onRejectTask={rejectTask}
@@ -531,20 +637,13 @@ export default function Home() {
             onSubmitWithEvidence={submitTaskWithEvidence}
             onSubmitWithText={submitTaskWithText}
             onReorderTasks={reorderTasks}
+            onReorderAcrossDates={reorderTasksAcrossDates}
+            templates={templates}
+            onToggleTemplateActive={toggleTemplateActive}
+            onDeleteTemplate={deleteTemplate}
+            onRolloverNow={rolloverNow}
+            onEditTask={openEditTask}
           />
-        </>
-      )}
-
-      {workspace && activeTab === "tasks" && (
-        <TemplateManagerPanel
-          templates={templates}
-          loading={loading}
-          isManager={isManager}
-          onToggleTemplateActive={toggleTemplateActive}
-          onDeleteTemplate={deleteTemplate}
-          onRolloverNow={rolloverNow}
-        />
-      )}
       
       <AddTaskModal
         isOpen={showAddTaskModal}
@@ -572,54 +671,83 @@ export default function Home() {
         onCreate={createTask}
       />
 
+      <EditTaskModal
+        isOpen={showEditTaskModal}
+        task={editingTask}
+        loading={loading}
+        onClose={() => setShowEditTaskModal(false)}
+        onSave={updateTask}
+      />
+
       {activeTab === "members" && (
-        <SettingsTab
-          workspaces={workspaces}
-          workspace={workspace}
-          members={members}
-          currentMember={currentMember}
-          isManager={isManager}
-          workspaceName={workspaceName}
-          workspaceDescription={workspaceDescription}
-          loading={loading}
-          onWorkspaceNameChange={setWorkspaceName}
-          onWorkspaceDescriptionChange={setWorkspaceDescription}
-          onCreateWorkspace={createWorkspace}
-          newMemberName={newMemberName}
-          newMemberRole={newMemberRole}
-          onNewMemberNameChange={setNewMemberName}
-          onNewMemberRoleChange={setNewMemberRole}
-          onAddMember={addVirtualMember}
-          inviteRole={inviteRole}
-          onInviteRoleChange={setInviteRole}
-          inviteSuggestedName={inviteSuggestedName}
-          onInviteSuggestedNameChange={setInviteSuggestedName}
-          onCreateInvite={createInvite}
-          pendingInvites={pendingInvites}
-          onCancelPendingInvite={cancelPendingInvite}
-          onRemoveMember={removeMember}
-          onRestoreMember={restoreMember}
-          joinInviteCode={joinInviteCode}
-          onJoinInviteCodeChange={setJoinInviteCode}
-          onAcceptInvite={() => acceptInviteCode()}
-          onDeleteAccount={deleteAccount}
-          onTransferOwnership={transferOwnership}
-          onUpdateMemberRole={updateMemberRole}
-          onDeleteWorkspace={deleteWorkspace}
-          myNickname={myNickname}
-          onMyNicknameChange={setMyNickname}
-          onSaveMyNickname={saveMyNickname}
-          recoveryEmail={profileRecoveryEmail}
-          onRecoveryEmailChange={setProfileRecoveryEmail}
-          onSaveRecoveryEmail={saveRecoveryEmail}
-          newPassword={newPassword}
-          onNewPasswordChange={setNewPassword}
-          onChangePassword={changePassword}
-          profileDisplayName={profile.display_name}
-          avatarUrl={profile.avatar_url}
-          myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
-          onUploadAvatar={uploadAvatar}
-        />
+        <>
+          <div style={statsSectionStyle} />
+          <div style={homeCardStyle}>
+            <MembersTab
+              workspaces={workspaces}
+              workspace={workspace}
+              members={members}
+              currentMember={currentMember}
+              isManager={isManager}
+              workspaceName={workspaceName}
+              workspaceDescription={workspaceDescription}
+              loading={loading}
+              onWorkspaceNameChange={setWorkspaceName}
+              onWorkspaceDescriptionChange={setWorkspaceDescription}
+              onCreateWorkspace={createWorkspace}
+              newMemberName={newMemberName}
+              newMemberRole={newMemberRole}
+              onNewMemberNameChange={setNewMemberName}
+              onNewMemberRoleChange={setNewMemberRole}
+              onAddMember={addVirtualMember}
+              inviteSuggestedName={inviteSuggestedName}
+              onInviteSuggestedNameChange={setInviteSuggestedName}
+              onCreateInvite={createInvite}
+              pendingInvites={pendingInvites}
+              onCancelPendingInvite={cancelPendingInvite}
+              onRemoveMember={removeMember}
+              onRestoreMember={restoreMember}
+              joinInviteCode={joinInviteCode}
+              onJoinInviteCodeChange={setJoinInviteCode}
+              onAcceptInvite={() => acceptInviteCode()}
+              onDeleteAccount={deleteAccount}
+              onTransferOwnership={transferOwnership}
+              onUpdateMemberRole={updateMemberRole}
+              onDeleteWorkspace={deleteWorkspace}
+              focusWorkspaceManagementAt={manageWorkspaceSignal}
+            />
+          </div>
+        </>
+      )}
+      
+      {workspace && activeTab === "rewards" && (
+        <>
+          <div style={statsSectionStyle} />
+          <div style={homeCardStyle}>
+            <RewardTab
+              members={activeMembers}
+              rewards={rewards}
+              transactions={rewardTransactions}
+              currentMember={currentMember}
+              isManager={isManager}
+              title={newRewardTitle}
+              description={newRewardDescription}
+              targetMemberId={newRewardTargetMemberId}
+              costPoints={newRewardCostPoints}
+              loading={loading}
+              balanceByMemberId={balanceByMemberId}
+              onTitleChange={setNewRewardTitle}
+              onDescriptionChange={setNewRewardDescription}
+              onTargetMemberIdChange={setNewRewardTargetMemberId}
+              onCostPointsChange={setNewRewardCostPoints}
+              onCreate={createReward}
+              onRequestRedeem={requestRedeem}
+              onConfirmRedeem={confirmRedeem}
+              onRejectRedeem={rejectRedeem}
+              onDeleteReward={deleteReward}
+            />
+          </div>
+        </>
       )}
 
       {!workspace && activeTab !== "members" && <NoWorkspacePrompt onGoSettings={() => setActiveTab("members")} />}
@@ -667,14 +795,11 @@ export default function Home() {
           </div>
         </div>
       )}
-       <HamburgerMenu
+      <HamburgerMenu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
         workspaces={workspaces}
-        onSelectWorkspace={(id) => {
-          const next = workspaces.find((item) => item.id === id) || null;
-          setWorkspace(next);
-        }}
+        onManageWorkspace={manageWorkspace}
         onGoProfileSettings={() => setShowProfileSettings(true)}
         onCreateWorkspace={() => {
           setOnboardingStep("create");
@@ -686,15 +811,16 @@ export default function Home() {
         }}
         onShareApp={() => {
           const link = typeof window !== "undefined" ? window.location.origin : "";
-          const text = `미루지말자 함께 해요! 참여 코드로 초대할게요!\n${link}`;
+          const text = `함께 할 일을 관리해요!\n${link}`;
           if (typeof navigator !== "undefined" && navigator.clipboard) {
             navigator.clipboard.writeText(text);
-            setMessage("공유 링크를 복사했어요.");
+            setMessage("링크가 복사되었습니다.");
           }
         }}
         onSignOut={signOut}
         onDeleteAccount={deleteAccount}
       />
+
       
       {plusSheetOpen && (
         <div style={plusSheetBackdropStyle} onClick={() => setPlusSheetOpen(false)}>
@@ -759,4 +885,21 @@ const plusSheetCloseButtonStyle: CSSProperties = {
   fontSize: 18,
   color: "#3f1d24",
   cursor: "pointer",
+};
+const statsSectionStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 1,
+  margin: "0 calc(-1 * var(--page-gutter)) -28px",
+  padding: "14px var(--page-gutter) 44px",
+  background: "linear-gradient(180deg, #6C63FF 0%, #5B52E0 100%)",
+};
+
+const homeCardStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 2,
+  margin: "0 calc(-1 * var(--page-gutter))",
+  background: "#FFFFFF",
+  borderRadius: "24px 24px 0 0",
+  padding: "22px 16px 10px",
+  boxShadow: "0 -6px 20px rgba(108, 99, 255, 0.08)",
 };

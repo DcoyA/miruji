@@ -232,7 +232,7 @@ export default function AddTaskModal({
 const backdropStyle: CSSProperties = {
   position: "fixed",
   inset: 0,
-  background: "rgba(63,29,36,0.45)",
+  background: "rgba(43, 33, 64, 0.45)",
   zIndex: 50,
 };
 
@@ -241,10 +241,10 @@ const panelStyle: CSSProperties = {
   left: 0,
   right: 0,
   bottom: 0,
-  maxHeight: "88vh",
+  maxHeight: "50vh",
   background: "#fff",
   borderRadius: "24px 24px 0 0",
-  boxShadow: "0 -10px 40px rgba(63,29,36,0.25)",
+  boxShadow: "0 -10px 40px rgba(43,33,64,0.25)",
   zIndex: 51,
   display: "flex",
   flexDirection: "column",
@@ -257,16 +257,16 @@ const headerRowStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   padding: "16px 18px 10px",
-  borderBottom: "1px solid #f6e8e6",
+  borderBottom: "1px solid #F1EEFE",
 };
 
-const titleStyle: CSSProperties = { margin: 0, fontSize: 18, fontWeight: 900, color: "#3f1d24" };
+const titleStyle: CSSProperties = { margin: 0, fontSize: 18, fontWeight: 900, color: "#2b2140" };
 
 const closeButtonStyle: CSSProperties = {
   border: "none",
   background: "transparent",
   fontSize: 18,
-  color: "#9f6b75",
+  color: "#8b83b0",
   cursor: "pointer",
 };
 
@@ -279,7 +279,7 @@ const inputStyle: CSSProperties = {
   width: "100%",
   padding: 14,
   borderRadius: 14,
-  border: "1px solid #fbcfe8",
+  border: "1px solid #D8D4F5",
   marginBottom: 12,
   outline: "none",
   fontSize: 15,
@@ -288,7 +288,7 @@ const inputStyle: CSSProperties = {
 const fieldLabelStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 800,
-  color: "#5c3a41",
+  color: "#5b5470",
   marginBottom: 6,
 };
 
@@ -302,9 +302,9 @@ const memberGridStyle: CSSProperties = {
 const memberChipStyle: CSSProperties = {
   padding: "8px 14px",
   borderRadius: 999,
-  border: "1px solid #fbcfe8",
+  border: "1px solid #D8D4F5",
   background: "#fff",
-  color: "#db2777",
+  color: "#6C63FF",
   fontWeight: 800,
   fontSize: 13,
   cursor: "pointer",
@@ -312,18 +312,18 @@ const memberChipStyle: CSSProperties = {
 
 const memberChipActiveStyle: CSSProperties = {
   ...memberChipStyle,
-  background: "linear-gradient(135deg, #ec4899, #db2777)",
-  borderColor: "#db2777",
+  background: "linear-gradient(135deg, #8B83EA, #6C63FF)",
+  borderColor: "#6C63FF",
   color: "#fff",
 };
 
-const hintStyle: CSSProperties = { fontSize: 12, color: "#9f6b75", marginBottom: 10, lineHeight: 1.5 };
+const hintStyle: CSSProperties = { fontSize: 12, color: "#8b83b0", marginBottom: 10, lineHeight: 1.5 };
 
 const detailsToggleStyle: CSSProperties = {
   width: "100%",
-  border: "1px dashed #fbcfe8",
+  border: "1px dashed #D8D4F5",
   background: "transparent",
-  color: "#db2777",
+  color: "#6C63FF",
   borderRadius: 12,
   padding: "10px 0",
   fontWeight: 800,
@@ -333,7 +333,7 @@ const detailsToggleStyle: CSSProperties = {
 };
 
 const detailsBoxStyle: CSSProperties = {
-  borderTop: "1px solid #f6e8e6",
+  borderTop: "1px solid #F1EEFE",
   paddingTop: 12,
   marginBottom: 4,
 };
@@ -345,17 +345,17 @@ const presetButtonStyle: CSSProperties = {
   minWidth: 50,
   padding: "10px 0",
   borderRadius: 999,
-  border: "1px solid #fbcfe8",
+  border: "1px solid #D8D4F5",
   background: "#fff",
-  color: "#db2777",
+  color: "#6C63FF",
   fontWeight: 800,
   cursor: "pointer",
 };
 
 const presetButtonActiveStyle: CSSProperties = {
   ...presetButtonStyle,
-  background: "linear-gradient(135deg, #ec4899, #db2777)",
-  borderColor: "#db2777",
+  background: "linear-gradient(135deg, #8B83EA, #6C63FF)",
+  borderColor: "#6C63FF",
   color: "#fff",
 };
 
@@ -366,17 +366,17 @@ const weekdayButtonStyle: CSSProperties = {
   minWidth: 36,
   padding: "8px 0",
   borderRadius: 999,
-  border: "1px solid #fbcfe8",
+  border: "1px solid #D8D4F5",
   background: "#fff",
-  color: "#be185d",
+  color: "#6C63FF",
   fontWeight: 800,
   cursor: "pointer",
 };
 
 const weekdayButtonActiveStyle: CSSProperties = {
   ...weekdayButtonStyle,
-  background: "linear-gradient(135deg, #ec4899, #db2777)",
-  borderColor: "#db2777",
+  background: "linear-gradient(135deg, #8B83EA, #6C63FF)",
+  borderColor: "#6C63FF",
   color: "#fff",
 };
 
@@ -386,10 +386,10 @@ function primaryButtonStyle(disabled: boolean): CSSProperties {
     padding: 14,
     borderRadius: 14,
     border: "none",
-    background: disabled ? "#e8b9c2" : "linear-gradient(135deg, #ec4899, #db2777)",
+    background: disabled ? "#D8D4F5" : "linear-gradient(135deg, #8B83EA, #6C63FF)",
     color: "#fff",
     fontWeight: 800,
     cursor: disabled ? "not-allowed" : "pointer",
-    boxShadow: disabled ? "none" : "0 6px 14px rgba(219,39,119,0.35)",
+    boxShadow: disabled ? "none" : "0 6px 14px rgba(108, 99, 255, 0.35)",
   };
 }
