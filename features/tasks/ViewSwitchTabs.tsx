@@ -38,7 +38,7 @@ const wrapStyle: CSSProperties = {
   background: "#fff",
   borderRadius: 999,
   padding: 4,
-  boxShadow: "0 2px 8px rgba(219,39,119,0.08)",
+  boxShadow: "0 2px 8px rgba(108, 99, 255, 0.10)",
   marginBottom: 14,
 };
 
@@ -47,7 +47,7 @@ const buttonStyle: CSSProperties = {
   border: "none",
   borderRadius: 999,
   background: "transparent",
-  color: "#db2777",
+  color: "#6C63FF",
   padding: "8px 0",
   fontSize: 14,
   fontWeight: 800,
@@ -56,7 +56,7 @@ const buttonStyle: CSSProperties = {
 
 const activeButtonStyle: CSSProperties = {
   ...buttonStyle,
-  background: "linear-gradient(135deg, #fb7185, #e11d48)",
+  background: "linear-gradient(135deg, #8B83EA, #6C63FF)",
   color: "#fff",
-  boxShadow: "0 4px 10px rgba(225,29,72,0.30)",
+  boxShadow: "0 4px 10px rgba(108, 99, 255, 0.30)",
 };
