@@ -16,6 +16,7 @@ type TaskListProps = {
   onReject: (task: Task) => void;
   onCancel?: (task: Task) => void;
   onDelete?: (task: Task) => void;
+  onEdit?: (task: Task) => void;
 };
 
 const FILE_ACCEPT_BY_TYPE: Record<string, string> = {
@@ -49,6 +50,7 @@ export default function TaskList({
   onReject,
   onCancel,
   onDelete,
+  onEdit,
 }: TaskListProps) {
   const [textDrafts, setTextDrafts] = useState<Record<string, string>>({});
 
@@ -72,6 +74,8 @@ export default function TaskList({
 
         const canDelete =
           isManager || (!!currentMember?.id && task.created_by_member_id === currentMember.id);
+
+        const canEdit = !!currentMember?.id && task.created_by_member_id === currentMember.id;
 
         const isDone = task.status === "approved";
 
@@ -162,7 +166,7 @@ export default function TaskList({
                 </div>
               )}
 
-              {(canSubmit || canReview || canCancel || canDelete) && (
+              {(canSubmit || canReview || canCancel || canDelete || canEdit) && (
                 <div style={actionRowStyle}>
                   {canSubmit && needsFile && (
                     <label style={submitButtonStyle}>
@@ -201,6 +205,11 @@ export default function TaskList({
                       </button>
                     </>
                   )}
+                  {canEdit && onEdit && (
+                    <button onClick={() => onEdit(task)} disabled={loading} style={editButtonStyle}>
+                      수정
+                    </button>
+                  )}
                   {canDelete && onDelete && (
                     <button onClick={() => onDelete(task)} disabled={loading} style={deleteButtonStyle}>
                       삭제
@@ -233,7 +242,7 @@ function checkIconStyle(done: boolean): CSSProperties {
     fontWeight: 900,
     color: done ? "#fff" : "transparent",
     background: done ? "#16a34a" : "#fff",
-    border: done ? "none" : "2px solid #e8b9c2",
+    border: done ? "none" : "2px solid #D8D4F5",
     boxShadow: done ? "0 3px 8px rgba(22,163,74,0.35)" : "none",
   };
 }
@@ -241,7 +250,7 @@ function checkIconStyle(done: boolean): CSSProperties {
 function statusBadgeStyle(status: string): CSSProperties {
   const colors: Record<string, { bg: string; text: string }> = {
     todo: { bg: "#fef3c7", text: "#92400e" },
-    submitted: { bg: "#ffe4e6", text: "#be123c" },
+    submitted: { bg: "#EDEBFF", text: "#6C63FF" },
     approved: { bg: "#dcfce7", text: "#15803d" },
     rejected: { bg: "#fee2e2", text: "#b91c1c" },
     rolled_over: { bg: "#fde68a", text: "#b45309" },
@@ -267,8 +276,8 @@ const taskListStyle: CSSProperties = { display: "flex", flexDirection: "column",
 const taskCardStyle: CSSProperties = {
   padding: 14,
   borderRadius: 18,
-  background: "#fff8f7",
-  boxShadow: "0 3px 12px rgba(219,39,119,0.06)",
+  background: "#FBFAFF",
+  boxShadow: "0 3px 12px rgba(108, 99, 255, 0.06)",
   display: "flex",
   justifyContent: "space-between",
   gap: 12,
@@ -276,24 +285,24 @@ const taskCardStyle: CSSProperties = {
 
 const rightColumnStyle: CSSProperties = { display: "flex", flexDirection: "column", alignItems: "center", gap: 8 };
 
-const taskTitleStyle: CSSProperties = { fontWeight: 900, fontSize: 16, color: "#3f1d24" };
+const taskTitleStyle: CSSProperties = { fontWeight: 900, fontSize: 16, color: "#2b2140" };
 
-const taskSubTextStyle: CSSProperties = { marginTop: 5, color: "#9f6b75", fontSize: 13 };
+const taskSubTextStyle: CSSProperties = { marginTop: 5, color: "#8b83b0", fontSize: 13 };
 
 const evidenceLinkStyle: CSSProperties = {
   display: "inline-block",
   marginTop: 6,
   fontSize: 12,
   fontWeight: 700,
-  color: "#db2777",
+  color: "#6C63FF",
   textDecoration: "underline",
 };
 
 const evidenceTextStyle: CSSProperties = {
   marginTop: 6,
   fontSize: 13,
-  color: "#3f1d24",
-  background: "#fff0f2",
+  color: "#2b2140",
+  background: "#F1EEFE",
   borderRadius: 10,
   padding: "8px 10px",
   whiteSpace: "pre-wrap",
@@ -305,7 +314,7 @@ const textAreaStyle: CSSProperties = {
   width: "100%",
   padding: 10,
   borderRadius: 12,
-  border: "1px solid #fbcfe8",
+  border: "1px solid #D8D4F5",
   outline: "none",
   fontSize: 13,
   resize: "vertical",
@@ -320,13 +329,13 @@ const submitButtonStyle: CSSProperties = {
   justifyContent: "center",
   border: "none",
   borderRadius: 12,
-  background: "linear-gradient(135deg, #fb7185, #e11d48)",
+  background: "linear-gradient(135deg, #8B83EA, #6C63FF)",
   color: "#fff",
   padding: "8px 12px",
   fontSize: 12,
   fontWeight: 800,
   cursor: "pointer",
-  boxShadow: "0 4px 10px rgba(225,29,72,0.30)",
+  boxShadow: "0 4px 10px rgba(108, 99, 255, 0.30)",
 };
 
 const hiddenFileInputStyle: CSSProperties = {
@@ -339,10 +348,10 @@ const hiddenFileInputStyle: CSSProperties = {
 };
 
 const cancelButtonStyle: CSSProperties = {
-  border: "1px solid #fbcfe8",
+  border: "1px solid #D8D4F5",
   borderRadius: 12,
   background: "#fff",
-  color: "#db2777",
+  color: "#6C63FF",
   padding: "8px 12px",
   fontSize: 12,
   fontWeight: 800,
@@ -365,6 +374,17 @@ const rejectButtonStyle: CSSProperties = {
   borderRadius: 12,
   background: "#b91c1c",
   color: "#fff",
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const editButtonStyle: CSSProperties = {
+  border: "1px solid #D8D4F5",
+  borderRadius: 12,
+  background: "#fff",
+  color: "#6C63FF",
   padding: "8px 12px",
   fontSize: 12,
   fontWeight: 800,
