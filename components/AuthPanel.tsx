@@ -1,5 +1,8 @@
+"use client";
+
 import { useState } from "react";
 import type { CSSProperties } from "react";
+import BrandCharacter from "@/components/BrandCharacter";
 
 type AuthMode = "signin" | "signup" | "forgot";
 
@@ -53,7 +56,10 @@ export default function AuthPanel({
   if (mode === "forgot") {
     return (
       <>
-        <h1 style={titleStyle}>미루지말자</h1>
+        <div style={brandRowStyle}>
+          <BrandCharacter size={40} />
+          <h1 style={titleStyle}>미루지말자</h1>
+        </div>
         <p style={subTextStyle}>
           비밀번호를 잊으셨다면 아래 내용을 남겨주세요. 확인 후 안내드릴게요.
         </p>
@@ -74,7 +80,7 @@ export default function AuthPanel({
           autoComplete="email"
           style={inputStyle}
         />
-        
+
         <textarea
           value={resetRequestMessage}
           onChange={(event) => setResetRequestMessage(event.target.value)}
@@ -92,11 +98,7 @@ export default function AuthPanel({
           {loading ? "요청 접수 중..." : "요청 보내기"}
         </button>
 
-        <button
-          type="button"
-          onClick={() => onModeChange("signin")}
-          style={backLinkButtonStyle}
-        >
+        <button type="button" onClick={() => onModeChange("signin")} style={backLinkButtonStyle}>
           ← 로그인으로 돌아가기
         </button>
 
@@ -107,22 +109,23 @@ export default function AuthPanel({
 
   return (
     <>
-      <h1 style={titleStyle}>미루지말자</h1>
-      <p style={subTextStyle}>
-        부모와 자녀가 함께 쓰는 미션형 클라우드 다이어리
-      </p>
+      <div style={brandRowStyle}>
+        <BrandCharacter size={40} />
+        <h1 style={titleStyle}>미루지말자</h1>
+      </div>
+      <p style={subTextStyle}>함께 쓰는 미션형 다이어리</p>
 
       <div style={tabGridStyle}>
         <button
           onClick={() => onModeChange("signin")}
-          style={mode === "signin" ? primaryButtonStyle(false) : secondaryButtonStyle}
+          style={mode === "signin" ? primaryTabButtonStyle : secondaryButtonStyle}
         >
           로그인
         </button>
 
         <button
           onClick={() => onModeChange("signup")}
-          style={mode === "signup" ? primaryButtonStyle(false) : secondaryButtonStyle}
+          style={mode === "signup" ? primaryTabButtonStyle : secondaryButtonStyle}
         >
           회원가입
         </button>
@@ -165,29 +168,25 @@ export default function AuthPanel({
           style={inputStyle}
         />
       )}
-      
+
       {mode === "signup" && confirmPassword.length > 0 && password !== confirmPassword && (
-        <p style={{ marginTop: -6, marginBottom: 12, fontSize: 13, color: "#b91c1c" }}>
+        <p style={{ marginTop: -6, marginBottom: 12, fontSize: 13, color: "#e0245b" }}>
           비밀번호가 일치하지 않습니다.
         </p>
       )}
-      
+
       <label style={agreementRowStyle}>
         <input
           type="checkbox"
           checked={rememberUsername}
           onChange={(event) => onRememberUsernameChange(event.target.checked)}
-          style={{ marginTop: 2 }}
+          style={checkboxStyle}
         />
         <span>아이디 저장</span>
       </label>
 
       {mode === "signin" && (
-        <button
-          type="button"
-          onClick={() => onModeChange("forgot")}
-          style={forgotLinkStyle}
-        >
+        <button type="button" onClick={() => onModeChange("forgot")} style={forgotLinkStyle}>
           비밀번호를 잊으셨나요?
         </button>
       )}
@@ -199,7 +198,7 @@ export default function AuthPanel({
               type="checkbox"
               checked={agreedToTerms}
               onChange={(event) => onAgreedToTermsChange(event.target.checked)}
-              style={{ marginTop: 2 }}
+              style={checkboxStyle}
             />
             <span>
               <a href="/legal/terms" target="_blank" rel="noopener noreferrer" style={legalLinkStyle}>
@@ -218,7 +217,7 @@ export default function AuthPanel({
               type="checkbox"
               checked={isHuman}
               onChange={(event) => onIsHumanChange(event.target.checked)}
-              style={{ marginTop: 2 }}
+              style={checkboxStyle}
             />
             <span>사람입니다.</span>
           </label>
@@ -226,11 +225,7 @@ export default function AuthPanel({
       )}
 
       {mode === "signin" ? (
-        <button
-          onClick={onSignIn}
-          disabled={loading}
-          style={primaryButtonStyle(loading)}
-        >
+        <button onClick={onSignIn} disabled={loading} style={primaryButtonStyle(loading)}>
           {loading ? "로그인 중..." : "로그인"}
         </button>
       ) : (
@@ -250,54 +245,77 @@ export default function AuthPanel({
   );
 }
 
+const brandRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  marginBottom: 6,
+};
+
 const titleStyle: CSSProperties = {
-  margin: "0 0 8px",
-  fontSize: 30,
-  letterSpacing: "-0.04em",
+  margin: 0,
+  fontSize: 26,
+  fontWeight: 900,
+  letterSpacing: "-0.03em",
+  color: "#2b2140",
 };
 
 const subTextStyle: CSSProperties = {
-  color: "#64748b",
+  color: "#8b83b0",
   lineHeight: 1.6,
-  marginBottom: 20,
+  marginTop: 6,
+  marginBottom: 24,
+  fontSize: 14,
+  fontWeight: 600,
 };
 
 const tabGridStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
-  gap: 8,
-  marginBottom: 16,
+  gap: 6,
+  padding: 4,
+  borderRadius: 18,
+  background: "#F1EEFE",
+  marginBottom: 18,
 };
 
 const inputStyle: CSSProperties = {
   width: "100%",
-  padding: 14,
-  borderRadius: 14,
-  border: "1px solid #dbeafe",
+  padding: "15px 16px",
+  borderRadius: 16,
+  border: "1.5px solid #E7E3FB",
+  background: "#FBFAFF",
   marginBottom: 12,
   outline: "none",
   fontSize: 15,
+  color: "#2b2140",
 };
 
 const textareaStyle: CSSProperties = {
-  width: "100%",
-  padding: 14,
-  borderRadius: 14,
-  border: "1px solid #dbeafe",
-  marginBottom: 12,
-  outline: "none",
-  fontSize: 15,
+  ...inputStyle,
   fontFamily: "inherit",
   resize: "vertical",
 };
 
+const primaryTabButtonStyle: CSSProperties = {
+  width: "100%",
+  padding: 12,
+  borderRadius: 14,
+  border: "none",
+  background: "#6C63FF",
+  color: "#fff",
+  fontWeight: 800,
+  cursor: "pointer",
+  boxShadow: "0 6px 14px rgba(108,99,255,0.35)",
+};
+
 const secondaryButtonStyle: CSSProperties = {
   width: "100%",
-  padding: 13,
+  padding: 12,
   borderRadius: 14,
-  border: "1px solid #c7d2fe",
-  background: "#eef2ff",
-  color: "#4338ca",
+  border: "none",
+  background: "transparent",
+  color: "#8b83b0",
   fontWeight: 800,
   cursor: "pointer",
 };
@@ -308,7 +326,7 @@ const forgotLinkStyle: CSSProperties = {
   textAlign: "right",
   background: "none",
   border: "none",
-  color: "#4338ca",
+  color: "#6C63FF",
   fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",
@@ -322,7 +340,7 @@ const backLinkButtonStyle: CSSProperties = {
   textAlign: "center",
   background: "none",
   border: "none",
-  color: "#4338ca",
+  color: "#6C63FF",
   fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",
@@ -335,13 +353,18 @@ const agreementRowStyle: CSSProperties = {
   alignItems: "flex-start",
   gap: 8,
   fontSize: 13,
-  color: "#475569",
+  color: "#6b6489",
   lineHeight: 1.5,
   marginBottom: 14,
 };
 
+const checkboxStyle: CSSProperties = {
+  marginTop: 2,
+  accentColor: "#6C63FF",
+};
+
 const legalLinkStyle: CSSProperties = {
-  color: "#4338ca",
+  color: "#6C63FF",
   fontWeight: 700,
   textDecoration: "underline",
 };
@@ -349,13 +372,15 @@ const legalLinkStyle: CSSProperties = {
 function primaryButtonStyle(loading: boolean): CSSProperties {
   return {
     width: "100%",
-    padding: 14,
-    borderRadius: 14,
+    padding: 15,
+    borderRadius: 16,
     border: "none",
-    background: loading ? "#94a3b8" : "#4f46e5",
+    background: loading ? "#C9C4F0" : "#6C63FF",
     color: "#fff",
     fontWeight: 800,
+    fontSize: 15,
     cursor: loading ? "not-allowed" : "pointer",
+    boxShadow: loading ? "none" : "0 10px 22px rgba(108,99,255,0.38)",
   };
 }
 
@@ -371,8 +396,8 @@ function messageBoxStyle(message: string): CSSProperties {
     marginTop: 14,
     padding: 12,
     borderRadius: 14,
-    background: ok ? "#ecfdf5" : "#fef2f2",
-    color: ok ? "#047857" : "#b91c1c",
+    background: ok ? "#EAF7EE" : "#FDECEC",
+    color: ok ? "#1E8E5A" : "#D6365C",
     fontSize: 14,
     lineHeight: 1.5,
   };
