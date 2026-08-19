@@ -29,7 +29,7 @@ import AddTaskModal from "@/features/tasks/AddTaskModal";
 import TemplateManagerPanel from "@/features/tasks/TemplateManagerPanel";
 import RewardTab from "@/features/rewards/RewardTab";
 import TaskList from "@/features/tasks/TaskList";
-import SettingsTab from "@/features/settings/SettingsTab";
+import MembersTab from "@/features/members/MembersTab";
 import ViewSwitchTabs, { type CalendarViewMode } from "@/features/tasks/ViewSwitchTabs";
 import TaskStatsCards from "@/features/tasks/TaskStatsCards";
 import MonthView from "@/features/tasks/MonthView";
@@ -606,7 +606,7 @@ export default function Home() {
       />
 
       {activeTab === "members" && (
-        <SettingsTab
+        <MembersTab
           workspaces={workspaces}
           workspace={workspace}
           members={members}
@@ -623,8 +623,6 @@ export default function Home() {
           onNewMemberNameChange={setNewMemberName}
           onNewMemberRoleChange={setNewMemberRole}
           onAddMember={addVirtualMember}
-          inviteRole={inviteRole}
-          onInviteRoleChange={setInviteRole}
           inviteSuggestedName={inviteSuggestedName}
           onInviteSuggestedNameChange={setInviteSuggestedName}
           onCreateInvite={createInvite}
@@ -639,19 +637,6 @@ export default function Home() {
           onTransferOwnership={transferOwnership}
           onUpdateMemberRole={updateMemberRole}
           onDeleteWorkspace={deleteWorkspace}
-          myNickname={myNickname}
-          onMyNicknameChange={setMyNickname}
-          onSaveMyNickname={saveMyNickname}
-          recoveryEmail={profileRecoveryEmail}
-          onRecoveryEmailChange={setProfileRecoveryEmail}
-          onSaveRecoveryEmail={saveRecoveryEmail}
-          newPassword={newPassword}
-          onNewPasswordChange={setNewPassword}
-          onChangePassword={changePassword}
-          profileDisplayName={profile.display_name}
-          avatarUrl={profile.avatar_url}
-          myStickerBalance={currentMember ? (balanceByMemberId[currentMember.id] ?? 0) : 0}
-          onUploadAvatar={uploadAvatar}
         />
       )}
 
