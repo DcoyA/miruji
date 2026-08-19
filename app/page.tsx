@@ -18,6 +18,11 @@ import {
   summaryModalBodyStyle,
 } from "@/features/home/styles";
 import NotificationPrompt from "@/features/notifications/NotificationPrompt";
+import ViewSwitchTabs, { type CalendarViewMode } from "@/features/tasks/ViewSwitchTabs";
+import TaskStatsCards from "@/features/tasks/TaskStatsCards";
+import MonthView from "@/features/tasks/MonthView";
+import WeekView from "@/features/tasks/WeekView";
+import DayView from "@/features/tasks/DayView";
 
 import Shell from "@/components/Shell";
 import AppHeader from "@/components/AppHeader";
@@ -546,6 +551,48 @@ export default function Home() {
                     setCurrentMonth(startOfMonth(new Date()));
                     setSelectedDate(toDateKey(new Date()));
                   }}
+                />
+              )}
+              {calendarViewMode === "week" && (
+                <WeekView
+                  selectedDate={selectedDate}
+                  tasks={tasks}
+                  members={activeMembers}
+                  currentMember={currentMember}
+                  isManager={isManager}
+                  loading={loading}
+                  onSelectDate={setSelectedDate}
+                  onAddTask={(dateKey) => {
+                    setSelectedDate(dateKey);
+                    setShowAddTaskModal(true);
+                  }}
+                  onSubmitTask={submitTask}
+                  onSubmitWithEvidence={submitTaskWithEvidence}
+                  onSubmitWithText={submitTaskWithText}
+                  onApproveTask={approveTask}
+                  onRejectTask={rejectTask}
+                  onCancelTask={cancelSubmission}
+                  onDeleteTask={deleteTask}
+                  onReorderTasks={reorderTasks}
+                />
+              )}
+              {calendarViewMode === "day" && (
+                <DayView
+                  selectedDate={selectedDate}
+                  tasks={selectedTasks}
+                  members={activeMembers}
+                  currentMember={currentMember}
+                  isManager={isManager}
+                  loading={loading}
+                  onAddTask={() => setShowAddTaskModal(true)}
+                  onSubmitTask={submitTask}
+                  onSubmitWithEvidence={submitTaskWithEvidence}
+                  onSubmitWithText={submitTaskWithText}
+                  onApproveTask={approveTask}
+                  onRejectTask={rejectTask}
+                  onCancelTask={cancelSubmission}
+                  onDeleteTask={deleteTask}
+                  onReorderTasks={reorderTasks}
                 />
               )}
             </div>
