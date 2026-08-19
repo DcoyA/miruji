@@ -8,7 +8,7 @@ type BottomNavProps = {
 
 const items: { key: ActiveTab; label: string; icon: string }[] = [
   { key: "tasks", label: "할 일", icon: "✅" },
-  { key: "members", label: "참여자", icon: "👥" },
+  { key: "members", label: "모임/참여자 관리", icon: "👥" },
   { key: "rewards", label: "보상", icon: "🎁" },
 ];
 
@@ -70,7 +70,9 @@ const bottomNavButtonStyle: CSSProperties = {
   padding: "8px 4px",
   color: "#a8a2cf",
   fontWeight: 700,
-  fontSize: 12,
+  fontSize: 11,
+  lineHeight: 1.2,
+  textAlign: "center",
   cursor: "pointer",
 };
 
