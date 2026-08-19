@@ -18,6 +18,7 @@ type SortableTaskListProps = {
   onReject: (task: Task) => void;
   onCancel?: (task: Task) => void;
   onDelete?: (task: Task) => void;
+  onEdit?: (task: Task) => void;
   onReorder: (orderedTaskIds: string[]) => void;
 };
 
@@ -34,6 +35,7 @@ export default function SortableTaskList({
   onReject,
   onCancel,
   onDelete,
+  onEdit,
   onReorder,
 }: SortableTaskListProps) {
   const { order, draggingId, registerItemRef, getHandleProps } = useDragReorder(
@@ -57,6 +59,7 @@ export default function SortableTaskList({
         onReject={onReject}
         onCancel={onCancel}
         onDelete={onDelete}
+        onEdit={onEdit}
       />
     );
   }
@@ -82,6 +85,7 @@ export default function SortableTaskList({
               onReject={onReject}
               onCancel={onCancel}
               onDelete={onDelete}
+              onEdit={onEdit}
             />
           </div>
         </div>
@@ -109,7 +113,7 @@ const handleStyle: CSSProperties = {
   flexShrink: 0,
   border: "none",
   background: "transparent",
-  color: "#d8b4bc",
+  color: "#C7C1EE",
   fontSize: 18,
   fontWeight: 900,
   cursor: "grab",
