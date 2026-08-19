@@ -241,7 +241,7 @@ const panelStyle: CSSProperties = {
   left: 0,
   right: 0,
   bottom: 0,
-  maxHeight: "88vh",
+  maxHeight: "50vh",
   background: "#fff",
   borderRadius: "24px 24px 0 0",
   boxShadow: "0 -10px 40px rgba(63,29,36,0.25)",
