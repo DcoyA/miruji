@@ -518,16 +518,21 @@ export default function Home() {
         onOpenMenu={() => setMenuOpen(true)}
       />
 
+      {workspace && activeTab === "tasks" && (
+        <div style={statsSectionStyle}>
+          <TaskStatsCards
+            todayDoneCount={todayDoneCount}
+            todayTotalCount={todayTotalCount}
+            monthUnfinishedCount={monthUnfinishedCount}
+            onClickToday={() => selectDateAndOpenPanel(todayKeyForStats)}
+            onClickUnfinished={() => setSummaryFilter("all")}
+          />
+        </div>
+      )}
+
 {workspace && <NotificationPrompt />}
           {workspace && activeTab === "tasks" && (
             <div style={homeCardStyle}>
-              <TaskStatsCards
-                todayDoneCount={todayDoneCount}
-                todayTotalCount={todayTotalCount}
-                monthUnfinishedCount={monthUnfinishedCount}
-                onClickToday={() => selectDateAndOpenPanel(todayKeyForStats)}
-                onClickUnfinished={() => setSummaryFilter("all")}
-              />
               <ViewSwitchTabs mode={calendarViewMode} onChange={setCalendarViewMode} />
               {calendarViewMode === "month" && (
                 <MonthView
@@ -545,6 +550,7 @@ export default function Home() {
               )}
             </div>
           )}
+
           
           <DayTaskList
             isOpen={taskPanelOpen}
@@ -773,11 +779,20 @@ const plusSheetCloseButtonStyle: CSSProperties = {
   color: "#3f1d24",
   cursor: "pointer",
 };
+const statsSectionStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 1,
+  margin: "0 -22px -28px",
+  padding: "14px 22px 44px",
+  background: "linear-gradient(180deg, #6C63FF 0%, #5B52E0 100%)",
+};
+
 const homeCardStyle: CSSProperties = {
   position: "relative",
   zIndex: 2,
+  margin: "0 -22px 0",
   background: "#FFFFFF",
-  borderRadius: 24,
-  padding: "18px 16px 6px",
-  boxShadow: "0 10px 28px rgba(108, 99, 255, 0.14)",
+  borderRadius: "24px 24px 0 0",
+  padding: "22px 16px 10px",
+  boxShadow: "0 -6px 20px rgba(108, 99, 255, 0.08)",
 };
