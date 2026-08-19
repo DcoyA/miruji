@@ -760,14 +760,11 @@ export default function Home() {
           </div>
         </div>
       )}
-       <HamburgerMenu
+      <HamburgerMenu
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
         workspaces={workspaces}
-        onSelectWorkspace={(id) => {
-          const next = workspaces.find((item) => item.id === id) || null;
-          setWorkspace(next);
-        }}
+        onManageWorkspace={manageWorkspace}
         onGoProfileSettings={() => setShowProfileSettings(true)}
         onCreateWorkspace={() => {
           setOnboardingStep("create");
@@ -779,15 +776,16 @@ export default function Home() {
         }}
         onShareApp={() => {
           const link = typeof window !== "undefined" ? window.location.origin : "";
-          const text = `미루지말자 함께 해요! 참여 코드로 초대할게요!\n${link}`;
+          const text = `함께 할 일을 관리해요!\n${link}`;
           if (typeof navigator !== "undefined" && navigator.clipboard) {
             navigator.clipboard.writeText(text);
-            setMessage("공유 링크를 복사했어요.");
+            setMessage("링크가 복사되었습니다.");
           }
         }}
         onSignOut={signOut}
         onDeleteAccount={deleteAccount}
       />
+
       
       {plusSheetOpen && (
         <div style={plusSheetBackdropStyle} onClick={() => setPlusSheetOpen(false)}>
