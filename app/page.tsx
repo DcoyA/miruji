@@ -53,7 +53,7 @@ import EmptyWorkspaceHome from "@/features/onboarding/EmptyWorkspaceHome";
 import HamburgerMenu from "@/components/HamburgerMenu";
 import ProfileSettingsPanel from "@/features/settings/ProfileSettingsPanel";
 
-import type { ActiveTab } from "@/types/app";
+import type { ActiveTab, Task } from "@/types/app";
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
