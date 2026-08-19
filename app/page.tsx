@@ -592,6 +592,7 @@ export default function Home() {
                   currentMember={currentMember}
                   isManager={isManager}
                   loading={loading}
+                  onSelectDate={setSelectedDate}
                   onAddTask={() => setShowAddTaskModal(true)}
                   onSubmitTask={submitTask}
                   onSubmitWithEvidence={submitTaskWithEvidence}
