@@ -67,6 +67,34 @@ export function useTasks({
     );
   }
 
+  // 완료 처리 시 담당자에게 포인트를 지급하는 공용 함수 (여러 곳에서 재사용)
+  async function grantRewardForTask(task: Task) {
+    if (!workspace) return;
+    if (!task.assigned_member_id || task.reward_points <= 0) return;
+
+    const { data: txData, error: txError } = await supabase
+      .from("reward_transactions")
+      .insert({
+        workspace_id: workspace.id,
+        member_id: task.assigned_member_id,
+        amount: task.reward_points,
+        transaction_type: "earn",
+        source_type: "task",
+        source_id: task.id,
+        memo: `${task.title} 완료`,
+        created_by_member_id: currentMember?.id || null,
+      })
+      .select(rewardTxSelect)
+      .single();
+
+    if (txError) {
+      setMessage(`포인트 지급 실패: ${txError.message}`);
+      return;
+    }
+
+    setRewardTransactions((prev) => [...prev, txData as RewardTransaction]);
+  }
+
   async function createTask() {
     if (!workspace) {
       setMessage("모임이 없습니다.");
@@ -289,11 +317,11 @@ export function useTasks({
       return;
     }
     if (task.status !== "todo" && task.status !== "rolled_over" && task.status !== "rejected") {
-      setMessage("제출할 수 없는 상태입니다.");
+      setMessage("완료 처리할 수 없는 상태입니다.");
       return;
     }
     if (!isManager && task.assigned_member_id !== currentMember?.id) {
-      setMessage("담당자만 제출할 수 있습니다.");
+      setMessage("담당자만 완료 처리할 수 있습니다.");
       return;
     }
 
@@ -302,19 +330,20 @@ export function useTasks({
 
     const { data, error } = await supabase
       .from("tasks")
-      .update({ status: "submitted" })
+      .update({ status: "approved" })
       .eq("id", task.id)
       .select(taskSelect)
       .single();
 
     if (error) {
-      setMessage(`제출 실패: ${error.message}`);
+      setMessage(`완료 처리 실패: ${error.message}`);
       setLoading(false);
       return;
     }
 
     setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
-    setMessage(`${task.title} 제출 완료.`);
+    await grantRewardForTask(task);
+    setMessage(`${task.title} 완료! 포인트가 지급되었어요.`);
     setLoading(false);
   }
 
@@ -324,11 +353,11 @@ export function useTasks({
       return;
     }
     if (task.status !== "todo" && task.status !== "rolled_over" && task.status !== "rejected") {
-      setMessage("제출할 수 없는 상태입니다.");
+      setMessage("완료 처리할 수 없는 상태입니다.");
       return;
     }
     if (!isManager && task.assigned_member_id !== currentMember?.id) {
-      setMessage("담당자만 제출할 수 있습니다.");
+      setMessage("담당자만 완료 처리할 수 있습니다.");
       return;
     }
     if (!text.trim()) {
@@ -341,19 +370,20 @@ export function useTasks({
 
     const { data, error } = await supabase
       .from("tasks")
-      .update({ status: "submitted", evidence_text: text.trim() })
+      .update({ status: "approved", evidence_text: text.trim() })
       .eq("id", task.id)
       .select(taskSelect)
       .single();
 
     if (error) {
-      setMessage(`제출 실패: ${error.message}`);
+      setMessage(`완료 처리 실패: ${error.message}`);
       setLoading(false);
       return;
     }
 
     setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
-    setMessage(`${task.title} 제출 완료.`);
+    await grantRewardForTask(task);
+    setMessage(`${task.title} 완료! 포인트가 지급되었어요.`);
     setLoading(false);
   }
 
@@ -363,11 +393,11 @@ export function useTasks({
       return;
     }
     if (task.status !== "todo" && task.status !== "rolled_over" && task.status !== "rejected") {
-      setMessage("제출할 수 없는 상태입니다.");
+      setMessage("완료 처리할 수 없는 상태입니다.");
       return;
     }
     if (!isManager && task.assigned_member_id !== currentMember?.id) {
-      setMessage("담당자만 제출할 수 있습니다.");
+      setMessage("담당자만 완료 처리할 수 있습니다.");
       return;
     }
 
@@ -390,19 +420,20 @@ export function useTasks({
 
     const { data, error } = await supabase
       .from("tasks")
-      .update({ status: "submitted", evidence_url: publicUrlData.publicUrl })
+      .update({ status: "approved", evidence_url: publicUrlData.publicUrl })
       .eq("id", task.id)
       .select(taskSelect)
       .single();
 
     if (error) {
-      setMessage(`제출 실패: ${error.message}`);
+      setMessage(`완료 처리 실패: ${error.message}`);
       setLoading(false);
       return;
     }
 
     setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
-    setMessage(`${task.title} 증거 제출 완료.`);
+    await grantRewardForTask(task);
+    setMessage(`${task.title} 완료! 포인트가 지급되었어요.`);
     setLoading(false);
   }
 
@@ -506,32 +537,7 @@ export function useTasks({
     }
 
     setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
-
-    if (task.assigned_member_id && task.reward_points > 0) {
-      const { data: txData, error: txError } = await supabase
-        .from("reward_transactions")
-        .insert({
-          workspace_id: workspace.id,
-          member_id: task.assigned_member_id,
-          amount: task.reward_points,
-          transaction_type: "earn",
-          source_type: "task",
-          source_id: task.id,
-          memo: `${task.title} 완료`,
-          created_by_member_id: currentMember?.id || null,
-        })
-        .select(rewardTxSelect)
-        .single();
-
-      if (txError) {
-        setMessage(`포인트 지급 실패: ${txError.message}`);
-        setLoading(false);
-        return;
-      }
-
-      setRewardTransactions((prev) => [...prev, txData as RewardTransaction]);
-    }
-
+    await grantRewardForTask(task);
     setMessage(`${task.title} 승인 및 포인트 지급 완료`);
     setLoading(false);
   }
