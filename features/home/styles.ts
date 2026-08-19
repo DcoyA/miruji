@@ -95,6 +95,7 @@ export const summaryModalBackdropStyle: CSSProperties = {
 export const summaryModalPanelStyle: CSSProperties = {
   width: "100%",
   maxWidth: 480,
+  minHeight: "50vh",
   maxHeight: "80dvh",
   background: "#fff",
   borderRadius: "24px 24px 0 0",
