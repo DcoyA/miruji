@@ -509,7 +509,15 @@ export default function Home() {
       />
       
       <section style={accountBoxStyle}>
-        ...
+        <Avatar url={profile.avatar_url} name={profile.display_name} size={44} />
+        <div style={accountInfoStyle}>
+          <span style={accountNameStyle}>
+            {currentMember?.display_name ?? profile.display_name}
+          </span>
+          {currentMember && (
+            <span style={roleBadgeStyle}>{roleLabel(currentMember.role)}</span>
+          )}
+        </div>
       </section>
 
 {workspace && <NotificationPrompt />}
