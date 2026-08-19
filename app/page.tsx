@@ -889,15 +889,15 @@ const plusSheetCloseButtonStyle: CSSProperties = {
 const statsSectionStyle: CSSProperties = {
   position: "relative",
   zIndex: 1,
-  margin: "0 -22px -28px",
-  padding: "14px 22px 44px",
+  margin: "0 calc(-1 * var(--page-gutter)) -28px",
+  padding: "14px var(--page-gutter) 44px",
   background: "linear-gradient(180deg, #6C63FF 0%, #5B52E0 100%)",
 };
 
 const homeCardStyle: CSSProperties = {
   position: "relative",
   zIndex: 2,
-  margin: "0 -22px 0",
+  margin: "0 calc(-1 * var(--page-gutter))",
   background: "#FFFFFF",
   borderRadius: "24px 24px 0 0",
   padding: "22px 16px 10px",
