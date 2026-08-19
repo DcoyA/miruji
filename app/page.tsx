@@ -680,64 +680,74 @@ export default function Home() {
       />
 
       {activeTab === "members" && (
-        <MembersTab
-          workspaces={workspaces}
-          workspace={workspace}
-          members={members}
-          currentMember={currentMember}
-          isManager={isManager}
-          workspaceName={workspaceName}
-          workspaceDescription={workspaceDescription}
-          loading={loading}
-          onWorkspaceNameChange={setWorkspaceName}
-          onWorkspaceDescriptionChange={setWorkspaceDescription}
-          onCreateWorkspace={createWorkspace}
-          newMemberName={newMemberName}
-          newMemberRole={newMemberRole}
-          onNewMemberNameChange={setNewMemberName}
-          onNewMemberRoleChange={setNewMemberRole}
-          onAddMember={addVirtualMember}
-          inviteSuggestedName={inviteSuggestedName}
-          onInviteSuggestedNameChange={setInviteSuggestedName}
-          onCreateInvite={createInvite}
-          pendingInvites={pendingInvites}
-          onCancelPendingInvite={cancelPendingInvite}
-          onRemoveMember={removeMember}
-          onRestoreMember={restoreMember}
-          joinInviteCode={joinInviteCode}
-          onJoinInviteCodeChange={setJoinInviteCode}
-          onAcceptInvite={() => acceptInviteCode()}
-          onDeleteAccount={deleteAccount}
-          onTransferOwnership={transferOwnership}
-          onUpdateMemberRole={updateMemberRole}
-          onDeleteWorkspace={deleteWorkspace}
-          focusWorkspaceManagementAt={manageWorkspaceSignal}
-        />
+        <>
+          <div style={statsSectionStyle} />
+          <div style={homeCardStyle}>
+            <MembersTab
+              workspaces={workspaces}
+              workspace={workspace}
+              members={members}
+              currentMember={currentMember}
+              isManager={isManager}
+              workspaceName={workspaceName}
+              workspaceDescription={workspaceDescription}
+              loading={loading}
+              onWorkspaceNameChange={setWorkspaceName}
+              onWorkspaceDescriptionChange={setWorkspaceDescription}
+              onCreateWorkspace={createWorkspace}
+              newMemberName={newMemberName}
+              newMemberRole={newMemberRole}
+              onNewMemberNameChange={setNewMemberName}
+              onNewMemberRoleChange={setNewMemberRole}
+              onAddMember={addVirtualMember}
+              inviteSuggestedName={inviteSuggestedName}
+              onInviteSuggestedNameChange={setInviteSuggestedName}
+              onCreateInvite={createInvite}
+              pendingInvites={pendingInvites}
+              onCancelPendingInvite={cancelPendingInvite}
+              onRemoveMember={removeMember}
+              onRestoreMember={restoreMember}
+              joinInviteCode={joinInviteCode}
+              onJoinInviteCodeChange={setJoinInviteCode}
+              onAcceptInvite={() => acceptInviteCode()}
+              onDeleteAccount={deleteAccount}
+              onTransferOwnership={transferOwnership}
+              onUpdateMemberRole={updateMemberRole}
+              onDeleteWorkspace={deleteWorkspace}
+              focusWorkspaceManagementAt={manageWorkspaceSignal}
+            />
+          </div>
+        </>
       )}
       
       {workspace && activeTab === "rewards" && (
-        <RewardTab
-          members={activeMembers}
-          rewards={rewards}
-          transactions={rewardTransactions}
-          currentMember={currentMember}
-          isManager={isManager}
-          title={newRewardTitle}
-          description={newRewardDescription}
-          targetMemberId={newRewardTargetMemberId}
-          costPoints={newRewardCostPoints}
-          loading={loading}
-          balanceByMemberId={balanceByMemberId}
-          onTitleChange={setNewRewardTitle}
-          onDescriptionChange={setNewRewardDescription}
-          onTargetMemberIdChange={setNewRewardTargetMemberId}
-          onCostPointsChange={setNewRewardCostPoints}
-          onCreate={createReward}
-          onRequestRedeem={requestRedeem}
-          onConfirmRedeem={confirmRedeem}
-          onRejectRedeem={rejectRedeem}
-          onDeleteReward={deleteReward}
-        />
+        <>
+          <div style={statsSectionStyle} />
+          <div style={homeCardStyle}>
+            <RewardTab
+              members={activeMembers}
+              rewards={rewards}
+              transactions={rewardTransactions}
+              currentMember={currentMember}
+              isManager={isManager}
+              title={newRewardTitle}
+              description={newRewardDescription}
+              targetMemberId={newRewardTargetMemberId}
+              costPoints={newRewardCostPoints}
+              loading={loading}
+              balanceByMemberId={balanceByMemberId}
+              onTitleChange={setNewRewardTitle}
+              onDescriptionChange={setNewRewardDescription}
+              onTargetMemberIdChange={setNewRewardTargetMemberId}
+              onCostPointsChange={setNewRewardCostPoints}
+              onCreate={createReward}
+              onRequestRedeem={requestRedeem}
+              onConfirmRedeem={confirmRedeem}
+              onRejectRedeem={rejectRedeem}
+              onDeleteReward={deleteReward}
+            />
+          </div>
+        </>
       )}
 
       {!workspace && activeTab !== "members" && <NoWorkspacePrompt onGoSettings={() => setActiveTab("members")} />}
