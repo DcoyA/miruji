@@ -128,12 +128,11 @@ function BellIcon({ filled }: { filled: boolean }) {
 
 const headerWrapStyle: CSSProperties = {
   background: "linear-gradient(135deg, #7B72F2 0%, #6C63FF 55%, #5D53E8 100%)",
-  borderRadius: "24px 24px 0 0",
-  padding: "18px 18px 44px",
-  marginBottom: -32,
+  margin: "-22px -22px 0",
+  padding: "18px 18px 14px",
+  borderRadius: "28px 28px 0 0",
   position: "relative",
   zIndex: 1,
-  boxShadow: "0 12px 24px rgba(108, 99, 255, 0.25)",
 };
 
 const brandRowStyle: CSSProperties = {
