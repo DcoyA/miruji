@@ -18,11 +18,6 @@ import {
   summaryModalBodyStyle,
 } from "@/features/home/styles";
 import NotificationPrompt from "@/features/notifications/NotificationPrompt";
-import ViewSwitchTabs, { type CalendarViewMode } from "@/features/tasks/ViewSwitchTabs";
-import TaskStatsCards from "@/features/tasks/TaskStatsCards";
-import MonthView from "@/features/tasks/MonthView";
-import WeekView from "@/features/tasks/WeekView";
-import DayView from "@/features/tasks/DayView";
 
 import Shell from "@/components/Shell";
 import AppHeader from "@/components/AppHeader";
@@ -37,6 +32,8 @@ import MembersTab from "@/features/members/MembersTab";
 import ViewSwitchTabs, { type CalendarViewMode } from "@/features/tasks/ViewSwitchTabs";
 import TaskStatsCards from "@/features/tasks/TaskStatsCards";
 import MonthView from "@/features/tasks/MonthView";
+import WeekView from "@/features/tasks/WeekView";
+import DayView from "@/features/tasks/DayView";
 
 import { addMonths, startOfMonth, toDateKey } from "@/lib/date";
 import { tabTitle, roleLabel } from "@/lib/labels";
