@@ -392,6 +392,7 @@ export default function Home() {
             onNewPasswordChange={setNewPassword}
             onChangePassword={changePassword}
             onBack={() => setShowProfileSettings(false)}
+            onGoToRewards={() => { setShowProfileSettings(false); setActiveTab("rewards"); }}
           />
         </Shell>
       );
@@ -417,6 +418,7 @@ export default function Home() {
             onNewPasswordChange={setNewPassword}
             onChangePassword={changePassword}
             onBack={() => setShowProfileSettings(false)}
+            onGoToRewards={() => { setShowProfileSettings(false); setActiveTab("rewards"); }}
           />
         </Shell>
       );
@@ -514,6 +516,7 @@ export default function Home() {
           onNewPasswordChange={setNewPassword}
           onChangePassword={changePassword}
           onBack={() => setShowProfileSettings(false)}
+          onGoToRewards={() => { setShowProfileSettings(false); setActiveTab("rewards"); }}
         />
       </Shell>
     );
