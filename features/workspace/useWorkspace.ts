@@ -545,57 +545,83 @@ export function useWorkspace({
     return { ok: true, text: nextValue ? "알림을 켰습니다." : "알림을 껐습니다." };
   }
 
-  async function deleteWorkspace(targetWorkspace: Workspace) {
-    if (currentMember?.role !== "owner") {
-      setMessage("방장만 삭제할 수 있습니다.");
-      return { ok: false, text: "방장만 삭제할 수 있습니다." };
-    }
-
-  async function renameWorkspace(newName: string) {
-    if (!workspace) {
-      const text = "모임이 없습니다.";
-      setMessage(text);
-      return { ok: false, text };
-    }
-    if (!isManager) {
-      const text = "방장/부방장만 모임 이름을 변경할 수 있습니다.";
-      setMessage(text);
-      return { ok: false, text };
-    }
-    const trimmed = newName.trim();
-    if (!trimmed) {
-      const text = "모임 이름을 입력해주세요.";
-      setMessage(text);
-      return { ok: false, text };
-    }
-    if (trimmed === workspace.name) return { ok: true, text: "" };
-  
-    setLoading(true);
-    setMessage("");
-  
-    const { data, error } = await supabase
-      .from("workspaces")
-      .update({ name: trimmed })
-      .eq("id", workspace.id)
-      .select("id, name, description")
-      .single();
-  
-    if (error) {
-      const text = `모임 이름 변경 실패: ${error.message}`;
+    async function renameWorkspace(newName: string) {
+      if (!workspace) {
+        const text = "모임이 없습니다.";
+        setMessage(text);
+        return { ok: false, text };
+      }
+      if (!isManager) {
+        const text = "방장/부방장만 모임 이름을 변경할 수 있습니다.";
+        setMessage(text);
+        return { ok: false, text };
+      }
+      const trimmed = newName.trim();
+      if (!trimmed) {
+        const text = "모임 이름을 입력해주세요.";
+        setMessage(text);
+        return { ok: false, text };
+      }
+      if (trimmed === workspace.name) return { ok: true, text: "" };
+    
+      setLoading(true);
+      setMessage("");
+    
+      const { data, error } = await supabase
+        .from("workspaces")
+        .update({ name: trimmed })
+        .eq("id", workspace.id)
+        .select("id, name, description")
+        .single();
+    
+      if (error) {
+        const text = `모임 이름 변경 실패: ${error.message}`;
+        setMessage(text);
+        setLoading(false);
+        return { ok: false, text };
+      }
+    
+      const updated = data as Workspace;
+      setWorkspaces((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setWorkspace(updated);
+      const text = `모임 이름을 "${updated.name}"으로 변경했습니다.`;
       setMessage(text);
       setLoading(false);
-      return { ok: false, text };
+      return { ok: true, text };
     }
-  
-    const updated = data as Workspace;
-    setWorkspaces((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-    setWorkspace(updated);
-    const text = `모임 이름을 "${updated.name}"으로 변경했습니다.`;
-    setMessage(text);
-    setLoading(false);
-    return { ok: true, text };
-  }
     
+    async function deleteWorkspace(targetWorkspace: Workspace) {
+      if (currentMember?.role !== "owner") {
+        setMessage("owner만 삭제할 수 있습니다.");
+        return { ok: false, text: "owner만 삭제할 수 있습니다." };
+      }
+    
+      const confirmed = window.confirm(
+        `"${targetWorkspace.name}"을 삭제하시겠습니까? 모든 할 일, 멤버, 보상 관련 기록이 모두 삭제되며 되돌릴 수 없습니다.`
+      );
+      if (!confirmed) return { ok: false, text: "" };
+    
+      setLoading(true);
+      setMessage("");
+    
+      const { error } = await supabase.from("workspaces").delete().eq("id", targetWorkspace.id);
+    
+      if (error) {
+        setMessage(`모임 삭제 실패: ${error.message}`);
+        setLoading(false);
+        return { ok: false, text: `모임 삭제 실패: ${error.message}` };
+      }
+    
+      setWorkspaces((prev) => prev.filter((item) => item.id !== targetWorkspace.id));
+      setWorkspace((prev) => (prev?.id === targetWorkspace.id ? null : prev));
+      const text = `${targetWorkspace.name}이 삭제되었습니다.`;
+      setMessage(text);
+      setLoading(false);
+    
+      await loadWorkspaces();
+      return { ok: true, text };
+    }
+        
     const confirmed = window.confirm(
       `"${targetWorkspace.name}"을 삭제하시겠습니까? 모든 할 일, 참여자, 보상 기록이 삭제되며 되돌릴 수 없습니다.`
     );
