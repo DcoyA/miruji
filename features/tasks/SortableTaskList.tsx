@@ -38,7 +38,7 @@ export default function SortableTaskList({
   onEdit,
   onReorder,
 }: SortableTaskListProps) {
-  const { order, draggingId, registerItemRef, getHandleProps } = useDragReorder(
+  const { order, draggingId, getItemStyle, registerItemRef, getHandleProps } = useDragReorder(
     tasks,
     (task) => task.id,
     onReorder
@@ -67,7 +67,7 @@ export default function SortableTaskList({
   return (
     <div style={listWrapStyle}>
       {order.map((task) => (
-        <div key={task.id} ref={registerItemRef(task.id)} style={rowStyle(draggingId === task.id)}>
+        <div key={task.id} ref={registerItemRef(task.id)} style={{ ...rowBaseStyle, ...getItemStyle(task.id) }}>
           <button type="button" {...getHandleProps(task.id)} style={handleStyle} aria-label="순서 변경">
             ⠿
           </button>
@@ -96,16 +96,7 @@ export default function SortableTaskList({
 
 const listWrapStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 10 };
 
-function rowStyle(isDragging: boolean): CSSProperties {
-  return {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 4,
-    position: "relative",
-    zIndex: isDragging ? 5 : 1,
-    opacity: isDragging ? 0.85 : 1,
-  };
-}
+const rowBaseStyle: CSSProperties = { display: "flex", alignItems: "flex-start", gap: 4 };
 
 const handleStyle: CSSProperties = {
   width: 26,
