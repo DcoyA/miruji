@@ -91,7 +91,7 @@ export default function WeekView({
     onReorderAcrossDates(assignments);
   }
 
-  const { order, draggingId, registerItemRef, getHandleProps } = useDragReorder(
+  const { order, draggingId, getItemStyle, registerItemRef, getHandleProps } = useDragReorder(
     rows,
     (row) => row.id,
     handleCommit
@@ -133,7 +133,7 @@ export default function WeekView({
             <div
               key={row.id}
               ref={registerItemRef(row.id)}
-              style={isSelected ? dayHeaderRowActiveStyle : dayHeaderRowStyle}
+              style={{ ...(isSelected ? dayHeaderRowActiveStyle : dayHeaderRowStyle), ...getItemStyle(row.id) }}
             >
               <button type="button" onClick={() => onSelectDate(row.dateKey)} style={dayLabelButtonStyle}>
                 <span style={dayLabelStyle}>
@@ -158,10 +158,8 @@ export default function WeekView({
           );
         }
 
-        const isDragging = draggingId === row.id;
-
         return (
-          <div key={row.id} ref={registerItemRef(row.id)} style={taskRowStyle(isDragging)}>
+          <div key={row.id} ref={registerItemRef(row.id)} style={{ ...taskRowBaseStyle, ...getItemStyle(row.id) }}>
             <button type="button" {...getHandleProps(row.id)} style={handleStyle} aria-label="순서 변경">
               ⠿
             </button>
@@ -268,16 +266,7 @@ const addRowButtonStyle: CSSProperties = {
   flexShrink: 0,
 };
 
-function taskRowStyle(isDragging: boolean): CSSProperties {
-  return {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 4,
-    position: "relative",
-    zIndex: isDragging ? 5 : 1,
-    opacity: isDragging ? 0.85 : 1,
-  };
-}
+const taskRowBaseStyle: CSSProperties = { display: "flex", alignItems: "flex-start", gap: 4 };
 
 const handleStyle: CSSProperties = {
   width: 26,
