@@ -997,9 +997,10 @@ function renameWorkspaceSaveButtonStyle(disabled: boolean): CSSProperties {
     padding: 14,
     borderRadius: 14,
     border: "none",
-    background: disabled ? "#94a3b8" : "linear-gradient(135deg, #fb7185, #e11d48)",
+    background: disabled ? "#D8D4F5" : "linear-gradient(135deg, #8B83EA, #6C63FF)",
     color: "#fff",
     fontWeight: 800,
     cursor: disabled ? "not-allowed" : "pointer",
+    boxShadow: disabled ? "none" : "0 6px 14px rgba(108, 99, 255, 0.30)",
   };
 }
