@@ -89,6 +89,14 @@ export function useWorkspace({
   const [pendingInvites, setPendingInvites] = useState<WorkspaceInvite[]>([]);
   const [joinInviteCode, setJoinInviteCode] = useState("");
   const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
+  const [incomingInvite, setIncomingInvite] = useState<{
+    workspaceName: string;
+    invitedBy: string | null;
+    role: string;
+    suggestedName: string | null;
+    expiresAt: string;
+  } | null>(null);
+  const [incomingInviteStatus, setIncomingInviteStatus] = useState<"idle" | "loading" | "ready" | "invalid">("idle");
   const [myNickname, setMyNickname] = useState("");
 
   const currentMember = useMemo(() => {
@@ -167,15 +175,10 @@ export function useWorkspace({
   useEffect(() => {
     if (!pendingInviteCode) return;
     if (!profile || !workspacesLoaded || loading) return;
-
-    const codeToConsume = pendingInviteCode;
-    setPendingInviteCode(null);
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(PENDING_INVITE_STORAGE_KEY);
-    }
-    acceptInviteCode(codeToConsume);
+    if (incomingInviteStatus !== "idle") return;
+    loadIncomingInvitePreview(pendingInviteCode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingInviteCode, profile?.id, workspacesLoaded, loading]);
+  }, [pendingInviteCode, profile?.id, workspacesLoaded, loading, incomingInviteStatus]);
 
   function resetWorkspaceState() {
     setWorkspaces([]);
@@ -723,6 +726,52 @@ export function useWorkspace({
     return { ok: true, text: "참여 완료" };
   }
 
+  async function loadIncomingInvitePreview(code: string) {
+    setIncomingInviteStatus("loading");
+  
+    const { data, error } = await supabase.rpc("get_invite_preview", {
+      input_code: code.toUpperCase(),
+    });
+  
+    const row = Array.isArray(data) ? data[0] : data;
+  
+    if (error || !row || row.status !== "pending" || new Date(row.expires_at).getTime() < Date.now()) {
+      setIncomingInvite(null);
+      setIncomingInviteStatus("invalid");
+      return;
+    }
+  
+    setIncomingInvite({
+      workspaceName: row.workspace_name,
+      invitedBy: row.invited_by,
+      role: row.role,
+      suggestedName: row.suggested_name,
+      expiresAt: row.expires_at,
+    });
+    setIncomingInviteStatus("ready");
+  }
+  
+  async function acceptIncomingInvite() {
+    if (!pendingInviteCode) return { ok: false, text: "" };
+    const result = await acceptInviteCode(pendingInviteCode);
+    setPendingInviteCode(null);
+    setIncomingInvite(null);
+    setIncomingInviteStatus("idle");
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(PENDING_INVITE_STORAGE_KEY);
+    }
+    return result;
+  }
+  
+  function declineIncomingInvite() {
+    setPendingInviteCode(null);
+    setIncomingInvite(null);
+    setIncomingInviteStatus("idle");
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(PENDING_INVITE_STORAGE_KEY);
+    }
+  }
+
   async function cancelPendingInvite(invite: WorkspaceInvite) {
     if (!workspace) {
       setMessage("모임이 없습니다.");
@@ -897,5 +946,9 @@ export function useWorkspace({
     balanceByMemberId,
     toggleMyNotifications,
     renameWorkspace,
+    incomingInvite,
+    incomingInviteStatus,
+    acceptIncomingInvite,
+    declineIncomingInvite,
   };
 }
