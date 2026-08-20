@@ -298,7 +298,6 @@ export default function MembersTab({
                         </div>
                         <div style={{ fontSize: 12, marginTop: 4 }}>만료일: {formatExpiryDate(invite.expires_at)}</div>
                         <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
                           <button type="button" onClick={() => handleShareInvite(invite)} style={shareButtonStyle}>
                             공유하기
                           </button>
