@@ -551,6 +551,51 @@ export function useWorkspace({
       return { ok: false, text: "방장만 삭제할 수 있습니다." };
     }
 
+  async function renameWorkspace(newName: string) {
+    if (!workspace) {
+      const text = "모임이 없습니다.";
+      setMessage(text);
+      return { ok: false, text };
+    }
+    if (!isManager) {
+      const text = "방장/부방장만 모임 이름을 변경할 수 있습니다.";
+      setMessage(text);
+      return { ok: false, text };
+    }
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      const text = "모임 이름을 입력해주세요.";
+      setMessage(text);
+      return { ok: false, text };
+    }
+    if (trimmed === workspace.name) return { ok: true, text: "" };
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { data, error } = await supabase
+      .from("workspaces")
+      .update({ name: trimmed })
+      .eq("id", workspace.id)
+      .select("id, name, description")
+      .single();
+  
+    if (error) {
+      const text = `모임 이름 변경 실패: ${error.message}`;
+      setMessage(text);
+      setLoading(false);
+      return { ok: false, text };
+    }
+  
+    const updated = data as Workspace;
+    setWorkspaces((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    setWorkspace(updated);
+    const text = `모임 이름을 "${updated.name}"으로 변경했습니다.`;
+    setMessage(text);
+    setLoading(false);
+    return { ok: true, text };
+  }
+    
     const confirmed = window.confirm(
       `"${targetWorkspace.name}"을 삭제하시겠습니까? 모든 할 일, 참여자, 보상 기록이 삭제되며 되돌릴 수 없습니다.`
     );
@@ -850,5 +895,6 @@ export function useWorkspace({
     resetWorkspaceState,
     balanceByMemberId,
     toggleMyNotifications,
+    renameWorkspace,
   };
 }
