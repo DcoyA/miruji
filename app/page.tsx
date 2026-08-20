@@ -70,6 +70,8 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [plusSheetOpen, setPlusSheetOpen] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [showRenameWorkspaceModal, setShowRenameWorkspaceModal] = useState(false);
+  const [renameWorkspaceValue, setRenameWorkspaceValue] = useState("");
 
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [taskPanelOpen, setTaskPanelOpen] = useState(false);
@@ -190,6 +192,7 @@ export default function Home() {
     resetWorkspaceState,
     balanceByMemberId,
     toggleMyNotifications,
+    renameWorkspace,
   } = workspaceHook;
 
   const currentWorkspaceIndex = workspace ? workspaces.findIndex((item) => item.id === workspace.id) : -1;
@@ -537,6 +540,14 @@ export default function Home() {
         notificationsEnabled={currentMember?.notifications_enabled ?? true}
         onToggleNotifications={toggleMyNotifications}
         onOpenMenu={() => setMenuOpen(true)}
+        onWorkspaceNameClick={
+          activeTab === "tasks" && workspace
+            ? () => {
+                setRenameWorkspaceValue(workspace.name);
+                setShowRenameWorkspaceModal(true);
+              }
+            : undefined
+        }
       />
 
       {workspace && activeTab === "tasks" && (
@@ -855,6 +866,47 @@ export default function Home() {
           </div>
         </div>
       )}
+      {showRenameWorkspaceModal && (
+        <div style={summaryModalBackdropStyle} onClick={() => setShowRenameWorkspaceModal(false)}>
+          <div style={summaryModalPanelStyle} onClick={(event) => event.stopPropagation()}>
+            <div style={summaryModalHeaderStyle}>
+              <h2 style={summaryModalTitleStyle}>모임 이름 변경</h2>
+              <button
+                type="button"
+                onClick={() => setShowRenameWorkspaceModal(false)}
+                style={summaryModalCloseButtonStyle}
+              >
+                닫기
+              </button>
+            </div>
+            <div style={summaryModalBodyStyle}>
+              <input
+                type="text"
+                value={renameWorkspaceValue}
+                onChange={(event) => setRenameWorkspaceValue(event.target.value)}
+                placeholder="모임 이름을 입력하세요"
+                maxLength={30}
+                disabled={!isManager || loading}
+                style={renameWorkspaceInputStyle}
+              />
+              {!isManager && (
+                <p style={renameWorkspaceHintStyle}>방장/부방장만 모임 이름을 변경할 수 있습니다.</p>
+              )}
+              <button
+                type="button"
+                disabled={!isManager || loading || !renameWorkspaceValue.trim()}
+                onClick={async () => {
+                  const result = await renameWorkspace(renameWorkspaceValue);
+                  if (result?.ok) setShowRenameWorkspaceModal(false);
+                }}
+                style={renameWorkspaceSaveButtonStyle(!isManager || loading || !renameWorkspaceValue.trim())}
+              >
+                저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <BottomNav activeTab={activeTab} onChange={setActiveTab} />
     </Shell>
   );
@@ -906,3 +958,32 @@ const homeCardStyle: CSSProperties = {
   padding: "22px 16px 10px",
   boxShadow: "0 -6px 20px rgba(108, 99, 255, 0.08)",
 };
+
+const renameWorkspaceInputStyle: CSSProperties = {
+  width: "100%",
+  padding: "12px 14px",
+  borderRadius: 12,
+  border: "1px solid #e5e0e6",
+  fontSize: 15,
+  marginBottom: 10,
+};
+
+const renameWorkspaceHintStyle: CSSProperties = {
+  fontSize: 12,
+  color: "#94a3b8",
+  marginTop: -4,
+  marginBottom: 10,
+};
+
+function renameWorkspaceSaveButtonStyle(disabled: boolean): CSSProperties {
+  return {
+    width: "100%",
+    padding: 14,
+    borderRadius: 14,
+    border: "none",
+    background: disabled ? "#94a3b8" : "linear-gradient(135deg, #fb7185, #e11d48)",
+    color: "#fff",
+    fontWeight: 800,
+    cursor: disabled ? "not-allowed" : "pointer",
+  };
+}
