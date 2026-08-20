@@ -52,6 +52,7 @@ import SplashScreen from "@/components/SplashScreen";
 import EmptyWorkspaceHome from "@/features/onboarding/EmptyWorkspaceHome";
 import HamburgerMenu from "@/components/HamburgerMenu";
 import ProfileSettingsPanel from "@/features/settings/ProfileSettingsPanel";
+import IncomingInviteCard from "@/features/invite/IncomingInviteCard";
 
 import type { ActiveTab, Task } from "@/types/app";
 
@@ -193,6 +194,10 @@ export default function Home() {
     balanceByMemberId,
     toggleMyNotifications,
     renameWorkspace,
+    incomingInvite,
+    incomingInviteStatus,
+    acceptIncomingInvite,
+    declineIncomingInvite,
   } = workspaceHook;
 
   const currentWorkspaceIndex = workspace ? workspaces.findIndex((item) => item.id === workspace.id) : -1;
@@ -549,6 +554,15 @@ export default function Home() {
             : undefined
         }
       />
+
+      {incomingInviteStatus !== "idle" && incomingInvite && (
+        <IncomingInviteCard
+          invite={incomingInvite}
+          status={incomingInviteStatus}
+          onAccept={acceptIncomingInvite}
+          onDecline={declineIncomingInvite}
+        />
+      )}
 
       {workspace && activeTab === "tasks" && (
         <div style={statsSectionStyle}>
