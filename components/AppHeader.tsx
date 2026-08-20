@@ -17,6 +17,7 @@ type AppHeaderProps = {
   notificationsEnabled?: boolean;
   onToggleNotifications?: () => void;
   onOpenMenu?: () => void;
+  onWorkspaceNameClick?: () => void;
 };
 
 export default function AppHeader({
@@ -32,6 +33,7 @@ export default function AppHeader({
   notificationsEnabled = true,
   onToggleNotifications,
   onOpenMenu,
+  onWorkspaceNameClick,
 }: AppHeaderProps) {
   const showNickname = Boolean(nickname && nickname !== username);
 
@@ -75,7 +77,18 @@ export default function AppHeader({
             ‹
           </button>
 
-          <h1 style={workspaceTitleStyle}>{workspaceName || "미루지말자"}</h1>
+          {onWorkspaceNameClick ? (
+            <button
+              type="button"
+              onClick={onWorkspaceNameClick}
+              style={workspaceTitleButtonStyle}
+              aria-label="모임 이름 변경"
+            >
+              {workspaceName || "미루지말자"}
+            </button>
+          ) : (
+            <h1 style={workspaceTitleStyle}>{workspaceName || "미루지말자"}</h1>
+          )}
 
           <button
             type="button"
@@ -215,6 +228,16 @@ const workspaceTitleStyle: CSSProperties = {
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
+};
+
+const workspaceTitleButtonStyle: CSSProperties = {
+  ...workspaceTitleStyle,
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  cursor: "pointer",
+  padding: 0,
+  font: "inherit",
 };
 
 function arrowButtonStyle(enabled: boolean): CSSProperties {
