@@ -17,6 +17,7 @@ type AppHeaderProps = {
   notificationsEnabled?: boolean;
   onToggleNotifications?: () => void;
   onOpenMenu?: () => void;
+  onWorkspaceNameClick?: () => void;
 };
 
 export default function AppHeader({
@@ -32,6 +33,7 @@ export default function AppHeader({
   notificationsEnabled = true,
   onToggleNotifications,
   onOpenMenu,
+  onWorkspaceNameClick,
 }: AppHeaderProps) {
   const showNickname = Boolean(nickname && nickname !== username);
 
@@ -75,7 +77,18 @@ export default function AppHeader({
             ‹
           </button>
 
-          <h1 style={workspaceTitleStyle}>{workspaceName || "미루지말자"}</h1>
+          {onWorkspaceNameClick ? (
+            <button
+              type="button"
+              onClick={onWorkspaceNameClick}
+              style={workspaceTitleButtonStyle}
+              aria-label="모임 이름 변경"
+            >
+              {workspaceName || "미루지말자"}
+            </button>
+          ) : (
+            <h1 style={workspaceTitleStyle}>{workspaceName || "미루지말자"}</h1>
+          )}
 
           <button
             type="button"
@@ -127,7 +140,7 @@ function BellIcon({ filled }: { filled: boolean }) {
 }
 
 const headerWrapStyle: CSSProperties = {
-  background: "linear-gradient(135deg, #7B72F2 0%, #6C63FF 55%, #5D53E8 100%)",
+  background: "linear-gradient(180deg, #7B72F2 0%, #6C63FF 100%)",
   margin: "-22px calc(-1 * var(--page-gutter)) 0",
   padding: "18px 18px 14px",
   borderRadius: 0,
@@ -215,6 +228,16 @@ const workspaceTitleStyle: CSSProperties = {
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
+};
+
+const workspaceTitleButtonStyle: CSSProperties = {
+  ...workspaceTitleStyle,
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  cursor: "pointer",
+  padding: 0,
+  font: "inherit",
 };
 
 function arrowButtonStyle(enabled: boolean): CSSProperties {

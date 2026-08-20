@@ -111,7 +111,7 @@ const panelStyle: CSSProperties = {
   maxWidth: 380,
   maxHeight: "88vh",
   overflowY: "auto",
-  background: "#fffaf9",
+  background: "#FBFAFF",
   borderRadius: 22,
   padding: 20,
   boxShadow: "0 20px 50px rgba(0,0,0,0.25)",
@@ -127,7 +127,7 @@ const headerStyle: CSSProperties = {
 const titleStyle: CSSProperties = {
   fontSize: 18,
   fontWeight: 900,
-  color: "#3f1d24",
+  color: "#2b2140",
   margin: 0,
 };
 
@@ -135,7 +135,7 @@ const closeButtonStyle: CSSProperties = {
   border: "none",
   background: "transparent",
   fontSize: 16,
-  color: "#9f6b75",
+  color: "#8b83b0",
   cursor: "pointer",
 };
 
@@ -143,9 +143,9 @@ const reasonTextStyle: CSSProperties = {
   marginTop: 4,
   marginBottom: 16,
   fontSize: 13,
-  color: "#db2777",
+  color: "#6C63FF",
   lineHeight: 1.5,
-  background: "#fce7f3",
+  background: "#F1EEFE",
   padding: "10px 12px",
   borderRadius: 12,
 };
@@ -153,7 +153,7 @@ const reasonTextStyle: CSSProperties = {
 const billingToggleStyle: CSSProperties = {
   display: "flex",
   gap: 6,
-  background: "#f3e8e8",
+  background: "#EFEBFF",
   borderRadius: 999,
   padding: 4,
   marginBottom: 16,
@@ -167,7 +167,7 @@ const billingButtonStyle: CSSProperties = {
   padding: "8px 6px",
   fontSize: 12,
   fontWeight: 800,
-  color: "#9f6b75",
+  color: "#8b83b0",
   cursor: "pointer",
   whiteSpace: "nowrap",
 };
@@ -175,8 +175,8 @@ const billingButtonStyle: CSSProperties = {
 const billingButtonActiveStyle: CSSProperties = {
   ...billingButtonStyle,
   background: "#ffffff",
-  color: "#db2777",
-  boxShadow: "0 2px 8px rgba(219,39,119,0.15)",
+  color: "#6C63FF",
+  boxShadow: "0 2px 8px rgba(108, 99, 255, 0.20)",
 };
 
 const discountBadgeStyle: CSSProperties = {
@@ -184,7 +184,7 @@ const discountBadgeStyle: CSSProperties = {
   fontSize: 10,
   fontWeight: 900,
   color: "#fff",
-  background: "#e11d48",
+  background: "#5D53E8",
   padding: "1px 6px",
   borderRadius: 999,
 };
@@ -200,13 +200,13 @@ const planCardStyle: CSSProperties = {
   padding: 14,
   borderRadius: 16,
   background: "#fff",
-  boxShadow: "0 2px 10px rgba(219,39,119,0.08)",
+  boxShadow: "0 2px 10px rgba(108, 99, 255, 0.10)",
 };
 
 const planCardPremiumStyle: CSSProperties = {
-  border: "1.5px solid #f472b6",
-  background: "linear-gradient(160deg, #fff0f6, #fce7f3)",
-  boxShadow: "0 6px 18px rgba(219,39,119,0.20)",
+  border: "1.5px solid #8B83EA",
+  background: "linear-gradient(160deg, #F1EEFE, #E5E1FB)",
+  boxShadow: "0 6px 18px rgba(108, 99, 255, 0.24)",
 };
 
 const planBadgeStyle: CSSProperties = {
@@ -215,27 +215,27 @@ const planBadgeStyle: CSSProperties = {
   borderRadius: 999,
   fontSize: 11,
   fontWeight: 800,
-  color: "#9f6b75",
-  background: "#f3e8e8",
+  color: "#8b83b0",
+  background: "#EFEBFF",
   marginBottom: 8,
 };
 
 const planBadgePremiumStyle: CSSProperties = {
   color: "#fff",
-  background: "linear-gradient(135deg, #fb7185, #e11d48)",
+  background: "linear-gradient(135deg, #8B83EA, #6C63FF)",
 };
 
 const planNameStyle: CSSProperties = {
   fontSize: 15,
   fontWeight: 900,
-  color: "#3f1d24",
+  color: "#2b2140",
   margin: "0 0 4px",
 };
 
 const planPriceStyle: CSSProperties = {
   fontSize: 14,
   fontWeight: 800,
-  color: "#db2777",
+  color: "#6C63FF",
   marginBottom: 10,
   lineHeight: 1.4,
 };
@@ -244,14 +244,14 @@ const priceSubTextStyle: CSSProperties = {
   display: "block",
   fontSize: 11,
   fontWeight: 700,
-  color: "#9f6b75",
+  color: "#8b83b0",
 };
 
 const planListStyle: CSSProperties = {
   margin: 0,
   paddingLeft: 16,
   fontSize: 12,
-  color: "#5c3a41",
+  color: "#5c4f80",
   lineHeight: 1.8,
 };
 
@@ -260,7 +260,7 @@ const subscribeButtonStyle: CSSProperties = {
   padding: 14,
   borderRadius: 14,
   border: "none",
-  background: "#d8b4bc",
+  background: "#D8D4F5",
   color: "#fff",
   fontWeight: 800,
   cursor: "not-allowed",

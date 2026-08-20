@@ -1,40 +1,16 @@
-"use client";
+import type { Metadata } from "next";
+import JoinClient from "./JoinClient";
 
-import { Suspense, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-
-const PENDING_INVITE_STORAGE_KEY = "miruji_pending_invite_code";
-
-function JoinRedirect() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const code = searchParams.get("code");
-    if (code && typeof window !== "undefined") {
-      window.localStorage.setItem(PENDING_INVITE_STORAGE_KEY, code.trim().toUpperCase());
-    }
-    router.replace("/");
-  }, [searchParams, router]);
-
-  return null;
-}
+export const metadata: Metadata = {
+  title: "미루지말자 초대장이 도착했어요",
+  description: "가족, 친구와 함께 할 일을 나눠보세요. 링크를 눌러 초대를 확인하세요!",
+  openGraph: {
+    title: "미루지말자 초대장이 도착했어요",
+    description: "가족, 친구와 함께 할 일을 나눠보세요. 링크를 눌러 초대를 확인하세요!",
+    images: ["/invite-og-image.png"],
+  },
+};
 
 export default function JoinPage() {
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#e2f3f1",
-      }}
-    >
-      <Suspense fallback={null}>
-        <JoinRedirect />
-      </Suspense>
-      <p style={{ color: "#0f172a", fontWeight: 700 }}>초대 확인 중입니다...</p>
-    </main>
-  );
+  return <JoinClient />;
 }

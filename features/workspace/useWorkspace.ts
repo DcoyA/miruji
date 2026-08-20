@@ -89,6 +89,14 @@ export function useWorkspace({
   const [pendingInvites, setPendingInvites] = useState<WorkspaceInvite[]>([]);
   const [joinInviteCode, setJoinInviteCode] = useState("");
   const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
+  const [incomingInvite, setIncomingInvite] = useState<{
+    workspaceName: string;
+    invitedBy: string | null;
+    role: string;
+    suggestedName: string | null;
+    expiresAt: string;
+  } | null>(null);
+  const [incomingInviteStatus, setIncomingInviteStatus] = useState<"idle" | "loading" | "ready" | "invalid">("idle");
   const [myNickname, setMyNickname] = useState("");
 
   const currentMember = useMemo(() => {
@@ -167,15 +175,10 @@ export function useWorkspace({
   useEffect(() => {
     if (!pendingInviteCode) return;
     if (!profile || !workspacesLoaded || loading) return;
-
-    const codeToConsume = pendingInviteCode;
-    setPendingInviteCode(null);
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(PENDING_INVITE_STORAGE_KEY);
-    }
-    acceptInviteCode(codeToConsume);
+    if (incomingInviteStatus !== "idle") return;
+    loadIncomingInvitePreview(pendingInviteCode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingInviteCode, profile?.id, workspacesLoaded, loading]);
+  }, [pendingInviteCode, profile?.id, workspacesLoaded, loading, incomingInviteStatus]);
 
   function resetWorkspaceState() {
     setWorkspaces([]);
@@ -526,29 +529,74 @@ export function useWorkspace({
       setMessage("연결된 참여자가 없습니다.");
       return { ok: false, text: "연결된 참여자가 없습니다." };
     }
-  
+
     const nextValue = !currentMember.notifications_enabled;
-  
+
     const { data, error } = await supabase
       .from("workspace_members")
       .update({ notifications_enabled: nextValue })
       .eq("id", currentMember.id)
       .select(memberSelect)
       .single();
-  
+
     if (error) {
       setMessage(`알림 설정 변경 실패: ${error.message}`);
       return { ok: false, text: `알림 설정 변경 실패: ${error.message}` };
     }
-  
+
     setMembers((prev) => prev.map((item) => (item.id === currentMember.id ? (data as Member) : item)));
     return { ok: true, text: nextValue ? "알림을 켰습니다." : "알림을 껐습니다." };
   }
 
+  async function renameWorkspace(newName: string) {
+    if (!workspace) {
+      const text = "모임이 없습니다.";
+      setMessage(text);
+      return { ok: false, text };
+    }
+    if (!isManager) {
+      const text = "방장/부방장만 모임 이름을 변경할 수 있습니다.";
+      setMessage(text);
+      return { ok: false, text };
+    }
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      const text = "모임 이름을 입력해주세요.";
+      setMessage(text);
+      return { ok: false, text };
+    }
+    if (trimmed === workspace.name) return { ok: true, text: "" };
+
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("workspaces")
+      .update({ name: trimmed })
+      .eq("id", workspace.id)
+      .select("id, name, description")
+      .single();
+
+    if (error) {
+      const text = `모임 이름 변경 실패: ${error.message}`;
+      setMessage(text);
+      setLoading(false);
+      return { ok: false, text };
+    }
+
+    const updated = data as Workspace;
+    setWorkspaces((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    setWorkspace(updated);
+    const text = `모임 이름을 "${updated.name}"으로 변경했습니다.`;
+    setMessage(text);
+    setLoading(false);
+    return { ok: true, text };
+  }
+
   async function deleteWorkspace(targetWorkspace: Workspace) {
     if (currentMember?.role !== "owner") {
-      setMessage("방장만 삭제할 수 있습니다.");
-      return { ok: false, text: "방장만 삭제할 수 있습니다." };
+      setMessage("owner만 삭제할 수 있습니다.");
+      return { ok: false, text: "owner만 삭제할 수 있습니다." };
     }
 
     const confirmed = window.confirm(
@@ -614,6 +662,7 @@ export function useWorkspace({
         suggested_name: inviteSuggestedName.trim() || null,
         status: "pending",
         expires_at: expiresAt,
+        invited_by_display_name: currentMember?.display_name ?? profile?.display_name ?? null,
       })
       .select("id, invite_code, role, suggested_name, status, expires_at")
       .single();
@@ -675,6 +724,52 @@ export function useWorkspace({
     setActiveTab("tasks");
     setLoading(false);
     return { ok: true, text: "참여 완료" };
+  }
+
+  async function loadIncomingInvitePreview(code: string) {
+    setIncomingInviteStatus("loading");
+  
+    const { data, error } = await supabase.rpc("get_invite_preview", {
+      input_code: code.toUpperCase(),
+    });
+  
+    const row = Array.isArray(data) ? data[0] : data;
+  
+    if (error || !row || row.status !== "pending" || new Date(row.expires_at).getTime() < Date.now()) {
+      setIncomingInvite(null);
+      setIncomingInviteStatus("invalid");
+      return;
+    }
+  
+    setIncomingInvite({
+      workspaceName: row.workspace_name,
+      invitedBy: row.invited_by,
+      role: row.role,
+      suggestedName: row.suggested_name,
+      expiresAt: row.expires_at,
+    });
+    setIncomingInviteStatus("ready");
+  }
+  
+  async function acceptIncomingInvite() {
+    if (!pendingInviteCode) return { ok: false, text: "" };
+    const result = await acceptInviteCode(pendingInviteCode);
+    setPendingInviteCode(null);
+    setIncomingInvite(null);
+    setIncomingInviteStatus("idle");
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(PENDING_INVITE_STORAGE_KEY);
+    }
+    return result;
+  }
+  
+  function declineIncomingInvite() {
+    setPendingInviteCode(null);
+    setIncomingInvite(null);
+    setIncomingInviteStatus("idle");
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(PENDING_INVITE_STORAGE_KEY);
+    }
   }
 
   async function cancelPendingInvite(invite: WorkspaceInvite) {
@@ -850,5 +945,10 @@ export function useWorkspace({
     resetWorkspaceState,
     balanceByMemberId,
     toggleMyNotifications,
+    renameWorkspace,
+    incomingInvite,
+    incomingInviteStatus,
+    acceptIncomingInvite,
+    declineIncomingInvite,
   };
 }

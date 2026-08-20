@@ -179,6 +179,29 @@ export default function MembersTab({
     return `${date.getMonth() + 1}월 ${date.getDate()}일`;
   }
 
+  async function handleShareInvite(invite: WorkspaceInvite) {
+    const inviteUrl = `${window.location.origin}/join?code=${invite.invite_code}`;
+    const shareText = `${workspace?.name ?? "모임"}에 초대할게요! 아래 링크를 눌러 참여해보세요.`;
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: "미루지말자 초대장",
+          text: shareText,
+          url: inviteUrl,
+        });
+      } catch {
+        // 사용자가 공유 시트를 취소한 경우는 에러로 처리하지 않음
+      }
+      return;
+    }
+
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      await navigator.clipboard.writeText(`${shareText}\n${inviteUrl}`);
+      setInviteMessage({ ok: true, text: "이 브라우저는 공유 시트를 지원하지 않아 링크를 복사했어요. 원하는 곳에 붙여넣어 보내주세요." });
+    }
+  }
+  
   return (
     <>
       <PlanUpgradeModal
@@ -275,6 +298,9 @@ export default function MembersTab({
                         </div>
                         <div style={{ fontSize: 12, marginTop: 4 }}>만료일: {formatExpiryDate(invite.expires_at)}</div>
                         <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                          <button type="button" onClick={() => handleShareInvite(invite)} style={shareButtonStyle}>
+                            공유하기
+                          </button>
                           <button type="button" onClick={() => handleCopyInviteCode(invite.id, invite.invite_code)} style={copyLinkButtonStyle}>
                             {copiedInviteId === invite.id ? "복사됨!" : "코드 복사"}
                           </button>
@@ -541,6 +567,7 @@ const memberNameStyle: CSSProperties = { fontSize: 16, fontWeight: 900, color: "
 const memberMetaStyle: CSSProperties = { marginTop: 5, color: "#8b83b0", fontSize: 13 };
 const inviteCodeCardStyle: CSSProperties = { padding: "10px 12px", borderRadius: 14, background: "#F1EEFE", color: "#6C63FF", fontSize: 13, fontWeight: 700, marginBottom: 8 };
 const copyLinkButtonStyle: CSSProperties = { border: "none", borderRadius: 10, background: "linear-gradient(135deg, #8B83EA, #6C63FF)", color: "#fff", padding: "6px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer" };
+const shareButtonStyle: CSSProperties = { border: "1.5px solid #6C63FF", borderRadius: 10, background: "#fff", color: "#6C63FF", padding: "6px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer" };
 const smallButtonStyle: CSSProperties = { border: "none", borderRadius: 12, background: "linear-gradient(135deg, #8B83EA, #6C63FF)", color: "#fff", padding: "9px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" };
 function primaryButtonStyle(loading: boolean): CSSProperties {
   return {
