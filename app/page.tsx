@@ -555,12 +555,14 @@ export default function Home() {
         }
       />
 
-      {incomingInviteStatus !== "idle" && incomingInvite && (
+      {incomingInviteStatus !== "idle" && (
         <IncomingInviteCard
-          invite={incomingInvite}
           status={incomingInviteStatus}
+          invite={incomingInvite}
+          loading={loading}
           onAccept={acceptIncomingInvite}
           onDecline={declineIncomingInvite}
+          onClose={declineIncomingInvite}
         />
       )}
 
