@@ -1,18 +1,4 @@
 workflows:
-  generate-keystore:
-    name: Generate Android Keystore (one-time use)
-    max_build_duration: 10
-    instance_type: mac_mini_m2
-    scripts:
-      - name: Generate keystore
-        script: |
-          keytool -genkey -v -keystore miruji.keystore -storetype JKS \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -alias miruji -dname "CN=Miruji, OU=Dev, O=Miruji, L=Seoul, ST=Seoul, C=KR" \
-            -storepass "!12345678" -keypass "!12345678"
-    artifacts:
-      - miruji.keystore
-
   android-workflow:
     name: Miruji Android Workflow
     max_build_duration: 60
