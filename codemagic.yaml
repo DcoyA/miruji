@@ -2,7 +2,7 @@ workflows:
   generate-keystore:
     name: Generate Android Keystore (one-time use)
     max_build_duration: 10
-    instance_type: linux_x2
+    instance_type: linux
     scripts:
       - name: Generate keystore
         script: |
@@ -16,7 +16,7 @@ workflows:
   android-workflow:
     name: Miruji Android Workflow
     max_build_duration: 60
-    instance_type: linux_x2
+    instance_type: linux
     environment:
       android_signing:
         - miruji_keystore
