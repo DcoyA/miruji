@@ -1,5 +1,4 @@
 workflows:
-  workflows:
   generate-keystore:
     name: Generate Android Keystore (one-time use)
     max_build_duration: 10
