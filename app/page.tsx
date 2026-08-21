@@ -368,17 +368,6 @@ export default function Home() {
     );
   }
 
-  if (pendingInviteCode) {
-    return (
-      <Shell>
-        <AppHeader />
-        <h1 style={titleStyle}>초대 처리 중...</h1>
-        <p style={subTextStyle}>잠시만 기다려주세요. 곧 연결됩니다.</p>
-        {message && <div style={messageBoxStyle(message)}>{message}</div>}
-      </Shell>
-    );
-  }
-
   if (showEmptyHome) {
     if (showProfileSettings) {
       return (
