@@ -31,6 +31,9 @@ workflows:
       - android/app/build/outputs/**/*.aab
       - android/app/build/outputs/**/*.apk
     publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
       email:
         recipients:
           - iamborghini5757@gmail.com
