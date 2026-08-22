@@ -17,6 +17,12 @@ workflows:
       - name: Add Android platform (first run only, skips if exists)
         script: |
           test -d android || npx cap add android
+      - name: Set up local.properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Sync Capacitor
+        script: |
+          npx cap sync android
       - name: Configure Android signing
         script: |
           cd android/app
@@ -47,13 +53,6 @@ workflows:
           with open("build.gradle", "w") as f:
               f.write(content)
           PYEOF
-
-      - name: Set up local.properties
-        script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
-      - name: Sync Capacitor
-        script: |
-          npx cap sync android
       - name: Build Android release AAB
         script: |
           cd android
