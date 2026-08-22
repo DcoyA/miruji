@@ -38,79 +38,83 @@ export default function AppHeader({
   const showNickname = Boolean(nickname && nickname !== username);
 
   return (
-    <header style={headerWrapStyle}>
-      <div style={brandRowStyle}>
-        <BrandCharacter size={24} />
-        <span style={brandTextStyle}>미루지말자</span>
-      </div>
-
-      {username && (
-        <div style={profileRowStyle}>
-          <div style={profileLeftStyle}>
-            <Avatar src={avatarUrl} name={username} size={38} />
-            <div style={profileTextColStyle}>
-              <span style={profileNameStyle}>
-                {username}
-                {showNickname && <span style={nicknameStyle}> ({nickname})</span>}
-              </span>
-              {roleText && <span style={roleBadgeStyle}>{roleText}</span>}
-            </div>
-          </div>
-
-          {onOpenMenu && (
-            <button type="button" onClick={onOpenMenu} style={iconButtonStyle} aria-label="메뉴 열기">
-              <HamburgerIcon />
-            </button>
-          )}
+    <>
+      <header style={stickyHeaderStyle}>
+        <div style={brandRowStyle}>
+          <BrandCharacter size={24} />
+          <span style={brandTextStyle}>미루지말자</span>
         </div>
-      )}
+
+        {username && (
+          <div style={profileRowStyle}>
+            <div style={profileLeftStyle}>
+              <Avatar src={avatarUrl} name={username} size={38} />
+              <div style={profileTextColStyle}>
+                <span style={profileNameStyle}>
+                  {username}
+                  {showNickname && <span style={nicknameStyle}> ({nickname})</span>}
+                </span>
+                {roleText && <span style={roleBadgeStyle}>{roleText}</span>}
+              </div>
+            </div>
+
+            {onOpenMenu && (
+              <button type="button" onClick={onOpenMenu} style={iconButtonStyle} aria-label="메뉴 열기">
+                <HamburgerIcon />
+              </button>
+            )}
+          </div>
+        )}
+      </header>
 
       {showWorkspaceControls && (
-        <div style={workspaceRowStyle}>
-          <button
-            type="button"
-            onClick={onPrevWorkspace}
-            disabled={!canSwitchWorkspace}
-            style={arrowButtonStyle(canSwitchWorkspace)}
-            aria-label="이전 모임"
-          >
-            ‹
-          </button>
-
-          {onWorkspaceNameClick ? (
+        <div style={workspaceSectionStyle}>
+          <div style={workspaceRowStyle}>
             <button
               type="button"
-              onClick={onWorkspaceNameClick}
-              style={workspaceTitleButtonStyle}
-              aria-label="모임 이름 변경"
+              onClick={onPrevWorkspace}
+              disabled={!canSwitchWorkspace}
+              style={arrowButtonStyle(canSwitchWorkspace)}
+              aria-label="이전 모임"
             >
-              {workspaceName || "미루지말자"}
+              ‹
             </button>
-          ) : (
-            <h1 style={workspaceTitleStyle}>{workspaceName || "미루지말자"}</h1>
-          )}
 
-          <button
-            type="button"
-            onClick={onNextWorkspace}
-            disabled={!canSwitchWorkspace}
-            style={arrowButtonStyle(canSwitchWorkspace)}
-            aria-label="다음 모임"
-          >
-            ›
-          </button>
+            {onWorkspaceNameClick ? (
+              <button
+                type="button"
+                onClick={onWorkspaceNameClick}
+                style={workspaceTitleButtonStyle}
+                aria-label="모임 이름 변경"
+              >
+                {workspaceName || "미루지말자"}
+              </button>
+            ) : (
+              <h1 style={workspaceTitleStyle}>{workspaceName || "미루지말자"}</h1>
+            )}
 
-          <button
-            type="button"
-            onClick={onToggleNotifications}
-            style={iconButtonStyle}
-            aria-label={notificationsEnabled ? "알림 끄기" : "알림 켜기"}
-          >
-            <BellIcon filled={notificationsEnabled} />
-          </button>
+            <button
+              type="button"
+              onClick={onNextWorkspace}
+              disabled={!canSwitchWorkspace}
+              style={arrowButtonStyle(canSwitchWorkspace)}
+              aria-label="다음 모임"
+            >
+              ›
+            </button>
+
+            <button
+              type="button"
+              onClick={onToggleNotifications}
+              style={iconButtonStyle}
+              aria-label={notificationsEnabled ? "알림 끄기" : "알림 켜기"}
+            >
+              <BellIcon filled={notificationsEnabled} />
+            </button>
+          </div>
         </div>
       )}
-    </header>
+    </>
   );
 }
 
@@ -139,13 +143,19 @@ function BellIcon({ filled }: { filled: boolean }) {
   );
 }
 
-const headerWrapStyle: CSSProperties = {
+const stickyHeaderStyle: CSSProperties = {
+  position: "sticky",
+  top: 0,
+  zIndex: 20,
   background: "linear-gradient(180deg, #7B72F2 0%, #6C63FF 100%)",
   margin: "calc(-22px - env(safe-area-inset-top)) calc(-1 * var(--page-gutter)) 0",
   padding: "calc(18px + env(safe-area-inset-top)) 18px 14px",
-  borderRadius: 0,
-  position: "relative",
-  zIndex: 1,
+};
+
+const workspaceSectionStyle: CSSProperties = {
+  background: "#6C63FF",
+  margin: "0 calc(-1 * var(--page-gutter))",
+  padding: "0 18px 14px",
 };
 
 const brandRowStyle: CSSProperties = {

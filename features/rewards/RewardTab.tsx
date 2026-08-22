@@ -82,7 +82,7 @@ export default function RewardTab({
             <span style={walletBalanceNumberStyle}>{currentBalance}</span>
             <span style={walletBalanceUnitStyle}>개</span>
           </div>
-          <p style={subTextStyle}>
+          <p style={walletSubTextStyle}>
             참여자는 본인에게 배정된 보상만 확인하고 교환을 신청할 수 있습니다. 신청 후 부방장이 승인하면 스티커가 차감됩니다.
           </p>
 
@@ -228,6 +228,12 @@ function formatShortDate(iso: string) {
 const rewardListSectionStyle: CSSProperties = { marginBottom: 80 };
 const sectionTitleStyle: CSSProperties = { margin: "0 0 14px", fontSize: 20, letterSpacing: "-0.03em", color: "#2b2140" };
 const subTextStyle: CSSProperties = { color: "#8b83b0", lineHeight: 1.6, marginBottom: 20 };
+const walletSubTextStyle: CSSProperties = {
+  color: "rgba(255,255,255,0.85)",
+  lineHeight: 1.6,
+  marginBottom: 20,
+  fontSize: 13,
+};
 const inputStyle: CSSProperties = { width: "100%", padding: 14, borderRadius: 14, border: "1px solid #E7E3FB", marginBottom: 12, outline: "none", fontSize: 15, background: "#FBFAFF" };
 const emptyStateStyle: CSSProperties = { padding: 20, borderRadius: 18, background: "#FBFAFF", color: "#8b83b0", textAlign: "center", boxShadow: "0 2px 10px rgba(108, 99, 255, 0.08)" };
 const rewardListStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 12 };
