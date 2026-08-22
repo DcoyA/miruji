@@ -62,6 +62,10 @@ workflows:
       - name: CocoaPods install
         script: |
           cd ios/App && pod install
+      - name: Generate app icons
+        script: |
+          npm install @capacitor/assets --save-dev
+          npx capacitor-assets generate --iconBackgroundColor '#ffffff' --iconBackgroundColorDark '#000000'
       - name: Sync Capacitor
         script: |
           npx cap sync ios
