@@ -190,6 +190,7 @@ export default function Home() {
     loadWorkspaceData,
     transferOwnership,
     deleteWorkspace,
+    leaveWorkspace,
     resetWorkspaceState,
     balanceByMemberId,
     toggleMyNotifications,
@@ -733,6 +734,7 @@ export default function Home() {
               onTransferOwnership={transferOwnership}
               onUpdateMemberRole={updateMemberRole}
               onDeleteWorkspace={deleteWorkspace}
+              onLeaveWorkspace={leaveWorkspace}
               focusWorkspaceManagementAt={manageWorkspaceSignal}
             />
           </div>
