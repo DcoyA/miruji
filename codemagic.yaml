@@ -27,6 +27,10 @@ workflows:
         script: |
           cd android
           ./gradlew bundleRelease
+      - name: Build apk for direct install
+        script: |
+          cd android
+          ./gradlew assembleRelease
     artifacts:
       - android/app/build/outputs/**/*.aab
       - android/app/build/outputs/**/*.apk
