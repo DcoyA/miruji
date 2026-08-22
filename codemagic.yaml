@@ -20,33 +20,33 @@ workflows:
       - name: Configure Android signing
         script: |
           cd android/app
-          python3 - <<'EOF'
-      import re
-      
-      with open("build.gradle") as f:
-          content = f.read()
-      
-      signing_block = '''
-          signingConfigs {
-              release {
-                  storeFile file(System.getenv("CM_KEYSTORE_PATH"))
-                  storePassword System.getenv("CM_KEYSTORE_PASSWORD")
-                  keyAlias System.getenv("CM_KEY_ALIAS")
-                  keyPassword System.getenv("CM_KEY_PASSWORD")
+          python3 - <<'PYEOF'
+          import re
+
+          with open("build.gradle") as f:
+              content = f.read()
+
+          signing_block = '''
+              signingConfigs {
+                  release {
+                      storeFile file(System.getenv("CM_KEYSTORE_PATH"))
+                      storePassword System.getenv("CM_KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("CM_KEY_ALIAS")
+                      keyPassword System.getenv("CM_KEY_PASSWORD")
+                  }
               }
-          }
-      '''
-      
-      content = content.replace("    buildTypes {", signing_block + "    buildTypes {", 1)
-      content = content.replace(
-          "        release {\n            minifyEnabled false",
-          "        release {\n            signingConfig signingConfigs.release\n            minifyEnabled false",
-          1
-      )
-      
-      with open("build.gradle", "w") as f:
-          f.write(content)
-      EOF
+          '''
+
+          content = content.replace("    buildTypes {", signing_block + "    buildTypes {", 1)
+          content = content.replace(
+              "        release {\n            minifyEnabled false",
+              "        release {\n            signingConfig signingConfigs.release\n            minifyEnabled false",
+              1
+          )
+
+          with open("build.gradle", "w") as f:
+              f.write(content)
+          PYEOF
       - name: Set up local.properties
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
