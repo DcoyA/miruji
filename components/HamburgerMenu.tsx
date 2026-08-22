@@ -171,7 +171,7 @@ const panelHeaderStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  padding: "18px 18px 12px",
+  padding: "calc(18px + env(safe-area-inset-top)) 18px 12px",
   flexShrink: 0,
 };
 
