@@ -141,8 +141,8 @@ function BellIcon({ filled }: { filled: boolean }) {
 
 const headerWrapStyle: CSSProperties = {
   background: "linear-gradient(180deg, #7B72F2 0%, #6C63FF 100%)",
-  margin: "-22px calc(-1 * var(--page-gutter)) 0",
-  padding: "18px 18px 14px",
+  margin: "calc(-22px - env(safe-area-inset-top)) calc(-1 * var(--page-gutter)) 0",
+  padding: "calc(18px + env(safe-area-inset-top)) 18px 14px",
   borderRadius: 0,
   position: "relative",
   zIndex: 1,
