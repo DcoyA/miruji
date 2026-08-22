@@ -624,6 +624,43 @@ export function useWorkspace({
     await loadWorkspaces();
     return { ok: true, text };
   }
+  
+  async function leaveWorkspace() {
+    if (!workspace || !currentMember) {
+      setMessage("모임이 없습니다.");
+      return { ok: false, text: "모임이 없습니다." };
+    }
+    if (currentMember.role === "owner") {
+      const text = "방장은 모임을 나갈 수 없습니다. 먼저 다른 참여자에게 방장을 넘기거나 모임을 삭제해주세요.";
+      setMessage(text);
+      return { ok: false, text };
+    }
+  
+    const confirmed = window.confirm(`"${workspace.name}" 모임에서 나가시겠습니까?`);
+    if (!confirmed) return { ok: false, text: "" };
+  
+    setLoading(true);
+    setMessage("");
+  
+    const { error } = await supabase
+      .from("workspace_members")
+      .update({ status: "removed" })
+      .eq("id", currentMember.id);
+  
+    if (error) {
+      const text = `모임 나가기 실패: ${error.message}`;
+      setMessage(text);
+      setLoading(false);
+      return { ok: false, text };
+    }
+  
+    setWorkspaces((prev) => prev.filter((item) => item.id !== workspace.id));
+    setWorkspace((prev) => (prev?.id === workspace.id ? null : prev));
+    const text = `"${workspace.name}" 모임에서 나갔습니다.`;
+    setMessage(text);
+    setLoading(false);
+    return { ok: true, text };
+  }
 
   // ⚠️ 재구성한 함수: 원본 파일에 본문이 존재하지 않아, 지금까지 논의된 요구사항
   // (방장/부방장만 발급, 참여자 3명 제한, {ok, text} 반환)에 맞춰 새로 작성했습니다.
@@ -942,6 +979,7 @@ export function useWorkspace({
     loadWorkspaceData,
     transferOwnership,
     deleteWorkspace,
+    leaveWorkspace,
     resetWorkspaceState,
     balanceByMemberId,
     toggleMyNotifications,
