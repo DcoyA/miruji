@@ -1,6 +1,5 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Member, Task, TaskTemplate } from "@/types/app";
