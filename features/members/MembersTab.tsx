@@ -39,6 +39,7 @@ type MembersTabProps = {
   onTransferOwnership: (member: Member) => Promise<ActionResult>;
   onUpdateMemberRole: (member: Member, newRole: MemberRole) => Promise<ActionResult>;
   onDeleteWorkspace: (workspace: Workspace) => Promise<ActionResult>;
+  onLeaveWorkspace: () => Promise<ActionResult>;
   focusWorkspaceManagementAt?: number;
 };
 
@@ -89,6 +90,7 @@ export default function MembersTab({
   onTransferOwnership,
   onUpdateMemberRole,
   onDeleteWorkspace,
+  onLeaveWorkspace,
   focusWorkspaceManagementAt,
 }: MembersTabProps) {
   const hasWorkspace = Boolean(workspace);
@@ -109,6 +111,7 @@ export default function MembersTab({
   const [memberListMessage, setMemberListMessage] = useState<ActionResult | null>(null);
   const [cancelInviteMessage, setCancelInviteMessage] = useState<ActionResult | null>(null);
   const [deleteWorkspaceMessage, setDeleteWorkspaceMessage] = useState<ActionResult | null>(null);
+  const [leaveWorkspaceMessage, setLeaveWorkspaceMessage] = useState<ActionResult | null>(null);
 
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [planModalReason, setPlanModalReason] = useState("");
@@ -162,6 +165,11 @@ export default function MembersTab({
     if (!window.confirm(`"${workspace.name}" 모임을 정말 삭제하시겠어요? 이 작업은 되돌릴 수 없습니다.`)) return;
     const result = await onDeleteWorkspace(workspace);
     setDeleteWorkspaceMessage(result ?? null);
+  }
+
+  async function handleLeaveWorkspace() {
+    const result = await onLeaveWorkspace();
+    setLeaveWorkspaceMessage(result ?? null);
   }
 
   function handleCopyInviteCode(inviteId: string, code: string) {
@@ -355,6 +363,22 @@ export default function MembersTab({
             </button>
             <ResultMessage result={joinMessage} />
           </section>
+          
+          {hasWorkspace && currentMember && currentMember.role !== "owner" && (
+            <section style={dangerCardStyle}>
+              <h2 style={dangerTitleStyle}>
+                <span style={{ fontSize: 15 }}>🚪</span>
+                모임 나가기
+              </h2>
+              <p style={dangerTextStyle}>
+                이 모임에서 나가면 참여자 목록에서 제외되며, 다시 참여하려면 새 초대코드가 필요합니다.
+              </p>
+              <button onClick={handleLeaveWorkspace} disabled={loading} style={outlineDangerFullButtonStyle}>
+                모임 나가기
+              </button>
+              <ResultMessage result={leaveWorkspaceMessage} />
+            </section>
+          )}
 
           {hasWorkspace && currentMember?.role === "owner" && (
             <section style={dangerCardStyle}>

@@ -58,6 +58,8 @@ export default function NotificationPrompt() {
 }
 
 const boxStyle: CSSProperties = {
+  position: "relative",
+  zIndex: 2,
   display: "flex",
   flexDirection: "column",
   gap: 10,
