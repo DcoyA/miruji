@@ -54,7 +54,7 @@ select {
   min-height: 100dvh;
   background: #FFFFFF;
   box-sizing: border-box;
-  padding: 22px var(--page-gutter) calc(104px + env(safe-area-inset-bottom));
+  padding: calc(22px + env(safe-area-inset-top)) var(--page-gutter) calc(104px + env(safe-area-inset-bottom));
   position: relative;
 }
 
@@ -68,3 +68,10 @@ select {
     box-shadow: 0 20px 60px rgba(108, 99, 255, 0.14);
   }
 }
+
+input,
+select,
+textarea {
+  font-size: 16px !important;
+}
+
