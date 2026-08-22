@@ -1,6 +1,8 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import type { Member, Task, TaskTemplate } from "@/types/app";
 import { formatKoreanDate, buildWeekDays, toDateKey } from "@/lib/date";
 import SortableTaskList from "@/features/tasks/SortableTaskList";
@@ -68,6 +70,30 @@ export default function DayTaskList({
   onDeleteTemplate,
   onRolloverNow,
 }: DayTaskListProps) {
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartY = useRef<number | null>(null);
+
+  function handleHandlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    dragStartY.current = event.clientY;
+    setIsDragging(true);
+  }
+
+  function handleHandlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (dragStartY.current === null) return;
+    const delta = event.clientY - dragStartY.current;
+    if (delta > 0) setDragOffset(delta);
+  }
+
+  function handleHandlePointerUp() {
+    if (dragOffset > 90) {
+      onOpenChange(false);
+    }
+    setDragOffset(0);
+    setIsDragging(false);
+    dragStartY.current = null;
+  }
+
   const weekDays = buildWeekDays(selectedDate);
 
   const weekTasks = monthTasks.filter((task) =>
@@ -94,8 +120,14 @@ export default function DayTaskList({
     <>
       <div style={backdropStyle(isOpen)} onClick={closePanel} aria-hidden={!isOpen} />
 
-      <div style={panelStyle(isOpen)}>
-        <div style={panelHandleStyle} />
+      <div style={panelStyle(isOpen, dragOffset, isDragging)}>
+        <div
+          style={panelHandleStyle}
+          onPointerDown={handleHandlePointerDown}
+          onPointerMove={handleHandlePointerMove}
+          onPointerUp={handleHandlePointerUp}
+          onPointerCancel={handleHandlePointerUp}
+        />
         <div style={panelHeaderStyle}>
           <div>
             <h2 style={sectionTitleStyle}>
@@ -244,7 +276,7 @@ function backdropStyle(open: boolean): CSSProperties {
   };
 }
 
-function panelStyle(open: boolean): CSSProperties {
+function panelStyle(open: boolean, dragOffset: number, isDragging: boolean): CSSProperties {
   return {
     position: "fixed",
     left: 0,
@@ -255,14 +287,13 @@ function panelStyle(open: boolean): CSSProperties {
     background: "#fff",
     borderRadius: "24px 24px 0 0",
     boxShadow: "0 -10px 40px rgba(43,33,64,0.25)",
-    transform: open ? "translateY(0)" : "translateY(100%)",
-    transition: "transform 0.32s cubic-bezier(0.32, 0.72, 0, 1)",
+    transform: open ? `translateY(${dragOffset}px)` : "translateY(100%)",
+    transition: isDragging ? "none" : "transform 0.32s cubic-bezier(0.32, 0.72, 0, 1)",
     zIndex: 41,
     display: "flex",
     flexDirection: "column",
     maxWidth: 480,
     margin: "0 auto",
-    paddingTop: "env(safe-area-inset-top)",
   };
 }
 
@@ -271,7 +302,8 @@ const panelHandleStyle: CSSProperties = {
   height: 5,
   borderRadius: 999,
   background: "#E7E3FB",
-  margin: "10px auto 4px",
+  margin: "8px auto 2px",
+  touchAction: "none",
 };
 
 const panelHeaderStyle: CSSProperties = {
