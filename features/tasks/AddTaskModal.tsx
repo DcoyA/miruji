@@ -87,12 +87,14 @@ export default function AddTaskModal({
         </div>
 
         <div style={bodyStyle}>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(event) => onSelectedDateChange(event.target.value)}
-            style={inputStyle}
-          />
+          <div style={dateInputWrapStyle}>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(event) => onSelectedDateChange(event.target.value)}
+              style={dateInputStyle}
+            />
+          </div>
 
           <input
             value={title}
@@ -283,6 +285,22 @@ const inputStyle: CSSProperties = {
   marginBottom: 12,
   outline: "none",
   fontSize: 15,
+};
+
+const dateInputWrapStyle: CSSProperties = {
+  width: "100%",
+  overflow: "hidden",
+  borderRadius: 14,
+  marginBottom: 12,
+};
+
+const dateInputStyle: CSSProperties = {
+  ...inputStyle,
+  marginBottom: 0,
+  width: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
+  WebkitAppearance: "none",
 };
 
 const fieldLabelStyle: CSSProperties = {
