@@ -26,9 +26,9 @@ const FILE_ACCEPT_BY_TYPE: Record<string, string> = {
 };
 
 const FILE_LABEL_BY_TYPE: Record<string, string> = {
-  photo: "사진 첨부 후 제출",
-  video: "영상 첨부 후 제출",
-  audio: "음성 파일 첨부 후 제출",
+  photo: "사진 첨부 후 완료",
+  video: "영상 첨부 후 완료",
+  audio: "음성 파일 첨부 후 완료",
 };
 
 const EVIDENCE_LINK_LABEL_BY_TYPE: Record<string, string> = {
@@ -81,7 +81,7 @@ export default function TaskList({
 
         function handleSubmitClick() {
           const confirmed = window.confirm(
-            "제출하시겠습니까? 제출 후에는 승인 전까지 제출취소할 수 있습니다."
+            "완료하시겠습니까? 완료출 후에는 승인 전까지 취소할 수 있습니다."
           );
           if (!confirmed) return;
           onSubmit(task);
@@ -93,7 +93,7 @@ export default function TaskList({
           if (!file) return;
 
           const confirmed = window.confirm(
-            "선택한 파일을 첨부해서 제출하시겠습니까? 제출 후에는 승인 전까지 제출취소할 수 있습니다."
+            "선택한 파일을 첨부해서 완료하시겠습니까? 완료 후에는 승인 전까지 취소할 수 있습니다."
           );
           if (!confirmed) return;
 
@@ -112,7 +112,7 @@ export default function TaskList({
           }
 
           const confirmed = window.confirm(
-            "입력한 내용으로 제출하시겠습니까? 제출 후에는 승인 전까지 제출취소할 수 있습니다."
+            "입력한 내용으로 완료하시겠습니까? 완료 후에는 승인 전까지 취소할 수 있습니다."
           );
           if (!confirmed) return;
 
@@ -187,12 +187,12 @@ export default function TaskList({
                   )}
                   {canSubmit && !needsFile && !needsText && (
                     <button onClick={handleSubmitClick} disabled={loading} style={submitButtonStyle}>
-                      제출하기
+                      완료하기
                     </button>
                   )}
                   {canCancel && onCancel && (
                     <button onClick={() => onCancel(task)} disabled={loading} style={cancelButtonStyle}>
-                      제출취소
+                      완료취소
                     </button>
                   )}
                   {canReview && (
