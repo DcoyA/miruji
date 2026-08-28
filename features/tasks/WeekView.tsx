@@ -23,6 +23,7 @@ type WeekViewProps = {
   onCancelTask: (task: Task) => void;
   onDeleteTask: (task: Task) => void;
   onEditTask: (task: Task) => void;
+  onUncompleteTask?: (task: Task) => void;
   onReorderAcrossDates: (assignments: { id: string; dueDate: string; orderIndex: number }[]) => void;
 };
 
@@ -57,6 +58,7 @@ export default function WeekView({
   onCancelTask,
   onDeleteTask,
   onEditTask,
+  onUncompleteTask,
   onReorderAcrossDates,
 }: WeekViewProps) {
   const todayKey = toDateKey(new Date());
@@ -178,6 +180,7 @@ export default function WeekView({
                 onCancel={onCancelTask}
                 onDelete={onDeleteTask}
                 onEdit={onEditTask}
+                onUncomplete={onUncompleteTask}
               />
             </div>
           </div>

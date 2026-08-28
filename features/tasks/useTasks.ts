@@ -657,6 +657,72 @@ export function useTasks({
     setLoading(false);
   }
 
+  // 완료(approved)된 할 일을 되돌리고, 완료 시 지급했던 포인트를 역방향 거래로 회수한다.
+  // 매니저(방장/부방장)만 가능하다 — tasks 트리거와 reward_transactions RLS 모두 매니저 기준.
+  async function uncompleteTask(task: Task) {
+    if (!workspace) {
+      setMessage("모임이 없습니다.");
+      return;
+    }
+    if (!isManager) {
+      setMessage("방장/부방장만 완료를 취소할 수 있습니다.");
+      return;
+    }
+    if (task.status !== "approved") {
+      setMessage("완료된 할 일만 취소할 수 있습니다.");
+      return;
+    }
+
+    const confirmed = window.confirm("완료를 취소하고 포인트를 회수할까요?");
+    if (!confirmed) return;
+
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ status: "todo" })
+      .eq("id", task.id)
+      .select(taskSelect)
+      .single();
+
+    if (error) {
+      setMessage(`완료 취소 실패: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? (data as Task) : item)));
+
+    if (task.assigned_member_id && task.reward_points > 0) {
+      const { data: txData, error: txError } = await supabase
+        .from("reward_transactions")
+        .insert({
+          workspace_id: workspace.id,
+          member_id: task.assigned_member_id,
+          amount: -task.reward_points,
+          transaction_type: "spend",
+          source_type: "task",
+          source_id: task.id,
+          memo: `${task.title} 완료 취소`,
+          created_by_member_id: currentMember?.id || null,
+        })
+        .select(rewardTxSelect)
+        .single();
+
+      if (txError) {
+        setMessage(`포인트 회수 실패: ${txError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      setRewardTransactions((prev) => [...prev, txData as RewardTransaction]);
+    }
+
+    setMessage(`${task.title} 완료를 취소했어요. 포인트를 회수했습니다.`);
+    setLoading(false);
+  }
+
   return {
     newTaskTitle,
     setNewTaskTitle,
@@ -688,6 +754,7 @@ export function useTasks({
     deleteTask,
     approveTask,
     rejectTask,
+    uncompleteTask,
     resetTaskState,
   };
 }

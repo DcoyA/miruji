@@ -17,16 +17,22 @@ workflows:
       - name: Add Android platform (first run only, skips if exists)
         script: |
           test -d android || npx cap add android
+      - name: Generate app icons and splash
+        script: |
+          npm install @capacitor/assets --save-dev
+          npx capacitor-assets generate --iconBackgroundColor '#ffffff' --iconBackgroundColorDark '#000000'
       - name: Set up local.properties
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
       - name: Sync Capacitor
         script: |
           npx cap sync android
-      - name: Configure Android signing
+      - name: Configure Android signing and version
         script: |
+          export VERSION_NAME=$(node -p "require('./package.json').version")
           cd android/app
           python3 - <<'PYEOF'
+          import os
           import re
 
           with open("build.gradle") as f:
@@ -50,8 +56,17 @@ workflows:
               1
           )
 
+          # versionCode = CI build number (monotonic, required unique by Play);
+          # versionName = package.json "version" (single source of truth).
+          build_number = os.environ.get("BUILD_NUMBER", "1")
+          version_name = os.environ.get("VERSION_NAME", "1.0.0")
+          content = re.sub(r"versionCode\s+\d+", "versionCode " + build_number, content, count=1)
+          content = re.sub(r'versionName\s+"[^"]*"', 'versionName "%s"' % version_name, content, count=1)
+
           with open("build.gradle", "w") as f:
               f.write(content)
+
+          print("Android versionCode=%s versionName=%s" % (build_number, version_name))
           PYEOF
       - name: Build Android release AAB
         script: |
@@ -106,10 +121,12 @@ workflows:
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
-      - name: Increment build number
+      - name: Set version and build number
         script: |
+          VERSION_NAME=$(node -p "require('./package.json').version")
           cd ios/App
           agvtool new-version -all $BUILD_NUMBER
+          agvtool new-marketing-version "$VERSION_NAME"
       - name: Build ipa for distribution
         script: |
           xcode-project build-ipa --workspace "$XCODE_WORKSPACE" --scheme "$XCODE_SCHEME"
