@@ -256,6 +256,7 @@ export default function Home() {
     deleteTask,
     approveTask,
     rejectTask,
+    uncompleteTask,
     resetTaskState,
     reorderTasks,
     reorderTasksAcrossDates,
@@ -607,6 +608,7 @@ export default function Home() {
                   onCancelTask={cancelSubmission}
                   onDeleteTask={deleteTask}
                   onEditTask={openEditTask}
+                  onUncompleteTask={uncompleteTask}
                   onReorderAcrossDates={reorderTasksAcrossDates}
                 />
               )}
@@ -810,6 +812,7 @@ export default function Home() {
                   onReject={rejectTask}
                   onCancel={cancelSubmission}
                   onDelete={deleteTask}
+                  onUncomplete={uncompleteTask}
                 />
               )}
             </div>

@@ -17,6 +17,7 @@ type TaskListProps = {
   onCancel?: (task: Task) => void;
   onDelete?: (task: Task) => void;
   onEdit?: (task: Task) => void;
+  onUncomplete?: (task: Task) => void;
 };
 
 const FILE_ACCEPT_BY_TYPE: Record<string, string> = {
@@ -51,6 +52,7 @@ export default function TaskList({
   onCancel,
   onDelete,
   onEdit,
+  onUncomplete,
 }: TaskListProps) {
   const [textDrafts, setTextDrafts] = useState<Record<string, string>>({});
 
@@ -72,12 +74,17 @@ export default function TaskList({
 
         const canCancel = isAssignee && task.status === "submitted";
 
-        const canDelete =
-          isManager || (!!currentMember?.id && task.created_by_member_id === currentMember.id);
-
-        const canEdit = !!currentMember?.id && task.created_by_member_id === currentMember.id;
-
         const isDone = task.status === "approved";
+
+        // 완료된 할 일은 수정/삭제를 숨기고, 매니저에게만 '완료 취소'를 노출한다.
+        const canDelete =
+          !isDone &&
+          (isManager || (!!currentMember?.id && task.created_by_member_id === currentMember.id));
+
+        const canEdit =
+          !isDone && !!currentMember?.id && task.created_by_member_id === currentMember.id;
+
+        const canUncomplete = isDone && isManager;
 
         function handleSubmitClick() {
           const confirmed = window.confirm(
@@ -121,9 +128,9 @@ export default function TaskList({
         }
 
         return (
-          <div key={task.id} style={taskCardStyle}>
+          <div key={task.id} style={isDone ? taskCardDoneStyle : taskCardStyle}>
             <div style={{ flex: 1 }}>
-              <div style={taskTitleStyle}>{task.title}</div>
+              <div style={isDone ? taskTitleDoneStyle : taskTitleStyle}>{task.title}</div>
 
               <div style={taskSubTextStyle}>
                 대상: {memberNameById(members, task.assigned_member_id)}
@@ -166,7 +173,7 @@ export default function TaskList({
                 </div>
               )}
 
-              {(canSubmit || canReview || canCancel || canDelete || canEdit) && (
+              {(canSubmit || canReview || canCancel || canDelete || canEdit || canUncomplete) && (
                 <div style={actionRowStyle}>
                   {canSubmit && needsFile && (
                     <label style={submitButtonStyle}>
@@ -215,13 +222,24 @@ export default function TaskList({
                       삭제
                     </button>
                   )}
+                  {canUncomplete && onUncomplete && (
+                    <button
+                      onClick={() => onUncomplete(task)}
+                      disabled={loading}
+                      style={uncompleteButtonStyle}
+                    >
+                      완료 취소
+                    </button>
+                  )}
                 </div>
               )}
             </div>
 
             <div style={rightColumnStyle}>
               <span style={checkIconStyle(isDone)}>{isDone ? "✓" : ""}</span>
-              <span style={statusBadgeStyle(task.status)}>{statusLabel(task.status)}</span>
+              <span style={statusBadgeStyle(task.status)}>
+                {isDone ? "완료" : statusLabel(task.status)}
+              </span>
             </div>
           </div>
         );
@@ -283,9 +301,22 @@ const taskCardStyle: CSSProperties = {
   gap: 12,
 };
 
+const taskCardDoneStyle: CSSProperties = {
+  ...taskCardStyle,
+  background: "#F4F3F7",
+  boxShadow: "none",
+  opacity: 0.85,
+};
+
 const rightColumnStyle: CSSProperties = { display: "flex", flexDirection: "column", alignItems: "center", gap: 8 };
 
 const taskTitleStyle: CSSProperties = { fontWeight: 900, fontSize: 16, color: "#2b2140" };
+
+const taskTitleDoneStyle: CSSProperties = {
+  ...taskTitleStyle,
+  color: "#9b95b3",
+  textDecoration: "line-through",
+};
 
 const taskSubTextStyle: CSSProperties = { marginTop: 5, color: "#8b83b0", fontSize: 13 };
 
@@ -396,6 +427,17 @@ const deleteButtonStyle: CSSProperties = {
   borderRadius: 12,
   background: "#4b5563",
   color: "#fff",
+  padding: "8px 12px",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const uncompleteButtonStyle: CSSProperties = {
+  border: "1px solid #f0c9c9",
+  borderRadius: 12,
+  background: "#fff",
+  color: "#b91c1c",
   padding: "8px 12px",
   fontSize: 12,
   fontWeight: 800,

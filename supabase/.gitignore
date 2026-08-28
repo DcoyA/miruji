@@ -1,0 +1,11 @@
+# Supabase CLI local artifacts
+.branches
+.temp
+
+# Local env / secrets
+.env
+
+# Baseline schema dump from `supabase db pull` — contains a live dev service_role
+# key inlined in the "notify-new-task" trigger. Do NOT commit until that key is
+# rotated and the dump is scrubbed. Regenerate locally with `supabase db pull`.
+migrations/20260828154233_remote_schema.sql
