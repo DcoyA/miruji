@@ -124,7 +124,41 @@ Two environments, kept strictly separate:
 **Production (`main` / `miruji` / `qutnpjhfsdqrqckdovgx`) is never touched automatically:**
 
 - Never run `git push` to `main` or `supabase db push` against production automatically.
-- After changes are verified on dev (local `npm run build` succeeds, the affected screens work), hand the user the exact commands needed for the production deploy (git commands, `supabase link` / `supabase db push`, etc.) verbatim — the user runs them.
 - While linked to the production ref (`qutnpjhfsdqrqckdovgx`), never run any `supabase db push` / `db pull`. Always check the current link with `supabase projects list` before running any db command.
+- **After changes are verified on dev (local `npm run build` succeeds, the affected screens work), hand the user the exact commands needed for the production deploy verbatim — the user runs them. Do this every time you commit and push to `dev`, at the end of the reply, without waiting to be asked.** Fill in the runbook below for what actually changed (skip the Supabase section if no migration changed; skip Vercel if no env var changed).
+
+### Production deploy runbook (give to the user verbatim)
+
+**1. Git — dev → main**
+
+```bash
+git checkout main
+git pull origin main
+git merge --no-ff dev          # or: git cherry-pick <sha>  for a single commit
+git push origin main
+```
+
+**2. Supabase — apply new migrations to production** (only if a migration was added/changed)
+
+```bash
+supabase link --project-ref qutnpjhfsdqrqckdovgx
+supabase projects list          # confirm: miruji  qutnpjhfsdqrqckdovgx  LINKED
+```
+
+- If a migration adds a unique index / constraint, first run its guard query against prod (e.g. the duplicate active `workspace_members` check) and **stop if it returns rows**.
+- If prod has never tracked these migrations, mark the dev baseline dump as already-applied so it is not replayed: `supabase migration repair --status applied 20260828154233`
+- Create any Vault secrets the migrations read (`service_role_key`, and the notify webhook URL if it is moved to Vault) with **production** values: `supabase db query --linked "select vault.create_secret('<prod value>', '<name>', '<desc>')"`
+
+```bash
+supabase migration list         # confirm only the intended new files are pending
+supabase db push --dry-run
+supabase db push
+supabase link --project-ref icbaykoidbmazvsbjmmq   # ALWAYS re-link back to dev
+supabase projects list          # confirm miruji-dev LINKED
+```
+
+**3. Vercel** — update the production project's env vars for anything that changed (e.g. `SUPABASE_SERVICE_ROLE_KEY`), then redeploy.
+
+**Never** `supabase db push` `20260828154233_remote_schema.sql` against production — it is a dev-pulled full-schema dump (git-ignored, local only) and will collide with the live schema. The `notify_new_task` webhook URL differs by environment: `dev` branch points at the `icbaykoidbmazvsbjmmq` functions host, `main` at `qutnpjhfsdqrqckdovgx`; watch for a conflict on that line when merging.
 
 **Before every `git push`:** verify the staged/committed files contain no secrets — `.env.local`, the service-role key, access tokens, etc.
