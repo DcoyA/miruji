@@ -141,3 +141,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Capacitor native projects (generated on CI by `npx cap add`)
+/android/
+/ios/
