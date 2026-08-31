@@ -6,6 +6,8 @@ workflows:
     environment:
       android_signing:
         - miruji_keystore
+      groups:
+        - firebase
       java: 21
       vars:
         PACKAGE_NAME: "com.miruji.app"
