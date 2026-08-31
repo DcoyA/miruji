@@ -54,7 +54,7 @@ const wrapStyle: CSSProperties = {
 const brandLabelStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 900,
-  color: "#e11d48",
+  color: "#6C63FF",
   marginBottom: 10,
 };
 const headerBottomRowStyle: CSSProperties = {
@@ -70,16 +70,16 @@ const profileChipStyle: CSSProperties = {
   padding: "6px 14px 6px 6px",
   borderRadius: 999,
   background: "#fff",
-  boxShadow: "0 2px 8px rgba(219,39,119,0.08)",
+  boxShadow: "0 2px 8px rgba(108, 99, 255, 0.08)",
 };
-const profileNameStyle: CSSProperties = { fontWeight: 800, fontSize: 14, color: "#3f1d24" };
+const profileNameStyle: CSSProperties = { fontWeight: 800, fontSize: 14, color: "#2b2140" };
 const menuButtonStyle: CSSProperties = {
   width: 40,
   height: 40,
   borderRadius: 14,
   border: "none",
   background: "#fff",
-  boxShadow: "0 2px 8px rgba(219,39,119,0.08)",
+  boxShadow: "0 2px 8px rgba(108, 99, 255, 0.08)",
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
@@ -87,7 +87,7 @@ const menuButtonStyle: CSSProperties = {
   gap: 4,
   cursor: "pointer",
 };
-const menuBarStyle: CSSProperties = { width: 18, height: 2, borderRadius: 2, background: "#3f1d24" };
+const menuBarStyle: CSSProperties = { width: 18, height: 2, borderRadius: 2, background: "#2b2140" };
 const emptyBodyStyle: CSSProperties = {
   flex: 1,
   display: "flex",
@@ -98,17 +98,17 @@ const emptyBodyStyle: CSSProperties = {
   gap: 22,
   paddingBottom: 60,
 };
-const emptyTitleStyle: CSSProperties = { margin: 0, fontSize: 20, fontWeight: 900, color: "#3f1d24" };
-const emptyTextStyle: CSSProperties = { margin: 0, color: "#9f6b75", lineHeight: 1.6, fontSize: 15 };
+const emptyTitleStyle: CSSProperties = { margin: 0, fontSize: 20, fontWeight: 900, color: "#2b2140" };
+const emptyTextStyle: CSSProperties = { margin: 0, color: "#8b83b0", lineHeight: 1.6, fontSize: 15 };
 const plusButtonStyle: CSSProperties = {
   width: 64,
   height: 64,
   borderRadius: 20,
   border: "none",
-  background: "linear-gradient(135deg, #fb7185, #e11d48)",
+  background: "linear-gradient(135deg, #8B83EA, #6C63FF)",
   color: "#fff",
   fontSize: 30,
   fontWeight: 800,
   cursor: "pointer",
-  boxShadow: "0 10px 24px rgba(225,29,72,0.35)",
+  boxShadow: "0 10px 24px rgba(108, 99, 255, 0.30)",
 };

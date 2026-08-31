@@ -93,6 +93,9 @@ export function useTasks({
     }
 
     setRewardTransactions((prev) => [...prev, txData as RewardTransaction]);
+    // 잔액은 서버(get_member_balances)에서 계산되므로, 적립 직후 새로고침해
+    // 화면의 스티커 수가 바로 반영되도록 한다.
+    await loadWorkspaceData(workspace.id);
   }
 
   async function createTask() {
@@ -717,6 +720,7 @@ export function useTasks({
       }
 
       setRewardTransactions((prev) => [...prev, txData as RewardTransaction]);
+      await loadWorkspaceData(workspace.id);
     }
 
     setMessage(`${task.title} 완료를 취소했어요. 포인트를 회수했습니다.`);
