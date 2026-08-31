@@ -314,6 +314,15 @@ export default function Home() {
     window.scrollTo(0, 0);
   }, [activeTab]);
 
+  // 네이티브 앱(iOS/Android)에서는 로그인되면 OS 푸시 토큰을 등록한다.
+  // 웹 브라우저에서는 no-op이며, 웹 푸시는 NotificationPrompt가 담당한다.
+  useEffect(() => {
+    if (!profile) return;
+    import("@/lib/nativePush")
+      .then((mod) => mod.registerNativePush())
+      .catch(() => {});
+  }, [profile?.id]);
+
   const selectedTasks = useMemo(() => {
     return tasks.filter((task) => task.due_date === selectedDate);
   }, [tasks, selectedDate]);

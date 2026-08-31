@@ -27,6 +27,41 @@ workflows:
       - name: Sync Capacitor
         script: |
           npx cap sync android
+      - name: Set up Firebase Cloud Messaging
+        script: |
+          # google-services.json is injected from a Codemagic env var (base64),
+          # never committed. @capacitor/push-notifications needs it for Android.
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "ERROR: GOOGLE_SERVICES_JSON env var is not set" >&2
+            exit 1
+          fi
+          echo "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
+
+          python3 - <<'PYEOF'
+          # project build.gradle: ensure the google-services classpath is present
+          p = "android/build.gradle"
+          s = open(p).read()
+          if "com.google.gms:google-services" not in s:
+              s = s.replace(
+                  "dependencies {",
+                  "dependencies {\n        classpath 'com.google.gms:google-services:4.4.2'",
+                  1,
+              )
+          else:
+              s = s.replace("// classpath 'com.google.gms:google-services", "classpath 'com.google.gms:google-services")
+          open(p, "w").write(s)
+
+          # app build.gradle: apply the plugin (Capacitor ships it commented out)
+          p = "android/app/build.gradle"
+          s = open(p).read()
+          if "apply plugin: 'com.google.gms.google-services'" not in s:
+              if "// apply plugin: 'com.google.gms.google-services'" in s:
+                  s = s.replace("// apply plugin: 'com.google.gms.google-services'", "apply plugin: 'com.google.gms.google-services'")
+              else:
+                  s = s.rstrip() + "\n\napply plugin: 'com.google.gms.google-services'\n"
+              open(p, "w").write(s)
+          print("FCM gradle wiring done")
+          PYEOF
       - name: Configure Android signing and version
         script: |
           export VERSION_NAME=$(node -p "require('./package.json').version")
@@ -141,6 +176,51 @@ workflows:
           /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST" \
             || /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST"
           /usr/libexec/PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption" "$PLIST"
+      - name: Configure push notifications (iOS)
+        script: |
+          # ios/ is regenerated every build, so re-apply the push setup here.
+          python3 - <<'PYEOF'
+          # 1) aps-environment entitlement
+          open("ios/App/App/App.entitlements", "w").write(
+              '<?xml version="1.0" encoding="UTF-8"?>\n'
+              '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+              '<plist version="1.0">\n<dict>\n\t<key>aps-environment</key>\n\t<string>production</string>\n</dict>\n</plist>\n'
+          )
+
+          # 2) point the App target at the entitlements file (Debug + Release)
+          pbx = "ios/App/App.xcodeproj/project.pbxproj"
+          s = open(pbx).read()
+          if "CODE_SIGN_ENTITLEMENTS" not in s:
+              n = s.count("PRODUCT_BUNDLE_IDENTIFIER = com.miruji.app;")
+              s = s.replace(
+                  "PRODUCT_BUNDLE_IDENTIFIER = com.miruji.app;",
+                  "CODE_SIGN_ENTITLEMENTS = App/App.entitlements;\n\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.miruji.app;",
+              )
+              open(pbx, "w").write(s)
+              print("entitlements wired into %d build config(s)" % n)
+          else:
+              print("CODE_SIGN_ENTITLEMENTS already present")
+
+          # 3) forward APNs callbacks to Capacitor from AppDelegate
+          appd = "ios/App/App/AppDelegate.swift"
+          s = open(appd).read()
+          if "capacitorDidRegisterForRemoteNotifications" not in s:
+              hook = (
+                  "\n"
+                  "    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {\n"
+                  "        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)\n"
+                  "    }\n\n"
+                  "    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {\n"
+                  "        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)\n"
+                  "    }\n"
+              )
+              idx = s.rfind("}")
+              s = s[:idx] + hook + "}\n"
+              open(appd, "w").write(s)
+              print("AppDelegate push hooks added")
+          else:
+              print("AppDelegate push hooks already present")
+          PYEOF
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles

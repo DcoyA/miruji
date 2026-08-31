@@ -13,6 +13,9 @@ export default function NotificationPrompt() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // 네이티브 앱에서는 OS 푸시(lib/nativePush)가 자동 등록되므로 웹 푸시 배너를 띄우지 않는다.
+    const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+    if (cap?.isNativePlatform?.()) return;
     if (!("Notification" in window)) return;
     if (Notification.permission !== "default") return;
     if (window.localStorage.getItem(DISMISS_KEY)) return;
