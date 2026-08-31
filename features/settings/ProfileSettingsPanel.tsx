@@ -23,6 +23,7 @@ type ProfileSettingsPanelProps = {
   onChangePassword: () => Promise<ActionResult>;
   onBack: () => void;
   onGoToRewards?: () => void;
+  onSignOut: () => void;
 };
 
 function ResultMessage({ result }: { result: ActionResult | null }) {
@@ -66,6 +67,7 @@ export default function ProfileSettingsPanel({
   onRecoveryEmailChange,
   onSaveRecoveryEmail,
   onGoToRewards,
+  onSignOut,
 }: ProfileSettingsPanelProps) {
   const [avatarMessage, setAvatarMessage] = useState<ActionResult | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -237,6 +239,16 @@ export default function ProfileSettingsPanel({
             <ResultMessage result={passwordMessage} />
           </div>
         </section>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm("로그아웃 하시겠어요?")) onSignOut();
+          }}
+          style={signOutButtonStyle}
+        >
+          로그아웃
+        </button>
       </div>
     </div>
   );
@@ -368,6 +380,19 @@ const inputStyle: CSSProperties = {
   outline: "none",
   fontSize: 15,
   background: "#fff",
+};
+
+const signOutButtonStyle: CSSProperties = {
+  width: "100%",
+  marginTop: 18,
+  padding: 14,
+  borderRadius: 14,
+  border: "1px solid #E5E1FB",
+  background: "#fff",
+  color: "#6C63FF",
+  fontWeight: 800,
+  fontSize: 15,
+  cursor: "pointer",
 };
 
 function primaryButtonStyle(loading: boolean): CSSProperties {

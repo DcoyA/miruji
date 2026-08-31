@@ -236,22 +236,23 @@ const backdropStyle: CSSProperties = {
   inset: 0,
   background: "rgba(43, 33, 64, 0.45)",
   zIndex: 50,
+  display: "flex",
+  alignItems: "flex-end",
+  justifyContent: "center",
 };
 
 const panelStyle: CSSProperties = {
-  position: "fixed",
-  left: 0,
-  right: 0,
-  bottom: 0,
-  maxHeight: "50vh",
+  width: "100%",
+  maxWidth: 480,
+  minHeight: "40vh",
+  maxHeight: "85dvh",
   background: "#fff",
   borderRadius: "24px 24px 0 0",
   boxShadow: "0 -10px 40px rgba(43,33,64,0.25)",
-  zIndex: 51,
   display: "flex",
   flexDirection: "column",
-  maxWidth: 480,
-  margin: "0 auto",
+  overflow: "hidden",
+  paddingTop: "env(safe-area-inset-top)",
 };
 
 const headerRowStyle: CSSProperties = {
